@@ -1,0 +1,188 @@
+# ============================================================
+# VATM ATCC Long Thành — Park Air T6 Device Alert Rules
+# Thiết bị: T6-TV (TX), T6-RV (RX), T6-TRV (UBVHF)
+# Chuẩn: EUROCAE ED-137 + Quy trình kỹ thuật VATM 2999
+# ============================================================
+
+groups:
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 1: T6 Radio — Interface/Connectivity Alerts
+  # ════════════════════════════════════════════════════════
+  - name: park_air_t6_connectivity
+    interval: 15s
+    rules:
+
+      # ── T6 Radio mất kết nối hoàn toàn (SNMP không trả lời) ──
+      - alert: T6_Radio_Down
+        expr: up{job=~"snmp_(tx|rx|ubvhf).*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          system:   vhf_radio
+          action:   immediate
+        annotations:
+          summary:     "🔴 [CRIT] T6 Radio OFFLINE — {{ $labels.instance }}"
+          description: |
+            Site: {{ $labels.site }}
+            Thiết bị: {{ $labels.device }} ({{ $labels.redundancy }})
+            Instance: {{ $labels.instance }}
+            Trạng thái: SNMP không phản hồi — thiết bị có thể mất điện hoặc mất mạng.
+            Hành động: Kiểm tra nguồn điện, switch SW6360 và kết nối LAN3 tại {{ $labels.site }}.
+
+      # ── T6 Radio interface xuống (LAN3 RCMS port down) ──
+      - alert: T6_Interface_Down
+        expr: t6_if_oper_status{ifDescr=~"eth.*"} == 2
+        for: 2m
+        labels:
+          severity: warning
+          system:   vhf_radio
+        annotations:
+          summary:     "⚠️ [WARN] T6 Interface Down — {{ $labels.instance }}:{{ $labels.ifDescr }}"
+          description: |
+            Site: {{ $labels.site }}
+            Thiết bị: {{ $labels.instance }}
+            Interface: {{ $labels.ifDescr }} — Status DOWN
+            Hành động: Kiểm tra cable kết nối LAN3 → SW6360.
+
+      # ── T6 Radio uptime reset (khởi động lại bất thường) ──
+      - alert: T6_Unexpected_Reboot
+        expr: (t6_uptime_ticks / 100) < 300
+        for: 0m
+        labels:
+          severity: warning
+          system:   vhf_radio
+        annotations:
+          summary:     "⚠️ [WARN] T6 Radio khởi động lại — {{ $labels.instance }}"
+          description: |
+            Site: {{ $labels.site }}
+            Thiết bị: {{ $labels.instance }}
+            Uptime hiện tại: {{ $value }}s (< 5 phút — vừa reboot)
+            Hành động: Kiểm tra event log, xác nhận thiết bị hoạt động ổn định.
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 2: T6 Radio — Performance Alerts
+  # ════════════════════════════════════════════════════════
+  - name: park_air_t6_performance
+    interval: 30s
+    rules:
+
+      # ── CPU cao bất thường ──
+      - alert: T6_CPU_High
+        expr: (100 - t6_cpu_load_1min / 100) < 10
+        for: 5m
+        labels:
+          severity: warning
+          system:   vhf_radio
+        annotations:
+          summary:     "⚠️ [WARN] CPU cao — {{ $labels.instance }}"
+          description: |
+            CPU idle < 10% trong 5 phút liên tiếp.
+            Load avg: {{ $value }}
+            Hành động: Kiểm tra tiến trình bất thường, log hệ thống.
+
+      # ── RAM thấp ──
+      - alert: T6_Memory_Low
+        expr: t6_mem_avail_kb < 51200
+        for: 5m
+        labels:
+          severity: warning
+          system:   vhf_radio
+        annotations:
+          summary:     "⚠️ [WARN] RAM thấp — {{ $labels.instance }}"
+          description: |
+            RAM khả dụng: {{ $value }}kB (< 50MB)
+            Hành động: Kiểm tra memory leak, restart service nếu cần.
+
+      # ── Packet errors tăng đột biến ──
+      - alert: T6_Interface_Errors_High
+        expr: rate(t6_if_in_errors[5m]) > 10
+        for: 3m
+        labels:
+          severity: warning
+          system:   vhf_radio
+        annotations:
+          summary:     "⚠️ [WARN] Lỗi interface — {{ $labels.instance }}:{{ $labels.ifDescr }}"
+          description: |
+            Tốc độ lỗi: {{ $value | humanize }} errors/s
+            Hành động: Kiểm tra cable, switch port, duplex mismatch.
+
+      # ── Packet discards (chỉ thị mất gói) ──
+      - alert: T6_Packet_Discards
+        expr: rate(t6_if_in_discards[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          system:   vhf_radio
+          kpi:      packet_loss
+        annotations:
+          summary:     "⚠️ [WARN] Mất gói interface — {{ $labels.instance }}"
+          description: |
+            Discards: {{ $value | humanize }} packets/s
+            Liên quan ED-137 KPI: Packet Loss < 1%
+            Hành động: Kiểm tra băng thông, QoS, buffer overflow.
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 3: S4-IP Controller — TCP Health Check
+  # ════════════════════════════════════════════════════════
+  - name: s4ip_health
+    interval: 15s
+    rules:
+
+      # ── S4-IP TCP port 5001 không phản hồi ──
+      - alert: S4IP_TCP_Down
+        expr: probe_success{job="blackbox_s4ip_tcp5001"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          system:   operator_controller
+          action:   immediate
+        annotations:
+          summary:     "🔴 [CRIT] S4-IP Controller OFFLINE — {{ $labels.instance }}"
+          description: |
+            S4-IP tại {{ $labels.instance }} không phản hồi TCP port 5001.
+            Thiết bị: Park Air S4-IP (UBVHF Tầng 20 TWR)
+            Hành động: Kiểm tra nguồn điện S4-IP, kết nối LAN, switch SW6360 UBVHF.
+            ⚠️ Nếu tất cả 6 S4-IP mất kết nối: báo ngay cấp trưởng ca.
+
+      # ── S4-IP TCP latency cao ──
+      - alert: S4IP_TCP_Latency_High
+        expr: probe_duration_seconds{job="blackbox_s4ip_tcp5001"} > 0.5
+        for: 3m
+        labels:
+          severity: warning
+          system:   operator_controller
+        annotations:
+          summary:     "⚠️ [WARN] S4-IP TCP latency cao — {{ $labels.instance }}"
+          description: |
+            TCP connect time: {{ $value }}s (> 500ms)
+            Hành động: Kiểm tra tải mạng UBVHF subnet 10.60.11.x.
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 4: RCMS/LCMS Workstation Ping Alerts
+  # ════════════════════════════════════════════════════════
+  - name: workstation_connectivity
+    interval: 30s
+    rules:
+
+      - alert: RCMS_Workstation_Down
+        expr: probe_success{job="blackbox_ping_workstations"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          system:   rcms_workstation
+        annotations:
+          summary:     "⚠️ [WARN] RCMS/LCMS không phản hồi — {{ $labels.instance }}"
+          description: |
+            Workstation {{ $labels.instance }} ({{ $labels.device }}) không ping được.
+            Hành động: Kiểm tra nguồn điện workstation, kết nối mạng.
+
+      - alert: RCMS_Ping_Latency_High
+        expr: probe_duration_seconds{job="blackbox_ping_workstations"} > 0.05
+        for: 5m
+        labels:
+          severity: info
+          system:   rcms_workstation
+        annotations:
+          summary:     "ℹ️ [INFO] RCMS ping latency cao — {{ $labels.instance }}"
+          description: "Ping RTT: {{ $value }}ms — kiểm tra mạng nội bộ"

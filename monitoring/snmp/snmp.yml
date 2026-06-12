@@ -1,36 +1,61 @@
 # ============================================================
 # VATM ATCC Long Thành — SNMP Exporter Configuration
-# Thiết bị: Nokia 7250 IXR-e + Nokia 7705 SAR-8 (SR OS)
-# SNMP: v2c | Community: vatm_ro (production), public (lab)
+# Thiết bị: Park Air T6-TV / T6-RV / T6-TRV + ALE OS6860/OS6360
+# SNMP: V2c | Community: vatm_ro (production), public (lab)
 #
-# NOTE: File này được tạo thủ công (không qua generator)
-# vì Nokia SR OS dùng standard MIBs + một số OID proprietary.
-# OID Nokia SAR-8 tham chiếu: TIMETRA-PORT-MIB, TIMETRA-SAA-MIB
+# QUAN TRỌNG — Về OID Park Air T6:
+#   Park Air không publish MIB proprietary cho T6 Series.
+#   File này dùng Standard IETF MIBs (IF-MIB, HOST-RESOURCES-MIB,
+#   UCD-SNMP-MIB) mà T6 Linux OS hỗ trợ qua net-snmp.
+#   Khi có MIB file chính hãng, bổ sung OID proprietary vào
+#   walk list và metrics section có ghi TODO bên dưới.
+#
+# Tác giả: Đỗ Thanh Long — ATSEP VATM ATCC Long Thành
 # ============================================================
 
-# ─────────────────────────────────────────────────────────
-# MODULE 1: nokia_sros_if
-# Áp dụng: Nokia 7250 IXR-e (Edge/Distribution TWR LTIA)
-# ─────────────────────────────────────────────────────────
 modules:
-  nokia_sros_if:
+
+  # ══════════════════════════════════════════════════════
+  # MODULE: park_air_t6
+  # Áp dụng: T6-TV (Trạm TX), T6-RV (Trạm RX), T6-TRV (UBVHF)
+  # Poll qua LAN3 (RCMS subnet) — không dùng LAN1 (VoIP)
+  # Community: vatm_ro (thay bằng community thực tế khi deploy)
+  # ══════════════════════════════════════════════════════
+  park_air_t6:
+    version: 2
+    auth:
+      community: vatm_ro
+
     walk:
-      # IF-MIB — Standard interface stats
-      - 1.3.6.1.2.1.2.2          # ifTable
+      # ── Standard IF-MIB ──
+      - 1.3.6.1.2.1.2.2          # ifTable (interface stats)
       - 1.3.6.1.2.1.31.1.1       # ifXTable (64-bit counters)
-      # ENTITY-MIB — Physical component info
-      - 1.3.6.1.2.1.47.1.1.1     # entPhysicalTable
-      # IP-MIB — IP stats
+      # ── HOST-RESOURCES-MIB (Linux OS trên T6) ──
+      - 1.3.6.1.2.1.25.1         # hrSystem (uptime, load)
+      - 1.3.6.1.2.1.25.2.3       # hrStorageTable (disk/RAM)
+      - 1.3.6.1.2.1.25.3.3       # hrProcessorTable (CPU)
+      # ── UCD-SNMP-MIB (net-snmp Linux) ──
+      - 1.3.6.1.4.1.2021.10      # laTable (load average)
+      - 1.3.6.1.4.1.2021.11      # systemStats (CPU idle/user)
+      - 1.3.6.1.4.1.2021.4       # memTable (RAM stats)
+      # ── IP-MIB ──
       - 1.3.6.1.2.1.4.20         # ipAddrTable
-      # OSPF-MIB (nếu chạy OSPF)
-      - 1.3.6.1.2.1.14.10        # ospfNbrTable
+      # ── TODO: Park Air T6 Proprietary MIB ──
+      # Khi có file MIB từ Park Air, bổ sung OID tương ứng tại đây.
+      # Ví dụ:
+      # - 1.3.6.1.4.1.XXXXX.1.1  # parkAirTxPower
+      # - 1.3.6.1.4.1.XXXXX.1.2  # parkAirFrequency
+      # - 1.3.6.1.4.1.XXXXX.1.3  # parkAirVSWR
+      # - 1.3.6.1.4.1.XXXXX.1.4  # parkAirAlarmStatus
+      # - 1.3.6.1.4.1.XXXXX.1.5  # parkAirTxStatus (on/off/fault)
 
     metrics:
-      # ── ifOperStatus: 1=up, 2=down ──
-      - name: ifOperStatus
+
+      # ── Interface Operational Status ──
+      - name: t6_if_oper_status
         oid:  1.3.6.1.2.1.2.2.1.8
         type: gauge
-        help: "Interface operational status (1=up, 2=down)"
+        help: "Interface operational status (1=up, 2=down, 3=testing)"
         indexes:
           - labelname: ifIndex
             type: gauge
@@ -40,60 +65,20 @@ modules:
             oid: 1.3.6.1.2.1.2.2.1.2
             type: DisplayString
 
-      # ── ifAdminStatus ──
-      - name: ifAdminStatus
+      # ── Interface Admin Status ──
+      - name: t6_if_admin_status
         oid:  1.3.6.1.2.1.2.2.1.7
         type: gauge
         help: "Interface admin status (1=up, 2=down)"
         indexes:
           - labelname: ifIndex
             type: gauge
-        lookups:
-          - labels: [ifIndex]
-            labelname: ifDescr
-            oid: 1.3.6.1.2.1.2.2.1.2
-            type: DisplayString
 
-      # ── ifSpeed (bandwidth) ──
-      - name: ifSpeed
-        oid:  1.3.6.1.2.1.2.2.1.5
-        type: gauge
-        help: "Interface speed in bps"
-        indexes:
-          - labelname: ifIndex
-            type: gauge
-
-      # ── 64-bit counters (ifXTable) ──
-      - name: ifInOctets
+      # ── Interface RX Bytes (In) ──
+      - name: t6_if_in_octets
         oid:  1.3.6.1.2.1.31.1.1.1.6
         type: counter
-        help: "Inbound bytes (64-bit)"
-        indexes:
-          - labelname: ifIndex
-            type: gauge
-        lookups:
-          - labels: [ifIndex]
-            labelname: ifDescr
-            oid: 1.3.6.1.2.1.31.1.1.1.1
-            type: DisplayString
-
-      - name: ifOutOctets
-        oid:  1.3.6.1.2.1.31.1.1.1.10
-        type: counter
-        help: "Outbound bytes (64-bit)"
-        indexes:
-          - labelname: ifIndex
-            type: gauge
-        lookups:
-          - labels: [ifIndex]
-            labelname: ifDescr
-            oid: 1.3.6.1.2.1.31.1.1.1.1
-            type: DisplayString
-
-      - name: ifInErrors
-        oid:  1.3.6.1.2.1.2.2.1.14
-        type: counter
-        help: "Inbound error frames"
+        help: "Total bytes received on interface (64-bit)"
         indexes:
           - labelname: ifIndex
             type: gauge
@@ -103,149 +88,119 @@ modules:
             oid: 1.3.6.1.2.1.2.2.1.2
             type: DisplayString
 
-      - name: ifOutErrors
+      # ── Interface TX Bytes (Out) ──
+      - name: t6_if_out_octets
+        oid:  1.3.6.1.2.1.31.1.1.1.10
+        type: counter
+        help: "Total bytes transmitted on interface (64-bit)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      # ── Interface RX Errors ──
+      - name: t6_if_in_errors
+        oid:  1.3.6.1.2.1.2.2.1.14
+        type: counter
+        help: "Inbound packet errors"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      # ── Interface TX Errors ──
+      - name: t6_if_out_errors
         oid:  1.3.6.1.2.1.2.2.1.20
         type: counter
-        help: "Outbound error frames"
+        help: "Outbound packet errors"
         indexes:
           - labelname: ifIndex
             type: gauge
 
-    auth:
-      community: vatm_ro      # Production community (override qua URL param)
+      # ── Interface RX Discards (Packet Loss indicator) ──
+      - name: t6_if_in_discards
+        oid:  1.3.6.1.2.1.2.2.1.13
+        type: counter
+        help: "Inbound discards — thể hiện packet loss tại interface"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      # ── CPU Load Average (1 min) ──
+      - name: t6_cpu_load_1min
+        oid:  1.3.6.1.4.1.2021.10.1.5.1
+        type: gauge
+        help: "CPU 1-minute load average x100 (e.g., 100 = 1.00)"
+        indexes:
+          - labelname: laIndex
+            type: gauge
+
+      # ── Memory Total ──
+      - name: t6_mem_total_kb
+        oid:  1.3.6.1.4.1.2021.4.5.0
+        type: gauge
+        help: "Total RAM in kB"
+
+      # ── Memory Available ──
+      - name: t6_mem_avail_kb
+        oid:  1.3.6.1.4.1.2021.4.6.0
+        type: gauge
+        help: "Available RAM in kB"
+
+      # ── System Uptime ──
+      - name: t6_uptime_ticks
+        oid:  1.3.6.1.2.1.1.3.0
+        type: gauge
+        help: "System uptime in timeticks (1/100 second)"
+
+      # ── TODO: Park Air Proprietary Metrics ──
+      # Bổ sung khi có MIB file từ Park Air:
+      # - name: t6_tx_power_dbm
+      #   oid:  1.3.6.1.4.1.XXXXX.1.1
+      #   type: gauge
+      #   help: "Transmitter output power in dBm"
+      #
+      # - name: t6_frequency_hz
+      #   oid:  1.3.6.1.4.1.XXXXX.1.2
+      #   type: gauge
+      #   help: "Active frequency in Hz"
+      #
+      # - name: t6_vswr
+      #   oid:  1.3.6.1.4.1.XXXXX.1.3
+      #   type: gauge
+      #   help: "Antenna VSWR ratio x100 (e.g., 150 = 1.50:1)"
+      #
+      # - name: t6_alarm_status
+      #   oid:  1.3.6.1.4.1.XXXXX.1.4
+      #   type: gauge
+      #   help: "Alarm status (0=OK, 1=WARN, 2=FAULT)"
+
+  # ══════════════════════════════════════════════════════
+  # MODULE: ale_switch
+  # Áp dụng: ALE OS6860E-24 (VoIP), ALE OS6360-24 (RCMS)
+  # Dùng standard IF-MIB + OmniSwitch ALCATEL-IND1-PORT-MIB
+  # (Alcatel-Lucent Enterprise dùng OID 1.3.6.1.4.1.6486)
+  # ══════════════════════════════════════════════════════
+  ale_switch:
     version: 2
-
-  # ─────────────────────────────────────────────────────────
-  # MODULE 2: nokia_sros_sar8
-  # Áp dụng: Nokia 7705 SAR-8 (ATCC HCM + Remote Sites)
-  # Bổ sung: Nokia SAA OIDs (proprietary TIMETRA-SAA-MIB)
-  # ─────────────────────────────────────────────────────────
-  nokia_sros_sar8:
-    walk:
-      - 1.3.6.1.2.1.2.2          # ifTable
-      - 1.3.6.1.2.1.31.1.1       # ifXTable
-      - 1.3.6.1.2.1.47.1.1.1     # entPhysicalTable
-      # Nokia TIMETRA-SAA-MIB (SAA latency/jitter results)
-      # OID prefix: 1.3.6.1.4.1.6527.3.1.2.16
-      - 1.3.6.1.4.1.6527.3.1.2.16.2   # tmnxSaaTestResultsTable
-      # Nokia TIMETRA-PORT-MIB (port detail + E1 BER)
-      # OID prefix: 1.3.6.1.4.1.6527.3.1.2.2
-      - 1.3.6.1.4.1.6527.3.1.2.2.3    # tmnxPortTable
-
-    metrics:
-      # ── Standard IF metrics (tương tự module trên) ──
-      - name: ifOperStatus
-        oid:  1.3.6.1.2.1.2.2.1.8
-        type: gauge
-        help: "Interface operational status"
-        indexes:
-          - labelname: ifIndex
-            type: gauge
-        lookups:
-          - labels: [ifIndex]
-            labelname: ifDescr
-            oid: 1.3.6.1.2.1.2.2.1.2
-            type: DisplayString
-
-      - name: ifInOctets
-        oid:  1.3.6.1.2.1.31.1.1.1.6
-        type: counter
-        help: "Inbound bytes 64-bit"
-        indexes:
-          - labelname: ifIndex
-            type: gauge
-        lookups:
-          - labels: [ifIndex]
-            labelname: ifDescr
-            oid: 1.3.6.1.2.1.31.1.1.1.1
-            type: DisplayString
-
-      - name: ifOutOctets
-        oid:  1.3.6.1.2.1.31.1.1.1.10
-        type: counter
-        help: "Outbound bytes 64-bit"
-        indexes:
-          - labelname: ifIndex
-            type: gauge
-
-      - name: ifInErrors
-        oid:  1.3.6.1.2.1.2.2.1.14
-        type: counter
-        help: "Inbound error frames"
-        indexes:
-          - labelname: ifIndex
-            type: gauge
-
-      # ── Nokia SAA — RTT/Latency (TIMETRA-SAA-MIB) ──
-      # tmnxSaaResultsLastRunRtt: OID .16.2.1.x
-      # NOTE: OID cần xác nhận bằng snmpwalk thực tế trên thiết bị
-      - name: nokia_saa_rtt_avg_ms
-        oid:  1.3.6.1.4.1.6527.3.1.2.16.2.1.5
-        type: gauge
-        help: "Nokia SAA average RTT (ms) — ED-137 latency metric"
-        indexes:
-          - labelname: saaTestIndex
-            type: gauge
-        lookups:
-          - labels: [saaTestIndex]
-            labelname: saaTestName
-            oid: 1.3.6.1.4.1.6527.3.1.2.16.1.1.2
-            type: DisplayString
-
-      # tmnxSaaResultsLastRunJitter
-      - name: nokia_saa_jitter_avg_ms
-        oid:  1.3.6.1.4.1.6527.3.1.2.16.2.1.8
-        type: gauge
-        help: "Nokia SAA jitter average (ms) — ED-137 jitter metric"
-        indexes:
-          - labelname: saaTestIndex
-            type: gauge
-
-      # tmnxSaaResultsLastRunPacketLoss
-      - name: nokia_saa_packet_loss_pct
-        oid:  1.3.6.1.4.1.6527.3.1.2.16.2.1.10
-        type: gauge
-        help: "Nokia SAA packet loss percentage — ED-137 loss metric"
-        indexes:
-          - labelname: saaTestIndex
-            type: gauge
-
-      # ── Nokia E1 BER (TIMETRA-PORT-MIB) ──
-      # tmnxPortBitsInError — bit error count
-      # NOTE: OID cần xác nhận snmpwalk trên SAR-8 thực
-      - name: nokia_e1_ber_rate
-        oid:  1.3.6.1.4.1.6527.3.1.2.2.3.1.100
-        type: gauge
-        help: "Nokia SAR-8 E1 Bit Error Rate (BER)"
-        indexes:
-          - labelname: portIndex
-            type: gauge
-        lookups:
-          - labels: [portIndex]
-            labelname: port
-            oid: 1.3.6.1.4.1.6527.3.1.2.2.3.1.2
-            type: DisplayString
-
     auth:
       community: vatm_ro
-    version: 2
 
-  # ─────────────────────────────────────────────────────────
-  # MODULE 3: linux_snmp
-  # Áp dụng: Lab Simulation Ubuntu VMs (snmpd)
-  # ─────────────────────────────────────────────────────────
-  linux_snmp:
     walk:
       - 1.3.6.1.2.1.2.2          # ifTable
-      - 1.3.6.1.2.1.31.1.1       # ifXTable
-      - 1.3.6.1.2.1.25.3.3       # hrProcessorTable (CPU)
-      - 1.3.6.1.2.1.25.2.2       # hrMemorySize
+      - 1.3.6.1.2.1.31.1.1       # ifXTable (64-bit)
+      - 1.3.6.1.2.1.17.4         # dot1dTpFdbTable (MAC forwarding)
+      - 1.3.6.1.2.1.17.7.1.2.2   # dot1qTpFdbTable (VLAN MAC)
+      - 1.3.6.1.2.1.47.1.1.1     # entPhysicalTable (chassis info)
+      - 1.3.6.1.2.1.1            # sysDescr, sysUpTime, etc.
+      # ALE OmniSwitch specific (Alcatel-Lucent Enterprise PEN: 6486)
+      - 1.3.6.1.4.1.6486.801.1.2.1.10.1.1  # alaPortTable (port status)
 
     metrics:
-      - name: ifOperStatus
+
+      # ── Port Operational Status ──
+      - name: ale_port_oper_status
         oid:  1.3.6.1.2.1.2.2.1.8
         type: gauge
-        help: "Interface status (lab)"
+        help: "Port operational status (1=up, 2=down)"
         indexes:
           - labelname: ifIndex
             type: gauge
@@ -255,30 +210,105 @@ modules:
             oid: 1.3.6.1.2.1.2.2.1.2
             type: DisplayString
 
-      - name: ifInOctets
+      # ── Port Admin Status ──
+      - name: ale_port_admin_status
+        oid:  1.3.6.1.2.1.2.2.1.7
+        type: gauge
+        help: "Port admin status (1=up, 2=down)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      # ── Port RX Bytes ──
+      - name: ale_port_in_octets
         oid:  1.3.6.1.2.1.31.1.1.1.6
         type: counter
-        help: "Inbound bytes (lab)"
+        help: "Port received bytes (64-bit)"
         indexes:
           - labelname: ifIndex
             type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.2.2.1.2
+            type: DisplayString
 
-      - name: ifOutOctets
+      # ── Port TX Bytes ──
+      - name: ale_port_out_octets
         oid:  1.3.6.1.2.1.31.1.1.1.10
         type: counter
-        help: "Outbound bytes (lab)"
+        help: "Port transmitted bytes (64-bit)"
         indexes:
           - labelname: ifIndex
             type: gauge
 
-      - name: hrProcessorLoad
-        oid:  1.3.6.1.2.1.25.3.3.1.2
-        type: gauge
-        help: "CPU load % (lab Ubuntu)"
+      # ── Port Error Counter ──
+      - name: ale_port_in_errors
+        oid:  1.3.6.1.2.1.2.2.1.14
+        type: counter
+        help: "Port inbound errors"
         indexes:
-          - labelname: hrDeviceIndex
+          - labelname: ifIndex
             type: gauge
 
-    auth:
-      community: public        # Lab community
+      # ── Port RX Discards ──
+      - name: ale_port_in_discards
+        oid:  1.3.6.1.2.1.2.2.1.13
+        type: counter
+        help: "Port inbound discards"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      # ── System Uptime ──
+      - name: ale_uptime_ticks
+        oid:  1.3.6.1.2.1.1.3.0
+        type: gauge
+        help: "Switch uptime in timeticks"
+
+  # ══════════════════════════════════════════════════════
+  # MODULE: linux_snmp
+  # Áp dụng: Ubuntu VMs chạy net-snmp trong LAB simulation
+  # Giả lập T6 radio khi chưa có thiết bị thật
+  # ══════════════════════════════════════════════════════
+  linux_snmp:
     version: 2
+    auth:
+      community: public
+
+    walk:
+      - 1.3.6.1.2.1.2.2          # ifTable
+      - 1.3.6.1.2.1.31.1.1       # ifXTable
+      - 1.3.6.1.4.1.2021.10      # laTable (load avg)
+      - 1.3.6.1.4.1.2021.4       # memTable
+      - 1.3.6.1.4.1.2021.11      # ssCpuIdle
+      - 1.3.6.1.2.1.1.3          # sysUpTime
+
+    metrics:
+      - name: lab_if_oper_status
+        oid:  1.3.6.1.2.1.2.2.1.8
+        type: gauge
+        help: "Lab VM interface status (1=up, 2=down)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.2.2.1.2
+            type: DisplayString
+
+      - name: lab_cpu_idle_percent
+        oid:  1.3.6.1.4.1.2021.11.11.0
+        type: gauge
+        help: "CPU idle percentage (0–100)"
+
+      - name: lab_mem_avail_kb
+        oid:  1.3.6.1.4.1.2021.4.6.0
+        type: gauge
+        help: "Available RAM in kB"
+
+      - name: lab_uptime_ticks
+        oid:  1.3.6.1.2.1.1.3.0
+        type: gauge
+        help: "System uptime timeticks"

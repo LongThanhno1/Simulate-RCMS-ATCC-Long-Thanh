@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VATM — ED-137 Monitoring Portal</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #0d1117;
+    --bg2:      #161b22;
+    --bg3:      #21262d;
+    --border:   #30363d;
+    --text:     #c9d1d9;
+    --text2:    #8b949e;
+    --blue:     #58a6ff;
+    --green:    #3fb950;
+    --yellow:   #d29922;
+    --red:      #f85149;
+    --orange:   #f0883e;
+    --cyan:     #39d353;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  /* ── Header ── */
+  header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo h1 { font-size: 1.1em; color: var(--blue); font-weight: 600; }
+  .logo span { font-size: 0.75em; color: var(--text2); }
+  .header-right { display: flex; align-items: center; gap: 12px; font-size: 0.8em; color: var(--text2); }
+  #clock { color: var(--green); font-family: monospace; font-size: 0.95em; }
+
+  /* ── Layout ── */
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+
+  /* ── Cards ── */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .card-title { font-size: 0.75em; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .section-title { font-size: 0.9em; color: var(--blue); margin: 20px 0 10px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+
+  /* ── Status Badges ── */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 0.72em; font-weight: 600; }
+  .badge-green  { background: #1a3a1a; color: var(--green); }
+  .badge-yellow { background: #3a2a00; color: var(--yellow); }
+  .badge-red    { background: #3a1010; color: var(--red); }
+  .badge-blue   { background: #0d2040; color: var(--blue); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .dot-green  { background: var(--green); box-shadow: 0 0 4px var(--green); }
+  .dot-yellow { background: var(--yellow); }
+  .dot-red    { background: var(--red); box-shadow: 0 0 4px var(--red); }
+  .dot-grey   { background: #555; }
+
+  /* ── KPI stat boxes ── */
+  .kpi-box { text-align: center; padding: 12px; background: var(--bg3); border-radius: 6px; border: 1px solid var(--border); }
+  .kpi-val { font-size: 1.8em; font-weight: 700; line-height: 1; }
+  .kpi-label { font-size: 0.68em; color: var(--text2); margin-top: 4px; }
+
+  /* ── Buttons ── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.82em; font-weight: 500; transition: opacity .15s; }
+  .btn:hover { opacity: .8; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-blue   { background: #1f4a7a; color: var(--blue); border: 1px solid #2a6ab0; }
+  .btn-green  { background: #1a3a1a; color: var(--green); border: 1px solid #2a5a2a; }
+  .btn-orange { background: #3a2010; color: var(--orange); border: 1px solid #5a3a20; }
+  .btn-red    { background: #3a1010; color: var(--red); border: 1px solid #5a2020; }
+  .btn-group  { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+  /* ── Device table ── */
+  .dev-table { width: 100%; border-collapse: collapse; font-size: 0.78em; }
+  .dev-table th { background: var(--bg3); color: var(--text2); padding: 6px 8px; text-align: left; font-weight: 500; border-bottom: 1px solid var(--border); }
+  .dev-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .dev-table tr:hover td { background: var(--bg3); }
+  .mono { font-family: monospace; color: var(--cyan); }
+
+  /* ── Grafana iframe ── */
+  .iframe-wrap { width: 100%; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); background: var(--bg3); }
+  .iframe-wrap iframe { width: 100%; border: none; display: block; }
+  .iframe-placeholder { padding: 40px; text-align: center; color: var(--text2); font-size: 0.85em; }
+
+  /* ── Job output ── */
+  .job-output { background: #000; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-family: monospace; font-size: 0.73em; max-height: 250px; overflow-y: auto; white-space: pre-wrap; color: #a8ff78; margin-top: 10px; display: none; }
+
+  /* ── Alert list ── */
+  .alert-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 0.8em; }
+  .alert-critical { background: #2a0d0d; border-left: 3px solid var(--red); }
+  .alert-warning  { background: #2a1a00; border-left: 3px solid var(--yellow); }
+  .alert-info     { background: #0d1a2a; border-left: 3px solid var(--blue); }
+
+  /* ── Spinner ── */
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .tab { padding: 8px 16px; font-size: 0.82em; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; transition: all .15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── ED-137 thresholds ── */
+  .threshold-table { width: 100%; border-collapse: collapse; font-size: 0.77em; }
+  .threshold-table th { background: #1a3a6b; color: #7eb8f7; padding: 6px 10px; text-align: left; }
+  .threshold-table td { padding: 5px 10px; border-bottom: 1px solid var(--border); }
+  .ok   { color: var(--green); font-weight: 600; }
+  .warn { color: var(--yellow); font-weight: 600; }
+  .crit { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- HEADER                                               -->
+<!-- ════════════════════════════════════════════════════ -->
+<header>
+  <div class="logo">
+    <span style="font-size:1.5em">🗼</span>
+    <div>
+      <h1>VATM ATCC Long Thành — ED-137 Monitoring Portal</h1>
+      <span>Hệ thống giám sát đường truyền VHF · EUROCAE ED-137 · Quy trình 2999</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="clock">--:--:--</span>
+    <span id="status-badge" class="badge badge-blue"><span class="spinner"></span> Đang kết nối…</span>
+    <button class="btn btn-blue" onclick="refreshAll()">⟳ Làm mới</button>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- MAIN CONTENT                                         -->
+<!-- ════════════════════════════════════════════════════ -->
+<div class="container">
+
+  <!-- KPI Summary row -->
+  <div id="kpi-row" class="grid-4" style="margin: 16px 0;">
+    <div class="kpi-box"><div class="kpi-val" id="kpi-tx" style="color:var(--green)">—</div><div class="kpi-label">T6-TV MAIN (TX) Online</div></div>
+    <div class="kpi-box"><div class="kpi-val" id="kpi-rx" style="color:var(--green)">—</div><div class="kpi-label">T6-RV MAIN (RX) Online</div></div>
+    <div class="kpi-box"><div class="kpi-val" id="kpi-ubvhf" style="color:var(--cyan)">—</div><div class="kpi-label">T6-TRV UBVHF Online</div></div>
+    <div class="kpi-box"><div class="kpi-val" id="kpi-alerts" style="color:var(--yellow)">—</div><div class="kpi-label">Cảnh báo đang kích hoạt</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</div>
+    <div class="tab" onclick="switchTab('devices')">📡 Thiết bị</div>
+    <div class="tab" onclick="switchTab('ansible')">⚡ Đo kiểm Ansible</div>
+    <div class="tab" onclick="switchTab('alerts')">🔔 Cảnh báo</div>
+    <div class="tab" onclick="switchTab('standards')">📋 Chuẩn ED-137</div>
+  </div>
+
+  <!-- TAB: Dashboard (Grafana embeds) -->
+  <div id="tab-dashboard" class="tab-content active">
+    <p class="section-title">📈 Grafana — Giám sát trực quan (nhúng Iframe)</p>
+    <p style="font-size:0.8em; color:var(--text2); margin-bottom:12px;">
+      Grafana chạy tại <a href="http://localhost:3000" target="_blank" style="color:var(--blue)">http://localhost:3000</a> · 
+      Default login: admin / vatm2025
+    </p>
+
+    <!-- Grafana dashboard iframes -->
+    <div class="grid-2">
+      <div>
+        <div class="card-title">🏭 Trạm TX — T6-TV Status</div>
+        <div class="iframe-wrap">
+          <iframe id="grafana-tx" src="about:blank" height="280" title="TX Dashboard">
+          </iframe>
+          <div class="iframe-placeholder" id="grafana-tx-placeholder">
+            ⬆ Nhấn nút bên dưới để tải Grafana Dashboard<br>
+            <small style="color:var(--text2)">Grafana phải chạy và cấu hình allow_embedding=true</small>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card-title">📡 Trạm RX — T6-RV Status</div>
+        <div class="iframe-wrap">
+          <iframe id="grafana-rx" src="about:blank" height="280" title="RX Dashboard"></iframe>
+          <div class="iframe-placeholder" id="grafana-rx-placeholder">
+            ⬆ Nhấn nút bên dưới để tải Grafana Dashboard
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card-title">⚡ UBVHF TWR T20 — T6-TRV + S4-IP</div>
+        <div class="iframe-wrap">
+          <iframe id="grafana-ubvhf" src="about:blank" height="280" title="UBVHF Dashboard"></iframe>
+          <div class="iframe-placeholder" id="grafana-ubvhf-placeholder">
+            ⬆ Nhấn nút bên dưới để tải Grafana Dashboard
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card-title">📊 ED-137 KPI — Toàn tuyến</div>
+        <div class="iframe-wrap">
+          <iframe id="grafana-kpi" src="about:blank" height="280" title="ED-137 KPI"></iframe>
+          <div class="iframe-placeholder" id="grafana-kpi-placeholder">
+            ⬆ Nhấn nút bên dưới để tải Grafana Dashboard
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-group" style="margin-top:12px;">
+      <button class="btn btn-blue" onclick="loadGrafana()">📊 Tải Grafana Dashboards</button>
+      <button class="btn btn-orange" onclick="openGrafana()">↗ Mở Grafana (tab mới)</button>
+    </div>
+  </div>
+
+  <!-- TAB: Devices -->
+  <div id="tab-devices" class="tab-content">
+    <p class="section-title">📡 Trạng thái thiết bị — T6 Radios</p>
+    <div id="device-loading" style="color:var(--text2); font-size:0.85em;"><span class="spinner"></span> Đang tải…</div>
+    <div style="overflow-x:auto">
+      <table class="dev-table" id="device-table" style="display:none">
+        <thead>
+          <tr>
+            <th>Trạng thái</th>
+            <th>IP (LAN3)</th>
+            <th>Thiết bị</th>
+            <th>Trạm</th>
+            <th>Dự phòng</th>
+            <th>Job</th>
+          </tr>
+        </thead>
+        <tbody id="device-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px">
+      <div class="card-title">S4-IP Controller (TCP:5001)</div>
+      <div id="s4ip-status" style="font-size:0.8em; color:var(--text2)">Đang tải…</div>
+    </div>
+  </div>
+
+  <!-- TAB: Ansible -->
+  <div id="tab-ansible" class="tab-content">
+    <p class="section-title">⚡ Kịch bản Ansible — Đo kiểm tự động</p>
+
+    <div class="grid-3" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-title">Thu thập số liệu</div>
+        <p style="font-size:0.78em; color:var(--text2); margin-bottom:10px">
+          SNMP walk + ping + TCP check toàn bộ tuyến TX→ATCC→RX<br>
+          <small>Playbook: 01_collect_metrics</small>
+        </p>
+        <div style="margin-bottom:8px">
+          <label style="font-size:0.75em; color:var(--text2)">Nhóm thiết bị:</label>
+          <select id="target-metrics" style="background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:4px 8px;border-radius:4px;font-size:0.8em;width:100%">
+            <option value="all_rcms">RCMS Workstations (all)</option>
+            <option value="rcms_tx">RCMS — Trạm TX</option>
+            <option value="rcms_rx">RCMS — Trạm RX</option>
+            <option value="rcms_ubvhf">RCMS — UBVHF</option>
+          </select>
+        </div>
+        <button class="btn btn-green" onclick="runPlaybook('01_collect_metrics', 'target-metrics')">▶ Chạy đo kiểm</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Xuất báo cáo</div>
+        <p style="font-size:0.78em; color:var(--text2); margin-bottom:10px">
+          Tổng hợp dữ liệu thành báo cáo kỹ thuật Markdown/Excel<br>
+          <small>Playbook: 02_generate_report</small>
+        </p>
+        <button class="btn btn-orange" onclick="runPlaybook('02_generate_report', null, 'all_rcms')">📄 Xuất báo cáo</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Ping check nhanh</div>
+        <p style="font-size:0.78em; color:var(--text2); margin-bottom:10px">
+          ICMP ping kiểm tra kết nối tất cả thiết bị<br>
+          <small>Playbook: 03_ping_check</small>
+        </p>
+        <button class="btn btn-blue" onclick="runPlaybook('03_ping_check', null, 'all_rcms')">🏓 Ping All</button>
+      </div>
+    </div>
+
+    <!-- Job list -->
+    <div class="card-title">📋 Lịch sử Jobs</div>
+    <div id="job-list" style="font-size:0.8em; color:var(--text2)">Chưa có job nào.</div>
+  </div>
+
+  <!-- TAB: Alerts -->
+  <div id="tab-alerts" class="tab-content">
+    <p class="section-title">🔔 Cảnh báo đang kích hoạt</p>
+    <div id="alert-list"><span class="spinner"></span> Đang tải…</div>
+  </div>
+
+  <!-- TAB: Standards -->
+  <div id="tab-standards" class="tab-content">
+    <p class="section-title">📋 Ngưỡng KPI — EUROCAE ED-137 VoIP ATM Applications</p>
+    <table class="threshold-table">
+      <tr><th>Chỉ số KPI</th><th class="ok">🟢 Bình thường</th><th class="warn">🟡 Cảnh báo (WARN)</th><th class="crit">🔴 Sự cố (ED-137 vi phạm)</th></tr>
+      <tr><td>One-way Delay</td><td class="ok">&lt; 50 ms</td><td class="warn">50 – 100 ms</td><td class="crit">&gt; 100 ms</td></tr>
+      <tr><td>Jitter</td><td class="ok">&lt; 10 ms</td><td class="warn">10 – 20 ms</td><td class="crit">&gt; 20 ms</td></tr>
+      <tr><td>Packet Loss</td><td class="ok">&lt; 0.1 %</td><td class="warn">0.1 – 1 %</td><td class="crit">&gt; 1 %</td></tr>
+      <tr><td>VSWR Anten</td><td class="ok">≤ 1.5 : 1</td><td class="warn">1.5 – 2.0 : 1</td><td class="crit">&gt; 2.0 : 1</td></tr>
+      <tr><td>BER Đường truyền</td><td class="ok">&lt; 10⁻⁶</td><td class="warn">10⁻⁶ – 10⁻⁴</td><td class="crit">&gt; 10⁻⁴</td></tr>
+    </table>
+
+    <p class="section-title" style="margin-top:24px">📡 Tần số VHF — Danh sách kênh hệ thống</p>
+    <table class="dev-table">
+      <thead><tr><th>#</th><th>Tần số (MHz)</th><th>Chức năng</th><th>TX IP MAIN</th><th>TX IP STBY</th><th>RX IP MAIN</th><th>RX IP STBY</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="mono">118.425</td><td>Clearance Delivery chính</td><td class="mono">10.60.7.71</td><td class="mono">10.60.7.81</td><td class="mono">10.60.6.71</td><td class="mono">10.60.6.81</td></tr>
+        <tr><td>2</td><td class="mono">121.725</td><td>CLD dự phòng</td><td class="mono">10.60.7.72</td><td class="mono">10.60.7.82</td><td class="mono">10.60.6.72</td><td class="mono">10.60.6.82</td></tr>
+        <tr><td>3</td><td class="mono">121.775</td><td>Aerodrome Control chính</td><td class="mono">10.60.7.73</td><td class="mono">10.60.7.83</td><td class="mono">10.60.6.73</td><td class="mono">10.60.6.83</td></tr>
+        <tr><td>4</td><td class="mono">121.850</td><td>AD dự phòng</td><td class="mono">10.60.7.74</td><td class="mono">10.60.7.84</td><td class="mono">10.60.6.74</td><td class="mono">10.60.6.84</td></tr>
+        <tr><td>5</td><td class="mono">121.925</td><td>NW Ground chính</td><td class="mono">10.60.7.75</td><td class="mono">10.60.7.85</td><td class="mono">10.60.6.75</td><td class="mono">10.60.6.85</td></tr>
+        <tr><td>6</td><td class="mono">124.325</td><td>NW Ground dự phòng</td><td class="mono">10.60.7.76</td><td class="mono">10.60.7.86</td><td class="mono">10.60.6.76</td><td class="mono">10.60.6.86</td></tr>
+        <tr><td>7</td><td class="mono">124.625</td><td>NE Ground chính</td><td class="mono">10.60.7.77</td><td class="mono">10.60.7.87</td><td class="mono">10.60.6.77</td><td class="mono">10.60.6.87</td></tr>
+        <tr><td>8</td><td class="mono">125.275</td><td>NE Ground dự phòng</td><td class="mono">10.60.7.78</td><td class="mono">10.60.7.88</td><td class="mono">10.60.6.78</td><td class="mono">10.60.6.88</td></tr>
+        <tr><td>9</td><td class="mono" style="color:var(--red)">121.500</td><td>⚠️ EMERGENCY</td><td class="mono">10.60.7.79</td><td class="mono">10.60.7.89</td><td class="mono">10.60.6.79</td><td class="mono">10.60.6.89</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- JAVASCRIPT                                           -->
+<!-- ════════════════════════════════════════════════════ -->
+<script>
+const API = '/api';
+const GRAFANA = window.location.protocol + '//' + window.location.hostname + ':3000';
+
+// Grafana Dashboard UIDs — điền sau khi tạo dashboard trong Grafana
+const GRAFANA_DASHBOARDS = {
+  tx:    '/d/vatm-tx/tx-station?orgId=1&kiosk',
+  rx:    '/d/vatm-rx/rx-station?orgId=1&kiosk',
+  ubvhf: '/d/vatm-ubvhf/ubvhf-twr?orgId=1&kiosk',
+  kpi:   '/d/vatm-ed137/ed137-kpi?orgId=1&kiosk',
+};
+
+// ── Clock ──
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('vi-VN', {hour12:false}) + ' ICT';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Tab switching ──
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector(`#tab-${name}`).classList.add('active');
+  const tabs = Array.from(document.querySelectorAll('.tab'));
+  const names = ['dashboard','devices','ansible','alerts','standards'];
+  tabs[names.indexOf(name)].classList.add('active');
+  if (name === 'devices') loadDevices();
+  if (name === 'alerts') loadAlerts();
+}
+
+// ── Load KPI summary ──
+async function loadSummary() {
+  try {
+    const r = await fetch(`${API}/metrics/summary`);
+    const d = await r.json();
+    document.getElementById('kpi-tx').textContent    = d.t6_radio_up_tx_main ?? '—';
+    document.getElementById('kpi-rx').textContent    = d.t6_radio_up_rx_main ?? '—';
+    document.getElementById('kpi-ubvhf').textContent = d.t6_radio_up_ubvhf ?? '—';
+    const alerts = (d.critical_alerts || 0) + (d.warning_alerts || 0);
+    const el = document.getElementById('kpi-alerts');
+    el.textContent = alerts;
+    el.style.color = alerts > 0 ? 'var(--red)' : 'var(--green)';
+    document.getElementById('status-badge').innerHTML = '<span class="dot dot-green"></span> Connected';
+    document.getElementById('status-badge').className = 'badge badge-green';
+  } catch(e) {
+    document.getElementById('status-badge').innerHTML = '<span class="dot dot-red"></span> Lỗi kết nối';
+    document.getElementById('status-badge').className = 'badge badge-red';
+  }
+}
+
+// ── Load devices table ──
+async function loadDevices() {
+  document.getElementById('device-loading').style.display = 'block';
+  document.getElementById('device-table').style.display = 'none';
+  try {
+    const [devR, s4R] = await Promise.all([
+      fetch(`${API}/metrics/t6_status`),
+      fetch(`${API}/metrics/s4ip_status`),
+    ]);
+    const devData = await devR.json();
+    const s4Data  = await s4R.json();
+
+    const tbody = document.getElementById('device-tbody');
+    tbody.innerHTML = '';
+    (devData.devices || []).forEach(d => {
+      const up = d.status === 'up';
+      tbody.innerHTML += `<tr>
+        <td><span class="badge ${up ? 'badge-green' : 'badge-red'}"><span class="dot ${up ? 'dot-green' : 'dot-red'}"></span>${up ? 'UP' : 'DOWN'}</span></td>
+        <td class="mono">${d.instance}</td>
+        <td>${d.device || '—'}</td>
+        <td>${d.site || '—'}</td>
+        <td>${d.redundancy || '—'}</td>
+        <td style="color:var(--text2); font-size:0.9em">${d.job}</td>
+      </tr>`;
+    });
+    document.getElementById('device-loading').style.display = 'none';
+    document.getElementById('device-table').style.display = 'table';
+
+    // S4-IP
+    const s4html = (s4Data.s4ip_controllers || []).map(s => {
+      const up = s.status === 'up';
+      return `<span class="badge ${up ? 'badge-green' : 'badge-red'}" style="margin:2px">
+        <span class="dot ${up ? 'dot-green' : 'dot-red'}"></span>
+        ${s.instance}
+      </span>`;
+    }).join('');
+    document.getElementById('s4ip-status').innerHTML = s4html || 'Chưa có dữ liệu';
+  } catch(e) {
+    document.getElementById('device-loading').innerHTML = `<span style="color:var(--red)">Lỗi: ${e.message}</span>`;
+  }
+}
+
+// ── Load alerts ──
+async function loadAlerts() {
+  try {
+    const r = await fetch(`${API}/metrics/alerts`);
+    const d = await r.json();
+    const el = document.getElementById('alert-list');
+    if (!d.alerts || d.alerts.length === 0) {
+      el.innerHTML = '<div class="badge badge-green" style="padding:8px 12px">✅ Không có cảnh báo nào đang kích hoạt</div>';
+      return;
+    }
+    el.innerHTML = d.alerts.map(a => `
+      <div class="alert-item ${a.severity === 'critical' ? 'alert-critical' : 'alert-warning'}">
+        <div>${a.severity === 'critical' ? '🔴' : '⚠️'}</div>
+        <div>
+          <div style="font-weight:600">${a.alertname}</div>
+          <div style="color:var(--text2); font-size:0.9em">
+            ${a.instance || ''} ${a.site ? '· '+a.site : ''} ${a.kpi ? '· KPI: '+a.kpi : ''}
+          </div>
+        </div>
+        <div style="margin-left:auto"><span class="badge ${a.severity === 'critical' ? 'badge-red' : 'badge-yellow'}">${a.severity.toUpperCase()}</span></div>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('alert-list').innerHTML = `<span style="color:var(--red)">Lỗi: ${e.message}</span>`;
+  }
+}
+
+// ── Ansible: run playbook ──
+let jobIntervals = {};
+async function runPlaybook(playbookId, selectId, defaultTarget) {
+  const target = selectId
+    ? document.getElementById(selectId).value
+    : (defaultTarget || 'all_rcms');
+
+  try {
+    const r = await fetch(`${API}/ansible/run`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({playbook: playbookId, target_group: target}),
+    });
+    const job = await r.json();
+    addJobToList(job);
+    pollJob(job.job_id);
+  } catch(e) {
+    alert(`Lỗi khởi chạy playbook: ${e.message}`);
+  }
+}
+
+function addJobToList(job) {
+  const el = document.getElementById('job-list');
+  if (el.textContent.includes('Chưa có')) el.innerHTML = '';
+  const div = document.createElement('div');
+  div.id = `job-${job.job_id}`;
+  div.className = 'card';
+  div.style.marginBottom = '8px';
+  div.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center">
+      <div>
+        <strong>${job.playbook}</strong>
+        <span style="color:var(--text2); font-size:0.85em; margin-left:8px">→ ${job.job_id}</span>
+      </div>
+      <span class="badge badge-blue" id="status-${job.job_id}"><span class="spinner"></span> Running</span>
+    </div>
+    <div id="output-${job.job_id}" class="job-output"></div>
+  `;
+  el.prepend(div);
+}
+
+function pollJob(jobId) {
+  const interval = setInterval(async () => {
+    try {
+      const r = await fetch(`${API}/ansible/jobs/${jobId}`);
+      const job = await r.json();
+      const statusEl = document.getElementById(`status-${jobId}`);
+      const outputEl = document.getElementById(`output-${jobId}`);
+
+      if (job.status === 'completed') {
+        statusEl.innerHTML = '✅ Hoàn tất';
+        statusEl.className = 'badge badge-green';
+        if (job.output) { outputEl.textContent = job.output; outputEl.style.display = 'block'; }
+        clearInterval(interval);
+        loadSummary();
+      } else if (job.status === 'failed') {
+        statusEl.innerHTML = '❌ Thất bại';
+        statusEl.className = 'badge badge-red';
+        if (job.output) { outputEl.textContent = job.output; outputEl.style.display = 'block'; }
+        clearInterval(interval);
+      }
+    } catch(e) { clearInterval(interval); }
+  }, 3000);
+}
+
+// ── Grafana iframes ──
+function loadGrafana() {
+  Object.entries(GRAFANA_DASHBOARDS).forEach(([key, path]) => {
+    const iframe = document.getElementById(`grafana-${key}`);
+    const ph     = document.getElementById(`grafana-${key}-placeholder`);
+    iframe.src = GRAFANA + path;
+    iframe.style.display = 'block';
+    if (ph) ph.style.display = 'none';
+  });
+}
+
+function openGrafana() {
+  window.open(GRAFANA, '_blank');
+}
+
+// ── Refresh all ──
+function refreshAll() {
+  loadSummary();
+  const activeTab = document.querySelector('.tab-content.active').id.replace('tab-','');
+  if (activeTab === 'devices') loadDevices();
+  if (activeTab === 'alerts') loadAlerts();
+}
+
+// ── Auto refresh every 30s ──
+setInterval(() => { loadSummary(); }, 30000);
+
+// ── Init ──
+loadSummary();
+</script>
+</body>
+</html>

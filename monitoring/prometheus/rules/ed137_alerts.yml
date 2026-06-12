@@ -1,233 +1,143 @@
 # ============================================================
-# VATM ATCC Long Thành — Alert Rules chuẩn EUROCAE ED-137
-# KPI: Delay < 100ms | Jitter < 20ms | Packet Loss < 1%
+# VATM ATCC Long Thành — ED-137 KPI Alert Rules
+# Chuẩn: EUROCAE ED-137 VoIP ATM Applications
+# KPI: One-way Delay < 100ms | Jitter < 20ms | Loss < 1%
+#
+# Nguồn metric:
+#   - probe_duration_seconds: từ blackbox_exporter ICMP/TCP
+#   - Jitter và Packet Loss: đo từ RCMS workstation qua Ansible
+#     (kết quả được push vào Prometheus qua Pushgateway)
 # ============================================================
 
 groups:
 
   # ════════════════════════════════════════════════════════
-  # GROUP 1: ED-137 KPI — VoIP ATM Application Quality
+  # GROUP 1: One-way Delay (Latency) — Blackbox ICMP
+  # Probe ICMP từ monitoring server → thiết bị đích
+  # NOTE: ICMP round-trip / 2 ≈ one-way delay
   # ════════════════════════════════════════════════════════
-  - name: ed137_voip_kpi
+  - name: ed137_latency
     interval: 15s
     rules:
 
-      # ── Latency WARN (> 50ms — ngưỡng nội bộ VATM) ──
-      - alert: ED137_Latency_WARN
-        expr: nokia_saa_rtt_avg_ms > 50
+      # ── Delay WARN (> 50ms one-way = RTT > 100ms) ──
+      - alert: ED137_Delay_WARN
+        expr: (probe_duration_seconds{job=~"blackbox.*"} * 500) > 50
         for: 2m
         labels:
           severity: warning
-          standard:  ed137
-          kpi:       latency
+          standard: ed137
+          kpi:      one_way_delay
         annotations:
-          summary: "⚠️ [WARN] Latency cao — {{ $labels.instance }}"
+          summary:     "⚠️ [WARN] Delay cao — {{ $labels.instance }}"
           description: |
-            Site: {{ $labels.site }}
-            Device: {{ $labels.instance }}
-            Latency hiện tại: {{ $value | humanizeDuration }}ms
-            Ngưỡng WARN: 50ms | Ngưỡng CRIT (ED-137): 100ms
-            Hành động: Kiểm tra tải ISP và OSPF path.
+            One-way delay ước tính: {{ $value }}ms
+            Ngưỡng WARN: 50ms | Ngưỡng ED-137 CRIT: 100ms
+            Hành động: Theo dõi, kiểm tra tải mạng tuyến Fo.
 
-      # ── Latency CRIT (> 100ms — vượt ngưỡng ED-137) ──
-      - alert: ED137_Latency_CRITICAL
-        expr: nokia_saa_rtt_avg_ms > 100
+      # ── Delay CRIT (> 100ms — vi phạm ED-137) ──
+      - alert: ED137_Delay_CRITICAL
+        expr: (probe_duration_seconds{job=~"blackbox.*"} * 500) > 100
         for: 1m
         labels:
           severity: critical
-          standard:  ed137
-          kpi:       latency
+          standard: ed137
+          kpi:      one_way_delay
+          action:   log_report
         annotations:
-          summary: "🔴 [CRIT-ED137] Latency vượt ngưỡng — {{ $labels.instance }}"
+          summary:     "🔴 [ED-137 VI PHẠM] Delay vượt ngưỡng — {{ $labels.instance }}"
           description: |
-            ⚡ VI PHẠM CHUẨN ED-137 ⚡
+            One-way delay: {{ $value }}ms > 100ms (ED-137 limit)
             Site: {{ $labels.site }}
-            Device: {{ $labels.instance }}
-            Latency: {{ printf "%.1f" $value }}ms (ngưỡng ED-137: < 100ms)
-            Hành động khẩn: Chuyển ISP dự phòng, báo cáo ca trực.
+            Hành động NGAY: Ghi nhật ký sự cố theo QĐ 2999. Báo cáo trưởng ca.
+            Kiểm tra: Tải cáp quang Fo1/Fo2, router Nokia MPLS, switch SW6860.
 
-      # ── Jitter WARN (> 10ms) ──
+  # ════════════════════════════════════════════════════════
+  # GROUP 2: Jitter — từ Pushgateway (Ansible đo iperf3/ping)
+  # Ansible playbook đo jitter và push vào Prometheus
+  # metric: vatm_voip_jitter_ms{site, direction, freq}
+  # ════════════════════════════════════════════════════════
+  - name: ed137_jitter
+    interval: 30s
+    rules:
+
       - alert: ED137_Jitter_WARN
-        expr: nokia_saa_jitter_avg_ms > 10
+        expr: vatm_voip_jitter_ms > 10
         for: 2m
         labels:
           severity: warning
-          standard:  ed137
-          kpi:       jitter
+          standard: ed137
+          kpi:      jitter
         annotations:
-          summary: "⚠️ [WARN] Jitter cao — {{ $labels.instance }}"
+          summary:     "⚠️ [WARN] Jitter cao — {{ $labels.site }} {{ $labels.freq }}"
           description: |
-            Site: {{ $labels.site }}
-            Jitter: {{ printf "%.2f" $value }}ms (ngưỡng WARN: 10ms)
+            Jitter: {{ $value }}ms (ngưỡng WARN: 10ms | ED-137 CRIT: 20ms)
+            Hành động: Kiểm tra QoS DSCP marking, băng thông khả dụng.
 
-      # ── Jitter CRIT (> 20ms — vi phạm ED-137) ──
       - alert: ED137_Jitter_CRITICAL
-        expr: nokia_saa_jitter_avg_ms > 20
+        expr: vatm_voip_jitter_ms > 20
         for: 1m
         labels:
           severity: critical
-          standard:  ed137
-          kpi:       jitter
+          standard: ed137
+          kpi:      jitter
+          action:   log_report
         annotations:
-          summary: "🔴 [CRIT-ED137] Jitter vượt ngưỡng — {{ $labels.instance }}"
+          summary:     "🔴 [ED-137 VI PHẠM] Jitter vượt ngưỡng — {{ $labels.site }}"
           description: |
-            ⚡ VI PHẠM CHUẨN ED-137 ⚡
-            Site: {{ $labels.site }}
-            Jitter: {{ printf "%.2f" $value }}ms (ngưỡng ED-137: < 20ms)
+            Jitter: {{ $value }}ms > 20ms (ED-137 limit)
+            Hành động NGAY: Ghi nhật ký, báo trưởng ca, kiểm tra QoS.
 
-      # ── Packet Loss WARN (> 0.5%) ──
+  # ════════════════════════════════════════════════════════
+  # GROUP 3: Packet Loss — từ Pushgateway
+  # metric: vatm_voip_loss_percent{site, direction, freq}
+  # ════════════════════════════════════════════════════════
+  - name: ed137_packet_loss
+    interval: 30s
+    rules:
+
       - alert: ED137_PacketLoss_WARN
-        expr: nokia_saa_packet_loss_pct > 0.5
+        expr: vatm_voip_loss_percent > 0.1
         for: 2m
         labels:
           severity: warning
-          standard:  ed137
-          kpi:       packet_loss
+          standard: ed137
+          kpi:      packet_loss
         annotations:
-          summary: "⚠️ [WARN] Mất gói — {{ $labels.instance }}"
+          summary:     "⚠️ [WARN] Mất gói — {{ $labels.site }}"
           description: |
-            Site: {{ $labels.site }}
-            Packet Loss: {{ printf "%.2f" $value }}% (ngưỡng WARN: 0.5%)
+            Packet Loss: {{ $value }}% (ngưỡng WARN: 0.1% | ED-137 CRIT: 1%)
 
-      # ── Packet Loss CRIT (> 1% — vi phạm ED-137) ──
       - alert: ED137_PacketLoss_CRITICAL
-        expr: nokia_saa_packet_loss_pct > 1.0
+        expr: vatm_voip_loss_percent > 1
         for: 1m
         labels:
           severity: critical
-          standard:  ed137
-          kpi:       packet_loss
+          standard: ed137
+          kpi:      packet_loss
+          action:   log_report
         annotations:
-          summary: "🔴 [CRIT-ED137] Mất gói vượt ngưỡng — {{ $labels.instance }}"
+          summary:     "🔴 [ED-137 VI PHẠM] Mất gói vượt ngưỡng — {{ $labels.site }}"
           description: |
-            ⚡ VI PHẠM CHUẨN ED-137 ⚡
-            Site: {{ $labels.site }}
-            Packet Loss: {{ printf "%.2f" $value }}% (ngưỡng ED-137: < 1%)
+            Packet Loss: {{ $value }}% > 1% (ED-137 limit)
+            Hành động NGAY: Ghi nhật ký sự cố QĐ 2999. Báo trưởng ca ngay lập tức.
 
   # ════════════════════════════════════════════════════════
-  # GROUP 2: Port Status — Nokia SR OS Interface
+  # GROUP 4: Probe success rate — tổng hợp
   # ════════════════════════════════════════════════════════
-  - name: nokia_port_status
-    interval: 15s
+  - name: ed137_probe_health
+    interval: 30s
     rules:
 
-      # ── Port ISP DOWN (ifOperStatus != 1) ──
-      - alert: Nokia_ISP_Port_DOWN
-        expr: ifOperStatus{job=~"snmp_.*"} != 1
-        for: 30s
+      - alert: ED137_Probe_Failed
+        expr: probe_success == 0
+        for: 1m
         labels:
           severity: critical
-          category:  port_down
+          standard: ed137
         annotations:
-          summary: "🔴 [DOWN] Cổng ISP mất kết nối — {{ $labels.instance }}"
+          summary:     "🔴 [CRIT] Probe thất bại — {{ $labels.instance }}"
           description: |
-            ⚡ ĐƯỜNG TRUYỀN MẤT KẾT NỐI ⚡
-            Device: {{ $labels.instance }}
-            Interface: {{ $labels.ifDescr }}
-            Site: {{ $labels.site }}
-            Thời điểm: {{ $value }}
-            Hành động: Kiểm tra kết nối vật lý + chuyển ISP dự phòng ngay.
-
-      # ── Băng thông > 70% (WARN) ──
-      - alert: Nokia_Bandwidth_High_WARN
-        expr: |
-          (rate(ifInOctets{job=~"snmp_.*"}[5m]) + rate(ifOutOctets{job=~"snmp_.*"}[5m])) * 8
-          / on(instance) group_left() (nokia_interface_bandwidth_bps) * 100 > 70
-        for: 5m
-        labels:
-          severity: warning
-          category:  bandwidth
-        annotations:
-          summary: "⚠️ [WARN] Băng thông cao — {{ $labels.instance }}"
-          description: |
-            Device: {{ $labels.instance }}
-            Sử dụng băng thông: {{ printf "%.1f" $value }}% (ngưỡng: 70%)
-
-      # ── Băng thông > 90% (CRIT) ──
-      - alert: Nokia_Bandwidth_Saturated_CRIT
-        expr: |
-          (rate(ifInOctets{job=~"snmp_.*"}[5m]) + rate(ifOutOctets{job=~"snmp_.*"}[5m])) * 8
-          / on(instance) group_left() (nokia_interface_bandwidth_bps) * 100 > 90
-        for: 2m
-        labels:
-          severity: critical
-          category:  bandwidth
-        annotations:
-          summary: "🔴 [CRIT] Băng thông bão hòa — {{ $labels.instance }}"
-          description: |
-            Device: {{ $labels.instance }}
-            Sử dụng băng thông: {{ printf "%.1f" $value }}% (ngưỡng CRIT: 90%)
-
-      # ── Lỗi frame tăng đột biến ──
-      - alert: Nokia_Interface_Errors_High
-        expr: rate(ifInErrors{job=~"snmp_.*"}[5m]) > 0
-        for: 5m
-        labels:
-          severity: warning
-          category:  errors
-        annotations:
-          summary: "⚠️ [WARN] Lỗi frame interface — {{ $labels.instance }}"
-          description: |
-            Device: {{ $labels.instance }}
-            Interface: {{ $labels.ifDescr }}
-            Số lỗi: {{ printf "%.2f" $value }} errors/s
-
-  # ════════════════════════════════════════════════════════
-  # GROUP 3: Nokia SAR-8 E1/BER Monitoring
-  # ════════════════════════════════════════════════════════
-  - name: nokia_sar8_e1_ber
-    interval: 60s
-    rules:
-
-      # ── BER WARN (> 1e-6) ──
-      - alert: Nokia_E1_BER_WARN
-        expr: nokia_e1_ber_rate > 1e-6
-        for: 5m
-        labels:
-          severity: warning
-          category:  ber
-        annotations:
-          summary: "⚠️ [WARN] BER cao — {{ $labels.instance }} Port {{ $labels.port }}"
-          description: |
-            Device: {{ $labels.instance }} (Nokia 7705 SAR-8)
-            Port E1: {{ $labels.port }}
-            BER: {{ $value }} (ngưỡng WARN: 1×10⁻⁶)
-
-      # ── BER CRIT (> 1e-4) ──
-      - alert: Nokia_E1_BER_CRITICAL
-        expr: nokia_e1_ber_rate > 1e-4
-        for: 2m
-        labels:
-          severity: critical
-          category:  ber
-        annotations:
-          summary: "🔴 [CRIT] BER nghiêm trọng — {{ $labels.instance }}"
-          description: |
-            ⚡ CÁP/TRUYỀN DẪN E1 SỰ CỐ NGHIÊM TRỌNG ⚡
-            Device: {{ $labels.instance }} (Nokia 7705 SAR-8)
-            Port E1: {{ $labels.port }}
-            BER: {{ $value }} (ngưỡng CRIT: 1×10⁻⁴)
-            Hành động: Kiểm tra tuyến cáp E1 ngay lập tức.
-
-  # ════════════════════════════════════════════════════════
-  # GROUP 4: VHF Rx/Tx — ATCC HCM Specific
-  # ════════════════════════════════════════════════════════
-  - name: atcc_hcm_vhf_monitoring
-    interval: 15s
-    rules:
-
-      # ── VHF SAR-8 MAIN down, STANDBY chưa kịp lên ──
-      - alert: VHF_SAR8_MAIN_DOWN
-        expr: |
-          up{job="snmp_atcc_hcm", device_role=~"rx_vhf|tx_vhf"} == 0
-        for: 30s
-        labels:
-          severity: critical
-          category:  vhf_availability
-        annotations:
-          summary: "🔴 [CRIT] VHF SAR-8 mất kết nối SNMP — {{ $labels.instance }}"
-          description: |
-            ⚡ HỆ THỐNG VHF CÓ SỰ CỐ ⚡
-            Device: {{ $labels.instance }}
-            Channel: {{ $labels.channel }} ({{ $labels.device_role }})
-            Hành động: Kiểm tra nguồn + SSH trực tiếp + thông báo ATCO.
+            Blackbox probe tới {{ $labels.instance }} thất bại.
+            Module: {{ $labels.module }}
+            Hành động: Xác nhận kết nối mạng tới thiết bị.
