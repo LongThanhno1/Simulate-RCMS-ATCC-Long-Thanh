@@ -1,0 +1,185 @@
+/* ================================================================
+   VATM ATCC Long Thành — ED-137 Portal
+   File: css/layout.css — Base reset, body, header, nav, container, grid, cards, tabs
+   Phụ thuộc: theme.css
+   ================================================================ */
+
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  transition: background .3s, color .3s;
+}
+
+/* ================================================================
+   HEADER + TOP NAV (unified bar)
+   ================================================================ */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background .3s, border-color .3s;
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 24px 0;
+}
+.logo-block { display:flex; align-items:center; gap:10px; }
+.logo-icon  { font-size:1.6em; filter:drop-shadow(0 0 6px var(--blue)); }
+.logo-text h1 {
+  font-size: 0.95em;
+  font-weight: 700;
+  color: var(--blue);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+.logo-text p { font-size:0.68em; color:var(--text2); margin-top:1px; }
+.header-controls { display:flex; align-items:center; gap:10px; font-size:0.8em; }
+#clock {
+  font-family: 'Consolas','Courier New', monospace;
+  color: var(--green);
+  font-size: 0.95em;
+  min-width: 80px;
+  text-align: right;
+  letter-spacing: 0.05em;
+}
+#status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.8em;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.status-ok   { color:var(--green);  border-color:#1a4a3044; background:#0a2a1888; }
+.status-err  { color:var(--red);    border-color:#4a1a1a44; background:#2a0a0a88; }
+.status-wait { color:var(--text2);  border-color:var(--border); background:var(--bg3); }
+html[data-theme="light"] .status-ok  { background:#d1fae5; border-color:#6ee7b7; }
+html[data-theme="light"] .status-err { background:#fee2e2; border-color:#fca5a5; }
+
+#theme-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 1.05em;
+  color: var(--text);
+  transition: background .2s;
+}
+#theme-btn:hover { background:var(--bg4); }
+
+/* ── Navigation bar ── */
+.nav-bar {
+  display: flex;
+  padding: 0 20px;
+  gap: 2px;
+  margin-top: 4px;
+  overflow-x: auto;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-size: 0.8em;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: color .15s, border-color .15s;
+  user-select: none;
+  border-radius: 4px 4px 0 0;
+}
+.nav-item:hover { color:var(--text); background:var(--bg3); }
+.nav-item.active {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+  background: var(--bg3);
+  font-weight: 600;
+}
+.nav-item .nav-dot {
+  width:6px; height:6px;
+  border-radius:50%;
+  background:var(--text3);
+  transition:background .2s;
+}
+.nav-item.active .nav-dot { background:var(--blue); box-shadow:0 0 5px var(--blue); }
+
+.btn-refresh {
+  margin-left: auto;
+  padding: 5px 12px;
+  font-size: 0.75em;
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--text2);
+  align-self: center;
+  transition: background .15s;
+}
+.btn-refresh:hover { color:var(--text); background:var(--bg3); }
+
+/* ================================================================
+   LAYOUT
+   ================================================================ */
+.container { max-width:1440px; margin:0 auto; padding:14px 20px; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+@media (max-width:900px) {
+  .grid-2,.grid-3,.grid-4 { grid-template-columns:1fr; }
+  .nav-bar { flex-wrap:nowrap; }
+}
+
+/* ================================================================
+   CARDS
+   ================================================================ */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  transition: background .3s, border-color .3s;
+}
+.card-sm { padding:10px 14px; }
+.card-title {
+  font-size: 0.7em;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.section-title {
+  font-size: 0.82em;
+  color: var(--blue);
+  margin: 18px 0 10px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ================================================================
+   TAB CONTENT
+   ================================================================ */
+.tab-content { display:none; }
+.tab-content.active { display:block; }
