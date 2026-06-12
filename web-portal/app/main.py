@@ -45,13 +45,13 @@ app.include_router(metrics.router, prefix="/api/metrics", tags=["Metrics"])
 # ─────────────────────────────────────────────────────────
 # Static files (Portal UI)
 # ─────────────────────────────────────────────────────────
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Serve Web Portal main page."""
-    with open("app/static/index.html", encoding="utf-8") as f:
+    with open("static/index.html", encoding="utf-8") as f:
         return f.read()
 
 

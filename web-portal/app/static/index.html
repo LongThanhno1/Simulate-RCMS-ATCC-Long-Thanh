@@ -3,870 +3,1302 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VATM — ED-137 Monitoring Portal</title>
+<title>VATM ATCC Long Thành — Mô phỏng Giám sát VHF</title>
 <style>
 /* ================================================================
-   VATM ATCC Long Thành — ED-137 Monitoring Portal
-   CSS Variables: hỗ trợ chuyển đổi Dark Mode / Light Mode
-   Tác giả: Đỗ Thanh Long — ATSEP VATM
+   VATM ATCC Long Thành — VHF Transmission Monitoring Simulation
+   Design System: Aviation SCADA / Dark-first
    ================================================================ */
 
-/* --- Chế độ Tối (Dark Mode) — Mặc định --- */
-:root,
-html[data-theme="dark"] {
-  --bg:        #0f172a;   /* slate-900: nền toàn trang */
-  --bg2:       #1e293b;   /* slate-800: nền card/panel */
-  --bg3:       #334155;   /* slate-700: nền input/hover */
-  --border:    #334155;   /* đường viền */
-  --text:      #e2e8f0;   /* chữ chính */
-  --text2:     #94a3b8;   /* chữ phụ */
-  --blue:      #60a5fa;
-  --green:     #4ade80;
-  --yellow:    #fbbf24;
-  --red:       #f87171;
-  --orange:    #fb923c;
-  --cyan:      #22d3ee;
-  --canvas-bg: #0f172a;
+/* --- Dark Mode (Default) --- */
+:root, html[data-theme="dark"] {
+  --bg:         #060d1a;
+  --bg2:        #0d1b2e;
+  --bg3:        #162437;
+  --bg4:        #1e2f45;
+  --border:     #1e3a5f;
+  --border2:    #2d5080;
+  --text:       #cdd9e8;
+  --text2:      #6b8aaa;
+  --text3:      #3d5a7a;
+  --blue:       #38bdf8;
+  --blue2:      #0ea5e9;
+  --green:      #34d399;
+  --yellow:     #fbbf24;
+  --red:        #f87171;
+  --orange:     #fb923c;
+  --cyan:       #22d3ee;
+  --purple:     #a78bfa;
+  --canvas-sky1:#020c1e;
+  --canvas-sky2:#071530;
+  --canvas-gnd1:#050e08;
+  --canvas-gnd2:#030a05;
+  --radar-glow: rgba(52,211,153,0.15);
+  --header-bg:  rgba(6,13,26,0.97);
 }
 
-/* --- Chế độ Sáng (Light Mode) --- */
+/* --- Light Mode --- */
 html[data-theme="light"] {
-  --bg:        #f8fafc;   /* slate-50 */
-  --bg2:       #ffffff;
-  --bg3:       #f1f5f9;   /* slate-100 */
-  --border:    #e2e8f0;   /* slate-200 */
-  --text:      #1e293b;   /* slate-800 */
-  --text2:     #64748b;   /* slate-500 */
-  --blue:      #2563eb;
-  --green:     #16a34a;
-  --yellow:    #d97706;
-  --red:       #dc2626;
-  --orange:    #ea580c;
-  --cyan:      #0891b2;
-  --canvas-bg: #f1f5f9;
+  --bg:         #eef2f7;
+  --bg2:        #ffffff;
+  --bg3:        #f0f4f9;
+  --bg4:        #e4ecf5;
+  --border:     #c8d8ec;
+  --border2:    #a0bdd8;
+  --text:       #0f2340;
+  --text2:      #4a6485;
+  --text3:      #8aabcc;
+  --blue:       #0369a1;
+  --blue2:      #0284c7;
+  --green:      #059669;
+  --yellow:     #b45309;
+  --red:        #dc2626;
+  --orange:     #c2410c;
+  --cyan:       #0891b2;
+  --purple:     #7c3aed;
+  --canvas-sky1:#c0d8f0;
+  --canvas-sky2:#daeaf8;
+  --canvas-gnd1:#c8e6c0;
+  --canvas-gnd2:#b8d8b0;
+  --radar-glow: rgba(5,150,105,0.1);
+  --header-bg:  rgba(238,242,247,0.97);
 }
 
-/* === RESET & BASE === */
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; }
 body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
   min-height: 100vh;
-  transition: background 0.3s, color 0.3s;
+  transition: background .3s, color .3s;
 }
 
-/* === HEADER === */
-header {
-  background: var(--bg2);
+/* ================================================================
+   HEADER + TOP NAV (unified bar)
+   ================================================================ */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: var(--header-bg);
   border-bottom: 1px solid var(--border);
-  padding: 10px 24px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background .3s, border-color .3s;
+}
+
+/* ── Top strip: logo + controls ── */
+.header-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  transition: background 0.3s, border-color 0.3s;
+  padding: 8px 24px 0;
 }
-.logo { display: flex; align-items: center; gap: 10px; }
-.logo h1 { font-size: 1.05em; color: var(--blue); font-weight: 600; }
-.logo span { font-size: 0.72em; color: var(--text2); }
-.header-right { display: flex; align-items: center; gap: 10px; font-size: 0.8em; color: var(--text2); }
-#clock { color: var(--green); font-family: monospace; font-size: 0.95em; min-width: 75px; text-align: right; }
+.logo-block { display:flex; align-items:center; gap:10px; }
+.logo-icon  { font-size:1.6em; filter:drop-shadow(0 0 6px var(--blue)); }
+.logo-text h1 {
+  font-size: 0.95em;
+  font-weight: 700;
+  color: var(--blue);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+.logo-text p {
+  font-size: 0.68em;
+  color: var(--text2);
+  margin-top: 1px;
+}
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8em;
+}
+#clock {
+  font-family: 'Consolas','Courier New', monospace;
+  color: var(--green);
+  font-size: 0.95em;
+  min-width: 80px;
+  text-align: right;
+  letter-spacing: 0.05em;
+}
+#status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.8em;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.status-ok   { color:var(--green);  border-color:#1a4a3044; background:#0a2a1888; }
+.status-err  { color:var(--red);    border-color:#4a1a1a44; background:#2a0a0a88; }
+.status-wait { color:var(--text2);  border-color:var(--border); background:var(--bg3); }
 
-/*
-  Nút chuyển đổi Dark/Light Mode
-  Hiển thị ☀️ khi đang ở Dark Mode (để nhắc chuyển sang Sáng)
-  Hiển thị 🌙 khi đang ở Light Mode (để nhắc chuyển sang Tối)
-*/
+html[data-theme="light"] .status-ok  { background:#d1fae5; border-color:#6ee7b7; }
+html[data-theme="light"] .status-err { background:#fee2e2; border-color:#fca5a5; }
+
 #theme-btn {
   background: var(--bg3);
   border: 1px solid var(--border);
   border-radius: 20px;
-  padding: 5px 10px;
+  padding: 4px 10px;
   cursor: pointer;
-  font-size: 1.1em;
-  line-height: 1;
-  transition: background 0.2s;
+  font-size: 1.05em;
   color: var(--text);
+  transition: background .2s;
 }
-#theme-btn:hover { opacity: 0.8; }
+#theme-btn:hover { background:var(--bg4); }
 
-/* === LAYOUT === */
-.container { max-width: 1400px; margin: 0 auto; padding: 16px 24px; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-@media (max-width: 900px) { .grid-2,.grid-3,.grid-4 { grid-template-columns: 1fr; } }
+/* ── Navigation menu bar ── */
+.nav-bar {
+  display: flex;
+  padding: 0 20px;
+  gap: 2px;
+  margin-top: 4px;
+  overflow-x: auto;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-size: 0.8em;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: color .15s, border-color .15s;
+  user-select: none;
+  border-radius: 4px 4px 0 0;
+}
+.nav-item:hover { color:var(--text); background:var(--bg3); }
+.nav-item.active {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+  background: var(--bg3);
+  font-weight: 600;
+}
+.nav-item .nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text3);
+  transition: background .2s;
+}
+.nav-item.active .nav-dot { background: var(--blue); box-shadow: 0 0 5px var(--blue); }
 
-/* === CARDS === */
+/* ── Refresh btn in nav ── */
+.btn-refresh {
+  margin-left: auto;
+  padding: 5px 12px;
+  font-size: 0.75em;
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--text2);
+  align-self: center;
+  transition: background .15s;
+}
+.btn-refresh:hover { color:var(--text); background:var(--bg3); }
+
+/* ================================================================
+   LAYOUT
+   ================================================================ */
+.container { max-width: 1440px; margin: 0 auto; padding: 14px 20px; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+@media (max-width:900px) { .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;} .nav-bar{flex-wrap:nowrap;} }
+
+/* ================================================================
+   CARDS
+   ================================================================ */
 .card {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 16px;
-  transition: background 0.3s, border-color 0.3s;
+  padding: 14px;
+  transition: background .3s, border-color .3s;
 }
-.card-title { font-size: 0.75em; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
-.section-title { font-size: 0.9em; color: var(--blue); margin: 20px 0 10px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.card-sm { padding: 10px 14px; }
+.card-title {
+  font-size: 0.7em;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.section-title {
+  font-size: 0.82em;
+  color: var(--blue);
+  margin: 18px 0 10px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
-/* === BADGES === */
-.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 0.72em; font-weight: 600; }
-html[data-theme="dark"]  .badge-green  { background:#14532d44; color:var(--green);  border:1px solid #16a34a44; }
-html[data-theme="dark"]  .badge-yellow { background:#78350f44; color:var(--yellow); border:1px solid #d9770644; }
-html[data-theme="dark"]  .badge-red    { background:#7f1d1d44; color:var(--red);    border:1px solid #dc262644; }
-html[data-theme="dark"]  .badge-blue   { background:#1e3a5f44; color:var(--blue);   border:1px solid #2563eb44; }
-html[data-theme="light"] .badge-green  { background:#dcfce7; color:#15803d; border:1px solid #86efac; }
-html[data-theme="light"] .badge-yellow { background:#fef3c7; color:#b45309; border:1px solid #fcd34d; }
-html[data-theme="light"] .badge-red    { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
-html[data-theme="light"] .badge-blue   { background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; }
+/* ================================================================
+   KPI BOXES
+   ================================================================ */
+.kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:12px 0; }
+@media (max-width:700px) { .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+.kpi-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: background .3s, border-color .3s;
+}
+.kpi-val   { font-size:1.8em; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
+.kpi-label { font-size:0.68em; color:var(--text2); }
 
-.dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
-.dot-green  { background:var(--green); box-shadow:0 0 5px var(--green); }
-.dot-yellow { background:var(--yellow); }
-.dot-red    { background:var(--red); box-shadow:0 0 5px var(--red); animation:blink 1s infinite; }
-.dot-grey   { background:#64748b; }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+/* ================================================================
+   BADGES
+   ================================================================ */
+.badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px 8px; border-radius:12px;
+  font-size:0.72em; font-weight:600; border:1px solid transparent;
+}
+html[data-theme="dark"]  .bg-green  { background:#0a2a18aa; color:var(--green);  border-color:#1a5a3844; }
+html[data-theme="dark"]  .bg-yellow { background:#2a1a0088; color:var(--yellow); border-color:#5a3a0044; }
+html[data-theme="dark"]  .bg-red    { background:#2a0a0a88; color:var(--red);    border-color:#5a1a1a44; }
+html[data-theme="dark"]  .bg-blue   { background:#071a2e88; color:var(--blue);   border-color:#1a3a6044; }
+html[data-theme="light"] .bg-green  { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
+html[data-theme="light"] .bg-yellow { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+html[data-theme="light"] .bg-red    { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+html[data-theme="light"] .bg-blue   { background:#e0f2fe; color:#075985; border-color:#7dd3fc; }
 
-/* === KPI BOXES === */
-.kpi-box { text-align:center; padding:12px; background:var(--bg2); border-radius:8px; border:1px solid var(--border); transition:background 0.3s,border-color 0.3s; }
-.kpi-val { font-size:1.9em; font-weight:700; line-height:1; }
-.kpi-label { font-size:0.68em; color:var(--text2); margin-top:4px; }
+/* Dot indicator */
+.dot { width:7px; height:7px; border-radius:50%; display:inline-block; flex-shrink:0; }
+.dot-g { background:var(--green); box-shadow:0 0 4px var(--green); }
+.dot-y { background:var(--yellow); }
+.dot-r { background:var(--red); box-shadow:0 0 4px var(--red); animation:blink 1.2s infinite; }
+.dot-x { background:var(--text3); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
 
-/* === BUTTONS === */
-.btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border:1px solid transparent; border-radius:6px; cursor:pointer; font-size:0.82em; font-weight:500; transition:opacity .15s, transform .1s; }
-.btn:hover { opacity:.85; transform:translateY(-1px); }
+/* ================================================================
+   BUTTONS
+   ================================================================ */
+.btn {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:6px 14px; border:1px solid transparent;
+  border-radius:6px; cursor:pointer; font-size:0.8em; font-weight:500;
+  transition:opacity .15s, transform .1s;
+}
+.btn:hover  { opacity:.85; transform:translateY(-1px); }
 .btn:active { transform:translateY(0); }
 .btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
-html[data-theme="dark"]  .btn-blue   { background:#1e3a5f; color:var(--blue);   border-color:#2563eb55; }
-html[data-theme="dark"]  .btn-green  { background:#14532d33; color:var(--green);  border-color:#16a34a55; }
-html[data-theme="dark"]  .btn-orange { background:#7c2d1233; color:var(--orange); border-color:#ea580c55; }
-html[data-theme="dark"]  .btn-red    { background:#7f1d1d33; color:var(--red);    border-color:#dc262655; }
-html[data-theme="dark"]  .btn-grey   { background:var(--bg3); color:var(--text2); border-color:var(--border); }
-html[data-theme="light"] .btn-blue   { background:#dbeafe; color:#1d4ed8; border-color:#93c5fd; }
+.btn-sm { padding:4px 10px; font-size:0.75em; }
+
+html[data-theme="dark"]  .btn-blue   { background:#071a3a; color:var(--blue);   border-color:var(--border2); }
+html[data-theme="dark"]  .btn-green  { background:#071a10; color:var(--green);  border-color:#1a4a2844; }
+html[data-theme="dark"]  .btn-orange { background:#1e0f0488; color:var(--orange); border-color:#5a2a0a44; }
+html[data-theme="dark"]  .btn-grey   { background:var(--bg4); color:var(--text2); border-color:var(--border); }
+html[data-theme="light"] .btn-blue   { background:#e0f2fe; color:#0369a1; border-color:#7dd3fc; }
 html[data-theme="light"] .btn-green  { background:#dcfce7; color:#15803d; border-color:#86efac; }
 html[data-theme="light"] .btn-orange { background:#ffedd5; color:#c2410c; border-color:#fdba74; }
-html[data-theme="light"] .btn-red    { background:#fee2e2; color:#b91c1c; border-color:#fca5a5; }
 html[data-theme="light"] .btn-grey   { background:var(--bg3); color:var(--text2); border-color:var(--border); }
 .btn-group { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
 
-/* === TABLES === */
+/* ================================================================
+   TABLES
+   ================================================================ */
 .dev-table { width:100%; border-collapse:collapse; font-size:0.78em; }
-.dev-table th { background:var(--bg3); color:var(--text2); padding:7px 8px; text-align:left; font-weight:500; border-bottom:1px solid var(--border); }
-.dev-table td { padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
-.dev-table tr:hover td { background:var(--bg3); }
-.mono { font-family:'Consolas','Courier New',monospace; color:var(--cyan); font-size:0.95em; }
+.dev-table th {
+  background:var(--bg4); color:var(--text2);
+  padding:7px 10px; text-align:left;
+  font-weight:600; font-size:0.9em; letter-spacing:.03em;
+  border-bottom:1px solid var(--border);
+}
+.dev-table td { padding:6px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.dev-table tr:hover td { background:var(--bg4); }
+.mono { font-family:'Consolas','Courier New',monospace; color:var(--cyan); font-size:0.9em; }
 
-/* === GRAFANA IFRAMES === */
-.iframe-wrap { width:100%; border-radius:6px; overflow:hidden; border:1px solid var(--border); background:var(--bg3); }
+/* ================================================================
+   GRAFANA IFRAMES
+   ================================================================ */
+.iframe-wrap {
+  width:100%; border-radius:6px;
+  overflow:hidden; border:1px solid var(--border);
+  background:var(--bg4); position:relative;
+}
 .iframe-wrap iframe { width:100%; border:none; display:block; }
-.iframe-placeholder { padding:40px; text-align:center; color:var(--text2); font-size:0.85em; }
+.iframe-ph {
+  padding:40px; text-align:center;
+  color:var(--text2); font-size:0.82em; line-height:1.8;
+}
 
-/* === JOB OUTPUT === */
-.job-output { background:#000; border:1px solid var(--border); border-radius:6px; padding:12px; font-family:'Consolas',monospace; font-size:0.72em; max-height:250px; overflow-y:auto; white-space:pre-wrap; color:#a8ff78; margin-top:10px; display:none; }
+/* ================================================================
+   JOB OUTPUT
+   ================================================================ */
+.job-output {
+  background:#010810; border:1px solid var(--border);
+  border-radius:6px; padding:10px; font-family:'Consolas',monospace;
+  font-size:0.72em; max-height:220px; overflow-y:auto;
+  white-space:pre-wrap; color:#7fffd4; margin-top:8px; display:none;
+}
 
-/* === ALERTS === */
-.alert-item { display:flex; align-items:flex-start; gap:10px; padding:8px 12px; border-radius:6px; margin-bottom:6px; font-size:0.8em; }
-html[data-theme="dark"]  .alert-critical { background:#7f1d1d22; border-left:3px solid var(--red); }
-html[data-theme="dark"]  .alert-warning  { background:#78350f22; border-left:3px solid var(--yellow); }
-html[data-theme="dark"]  .alert-info     { background:#1e3a5f22; border-left:3px solid var(--blue); }
-html[data-theme="light"] .alert-critical { background:#fee2e2; border-left:3px solid var(--red); }
-html[data-theme="light"] .alert-warning  { background:#fef3c7; border-left:3px solid var(--yellow); }
-html[data-theme="light"] .alert-info     { background:#dbeafe; border-left:3px solid var(--blue); }
-
-/* === SPINNER === */
-.spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--blue); border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; }
+/* ================================================================
+   SPINNER
+   ================================================================ */
+.spinner {
+  display:inline-block; width:13px; height:13px;
+  border:2px solid var(--border); border-top-color:var(--blue);
+  border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle;
+}
 @keyframes spin { to { transform:rotate(360deg); } }
 
-/* === TABS === */
-.tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; overflow-x:auto; }
-.tab { padding:8px 16px; font-size:0.82em; cursor:pointer; color:var(--text2); border-bottom:2px solid transparent; margin-bottom:-2px; white-space:nowrap; transition:color .15s; user-select:none; }
-.tab:hover { color:var(--text); }
-.tab.active { color:var(--blue); border-bottom-color:var(--blue); font-weight:600; }
+/* ================================================================
+   TAB CONTENT
+   ================================================================ */
 .tab-content { display:none; }
 .tab-content.active { display:block; }
 
 /* ================================================================
-   CANVAS TOPOLOGY — Sơ đồ mạng tương tác
+   CANVAS TOPOLOGY
    ================================================================ */
-.topology-wrapper {
+.topo-wrap {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   align-items: flex-start;
 }
-
-/* Container bao bọc canvas — thay đổi cursor khi hover node */
 .canvas-container {
   flex: 1;
   min-width: 0;
-  background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
   position: relative;
   cursor: default;
-  transition: background 0.3s, border-color 0.3s;
-}
-
-#topology-canvas {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-/* Nhãn trạng thái WebSocket (góc trên phải canvas) */
-.ws-status {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  font-size: 0.7em;
-  color: var(--text2);
   background: var(--bg2);
-  padding: 2px 8px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  pointer-events: none;
-  transition: background 0.3s;
+  transition: border-color .3s;
 }
-
-/* Chú giải màu sắc phía dưới canvas */
+#topo-canvas { width:100%; height:auto; display:block; }
+.ws-label {
+  position:absolute; top:8px; right:10px;
+  font-size:0.68em; color:var(--text2);
+  background:var(--bg2); padding:2px 8px;
+  border-radius:10px; border:1px solid var(--border);
+  pointer-events:none; transition:background .3s;
+}
 .canvas-legend {
-  display: flex;
-  gap: 16px;
-  padding: 8px 12px;
-  font-size: 0.72em;
-  color: var(--text2);
-  border-top: 1px solid var(--border);
-  flex-wrap: wrap;
-  background: var(--bg2);
-  transition: background 0.3s, border-color 0.3s;
+  display:flex; gap:14px; flex-wrap:wrap;
+  padding:7px 12px; font-size:0.7em; color:var(--text2);
+  border-top:1px solid var(--border);
+  background:var(--bg2);
 }
-.legend-item { display:flex; align-items:center; gap:5px; }
-.legend-dot  { width:10px; height:10px; border-radius:50%; }
+.leg-item { display:flex; align-items:center; gap:5px; }
+.leg-dot  { width:9px; height:9px; border-radius:50%; }
 
 /* ================================================================
-   NODE DETAIL PANEL — Hiển thị khi click vào node trên canvas
+   NODE DETAIL PANEL
    ================================================================ */
 .node-panel {
-  width: 300px;
-  min-width: 280px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  transition: background 0.3s, border-color 0.3s;
-  animation: slideIn 0.2s ease-out;
+  width: 285px; min-width:270px;
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:8px; overflow:hidden;
+  animation:panelIn .18s ease-out;
+  transition:border-color .3s;
 }
-@keyframes slideIn {
-  from { opacity:0; transform:translateX(20px); }
-  to   { opacity:1; transform:translateX(0); }
+@keyframes panelIn { from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:translateX(0)} }
+
+.panel-header {
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:flex-start;
 }
-
-.node-panel-header {
-  padding: 12px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
+.panel-title { font-weight:700; font-size:0.88em; color:var(--blue); }
+.panel-close {
+  background:none; border:none;
+  color:var(--text2); cursor:pointer;
+  font-size:1.1em; padding:0 2px; line-height:1;
 }
-.node-panel-title { font-weight:600; font-size:0.9em; color:var(--blue); }
-.node-panel-close { background:none; border:none; color:var(--text2); cursor:pointer; font-size:1.2em; padding:0 4px; line-height:1; }
-.node-panel-close:hover { color:var(--red); }
-
-.node-panel-body { padding:12px 16px; }
-
-.info-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid var(--border); font-size:0.78em; }
+.panel-close:hover { color:var(--red); }
+.panel-body { padding:12px 14px; }
+.info-row {
+  display:flex; justify-content:space-between; align-items:flex-start;
+  padding:4px 0; border-bottom:1px solid var(--border);
+  font-size:0.77em; gap:8px;
+}
 .info-row:last-child { border-bottom:none; }
-.info-key   { color:var(--text2); flex-shrink:0; margin-right:8px; }
-.info-value { color:var(--text); font-weight:500; text-align:right; word-break:break-all; }
+.ik { color:var(--text2); flex-shrink:0; }
+.iv { color:var(--text); font-weight:500; text-align:right; word-break:break-all; }
+.panel-kpis { margin-top:10px; }
+.kpi-row-title {
+  font-size:0.68em; color:var(--text2);
+  text-transform:uppercase; letter-spacing:.06em;
+  font-weight:600; margin-bottom:6px;
+}
+.kpi-mini { margin-bottom:7px; }
+.kpi-mini-lbl { font-size:0.68em; color:var(--text2); margin-bottom:3px; display:flex; justify-content:space-between; }
+.kpi-mini-bar { height:5px; border-radius:3px; background:var(--bg4); overflow:hidden; }
+.kpi-mini-fill { height:100%; border-radius:3px; transition:width .5s, background .5s; }
+.panel-actions {
+  padding:10px 14px;
+  border-top:1px solid var(--border);
+  display:flex; flex-direction:column; gap:5px;
+}
 
-.node-panel-actions { padding:10px 16px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px; }
-
-/* KPI mini bars trong panel */
-.kpi-mini { margin:6px 0 2px; }
-.kpi-mini-label { font-size:0.7em; color:var(--text2); margin-bottom:3px; }
-.kpi-mini-bar   { height:6px; border-radius:3px; background:var(--bg3); overflow:hidden; }
-.kpi-mini-fill  { height:100%; border-radius:3px; transition:width 0.5s, background 0.5s; }
-
-/* ED-137 threshold table */
-.threshold-table { width:100%; border-collapse:collapse; font-size:0.77em; }
-.threshold-table th { background:var(--bg3); color:var(--blue); padding:6px 10px; text-align:left; border-bottom:1px solid var(--border); }
-.threshold-table td { padding:5px 10px; border-bottom:1px solid var(--border); }
+/* ================================================================
+   THRESHOLD TABLE
+   ================================================================ */
+.thr-table { width:100%; border-collapse:collapse; font-size:0.78em; }
+.thr-table th {
+  background:var(--bg4); color:var(--blue);
+  padding:6px 10px; text-align:left;
+  border-bottom:1px solid var(--border);
+  font-weight:600;
+}
+.thr-table td { padding:5px 10px; border-bottom:1px solid var(--border); }
 .ok   { color:var(--green); font-weight:600; }
 .warn { color:var(--yellow); font-weight:600; }
 .crit { color:var(--red); font-weight:600; }
 
-/* Select dropdown */
-select { background:var(--bg3); color:var(--text); border:1px solid var(--border); padding:4px 8px; border-radius:4px; font-size:0.8em; width:100%; transition:background 0.3s,color 0.3s; }
+select {
+  background:var(--bg4); color:var(--text);
+  border:1px solid var(--border); padding:4px 8px;
+  border-radius:4px; font-size:0.8em; width:100%;
+  transition:background .3s, color .3s;
+}
 
 /* Scrollbar */
-::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar { width:5px; height:5px; }
 ::-webkit-scrollbar-track { background:var(--bg); }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-::-webkit-scrollbar-thumb:hover { background:var(--text2); }
+::-webkit-scrollbar-thumb:hover { background:var(--border2); }
+
+/* Alert items */
+.alert-item {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:8px 12px; border-radius:6px; margin-bottom:6px; font-size:0.8em;
+}
+html[data-theme="dark"]  .a-crit { background:#2a0a0a22; border-left:3px solid var(--red); }
+html[data-theme="dark"]  .a-warn { background:#2a1a0022; border-left:3px solid var(--yellow); }
+html[data-theme="light"] .a-crit { background:#fee2e2; border-left:3px solid var(--red); }
+html[data-theme="light"] .a-warn { background:#fef3c7; border-left:3px solid var(--yellow); }
 </style>
 </head>
 <body>
 
 <!-- ================================================================ -->
-<!-- HEADER                                                            -->
+<!-- APP HEADER + TOP NAV                                             -->
 <!-- ================================================================ -->
-<header>
-  <div class="logo">
-    <span style="font-size:1.4em">🗼</span>
-    <div>
-      <h1>VATM ATCC Long Thành — ED-137 Monitoring Portal</h1>
-      <span>Giám sát đường truyền VHF · EUROCAE ED-137 · Quy trình 2999</span>
+<div class="app-header">
+  <div class="header-top">
+    <div class="logo-block">
+      <div class="logo-icon">🗼</div>
+      <div class="logo-text">
+        <h1>VATM ATCC Long Thành — Mô phỏng Giám sát đường truyền VHF</h1>
+        <p>Giả lập hệ thống RCMS · TX Station ⟶ ATCC Long Thành ⟶ RX Station · ED-137 / Quy trình 2999</p>
+      </div>
+    </div>
+    <div class="header-controls">
+      <span id="clock">--:--:--</span>
+      <span id="status-badge" class="status-wait"><span class="spinner"></span> Kết nối...</span>
+      <button id="theme-btn" onclick="toggleTheme()" title="Chế độ Sáng/Tối">☀️</button>
     </div>
   </div>
-  <div class="header-right">
-    <span id="clock">--:--:--</span>
-    <span id="status-badge" class="badge badge-blue">
-      <span class="spinner"></span> Kết nối...
-    </span>
-    <button class="btn btn-grey" onclick="refreshAll()">⟳ Làm mới</button>
-    <!--
-      NÚT CHUYỂN ĐỔI SÁNG/TỐI (Theme Toggle Button)
-      - Trạng thái được lưu vào localStorage
-      - Icon ☀️ = đang ở Dark (nhấn để chuyển sang Light)
-      - Icon 🌙 = đang ở Light (nhấn để chuyển sang Dark)
-    -->
-    <button id="theme-btn" onclick="toggleTheme()" title="Chuyển chế độ Sáng/Tối">☀️</button>
-  </div>
-</header>
+
+  <!-- Navigation Menu Bar -->
+  <nav class="nav-bar">
+    <div class="nav-item active" onclick="switchTab('topology')">
+      <span class="nav-dot"></span> 🗺 Sơ đồ Mạng
+    </div>
+    <div class="nav-item" onclick="switchTab('dashboard')">
+      <span class="nav-dot"></span> 📊 Dashboard
+    </div>
+    <div class="nav-item" onclick="switchTab('ansible')">
+      <span class="nav-dot"></span> ⚡ Đo kiểm
+    </div>
+    <div class="nav-item" onclick="switchTab('thongso')">
+      <span class="nav-dot"></span> 📋 Thông số
+    </div>
+    <button class="btn-refresh" onclick="refreshAll()">⟳ Làm mới</button>
+  </nav>
+</div>
 
 <!-- ================================================================ -->
 <!-- MAIN CONTENT                                                      -->
 <!-- ================================================================ -->
 <div class="container">
 
-  <!-- ── 4 KPI Boxes ── -->
-  <div class="grid-4" style="margin:14px 0;">
-    <div class="kpi-box"><div class="kpi-val" id="kpi-tx"    style="color:var(--green)">—</div><div class="kpi-label">T6-TV MAIN (TX) Online</div></div>
-    <div class="kpi-box"><div class="kpi-val" id="kpi-rx"    style="color:var(--green)">—</div><div class="kpi-label">T6-RV MAIN (RX) Online</div></div>
-    <div class="kpi-box"><div class="kpi-val" id="kpi-ubvhf" style="color:var(--cyan)">—</div><div  class="kpi-label">T6-TRV UBVHF Online</div></div>
-    <div class="kpi-box"><div class="kpi-val" id="kpi-alerts" style="color:var(--yellow)">—</div><div class="kpi-label">Cảnh báo đang kích hoạt</div></div>
+  <!-- KPI Summary Boxes -->
+  <div class="kpi-grid">
+    <div class="kpi-box">
+      <div class="kpi-val" id="kpi-tx" style="color:var(--green)">—</div>
+      <div class="kpi-label">T6-TV MAIN (TX) Online</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-val" id="kpi-rx" style="color:var(--green)">—</div>
+      <div class="kpi-label">T6-RV MAIN (RX) Online</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-val" id="kpi-ubvhf" style="color:var(--cyan)">—</div>
+      <div class="kpi-label">T6-TRV UBVHF Online</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-val" id="kpi-alerts" style="color:var(--yellow)">—</div>
+      <div class="kpi-label">Cảnh báo đang kích hoạt</div>
+    </div>
   </div>
 
-  <!-- ── Tabs ── -->
-  <div class="tabs">
-    <div class="tab active" onclick="switchTab('topology')">🗺 Sơ đồ Mạng</div>
-    <div class="tab" onclick="switchTab('dashboard')">📊 Dashboard</div>
-    <div class="tab" onclick="switchTab('devices')">📡 Thiết bị</div>
-    <div class="tab" onclick="switchTab('ansible')">⚡ Đo kiểm</div>
-    <div class="tab" onclick="switchTab('alerts')">🔔 Cảnh báo</div>
-    <div class="tab" onclick="switchTab('standards')">📋 ED-137</div>
-  </div>
-
-  <!-- ================================================================ -->
-  <!-- TAB: SƠ ĐỒ MẠNG — Canvas tương tác                              -->
-  <!-- ================================================================ -->
+  <!-- ============================================================ -->
+  <!-- TAB: SƠ ĐỒ MẠNG — Canvas Topology                          -->
+  <!-- ============================================================ -->
   <div id="tab-topology" class="tab-content active">
-    <div class="topology-wrapper" id="topology-wrapper">
+    <div class="topo-wrap" id="topo-wrapper">
 
-      <!-- Canvas chính -->
+      <!-- Canvas -->
       <div class="canvas-container" id="canvas-container">
-        <canvas id="topology-canvas"></canvas>
-        <div class="ws-status" id="ws-status">○ Đang kết nối WS...</div>
-        <!-- Chú giải màu sắc -->
+        <canvas id="topo-canvas"></canvas>
+        <div class="ws-label" id="ws-label">○ Kết nối WS...</div>
         <div class="canvas-legend">
-          <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div> Bình thường (ED-137 ✓)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div> Suy hao / Trễ cao</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div> Mất kết nối (CRIT)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div> Xung tín hiệu IP</div>
-          <div class="legend-item" style="margin-left:auto;font-style:italic">💡 Click node để xem chi tiết & đo kiểm</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Bình thường (ED-137 ✓)</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div>Suy hao / Trễ cao</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>Mất kết nối</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>Xung tín hiệu IP</div>
+          <div class="leg-item" style="margin-left:auto;font-style:italic;opacity:.7">💡 Click node để xem chi tiết & đo kiểm</div>
         </div>
       </div>
 
-      <!--
-        NODE DETAIL PANEL
-        Hiện khi click vào node trên canvas.
-        Cấu trúc: Header | Body (thông tin + KPI bars) | Actions (nút đo kiểm)
-      -->
+      <!-- Node Detail Panel -->
       <div id="node-panel" class="node-panel" style="display:none">
-        <div class="node-panel-header">
+        <div class="panel-header">
           <div>
-            <div class="node-panel-title" id="panel-title">—</div>
-            <div style="font-size:0.72em;color:var(--text2);margin-top:2px" id="panel-subtitle">—</div>
+            <div class="panel-title" id="panel-title">—</div>
+            <div style="font-size:.7em;color:var(--text2);margin-top:2px" id="panel-sub">—</div>
           </div>
-          <button class="node-panel-close" onclick="closeNodePanel()" title="Đóng">✕</button>
+          <button class="panel-close" onclick="closePanel()">✕</button>
         </div>
-
-        <div class="node-panel-body">
-          <div style="margin-bottom:10px">
-            <span id="panel-status-badge" class="badge badge-blue">● UNKNOWN</span>
-            <span style="font-size:0.7em;color:var(--text2);margin-left:8px" id="panel-ts">—</span>
+        <div class="panel-body">
+          <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
+            <span id="panel-badge" class="badge bg-blue">● UNKNOWN</span>
+            <span style="font-size:.68em;color:var(--text2)" id="panel-ts"></span>
           </div>
-          <!-- Bảng thông tin chi tiết (điền động bằng JS) -->
-          <div id="panel-info-rows"></div>
-          <!-- KPI Mini Bars ED-137 -->
-          <div style="margin-top:12px">
-            <div style="font-size:0.7em;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">⚡ KPI — EUROCAE ED-137</div>
+          <div id="panel-info"></div>
+          <div class="panel-kpis">
+            <div class="kpi-row-title">⚡ KPI — EUROCAE ED-137</div>
             <div class="kpi-mini">
-              <div class="kpi-mini-label">One-way Delay (ngưỡng: &lt;100ms)</div>
-              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="panel-bar-delay" style="width:30%;background:var(--green)"></div></div>
-              <div style="font-size:0.7em;color:var(--text2);margin-top:2px" id="panel-val-delay">N/A</div>
+              <div class="kpi-mini-lbl">
+                <span>One-way Delay</span>
+                <span id="pv-delay">N/A</span>
+              </div>
+              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="pb-delay" style="width:20%;background:var(--green)"></div></div>
             </div>
             <div class="kpi-mini">
-              <div class="kpi-mini-label">Jitter (ngưỡng: &lt;20ms)</div>
-              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="panel-bar-jitter" style="width:25%;background:var(--green)"></div></div>
-              <div style="font-size:0.7em;color:var(--text2);margin-top:2px" id="panel-val-jitter">N/A</div>
+              <div class="kpi-mini-lbl">
+                <span>Jitter</span>
+                <span id="pv-jitter">N/A</span>
+              </div>
+              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="pb-jitter" style="width:20%;background:var(--green)"></div></div>
             </div>
             <div class="kpi-mini">
-              <div class="kpi-mini-label">Packet Loss (ngưỡng: &lt;1%)</div>
-              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="panel-bar-loss" style="width:5%;background:var(--green)"></div></div>
-              <div style="font-size:0.7em;color:var(--text2);margin-top:2px" id="panel-val-loss">N/A</div>
+              <div class="kpi-mini-lbl">
+                <span>Packet Loss</span>
+                <span id="pv-loss">N/A</span>
+              </div>
+              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="pb-loss" style="width:5%;background:var(--green)"></div></div>
             </div>
           </div>
         </div>
-
-        <div class="node-panel-actions">
-          <!--
-            NÚT ĐO KIỂM RIÊNG TRẠM NÀY
-            Khi click: chuyển sang tab Ansible và chạy playbook 01_collect_metrics
-            với target group tương ứng của trạm đang được chọn
-          -->
-          <button class="btn btn-green" onclick="runNodeMeasure()" style="width:100%;justify-content:center">
-            ▶ Đo kiểm riêng trạm này
-          </button>
-          <button class="btn btn-blue" onclick="openNodeGrafana()" style="width:100%;justify-content:center">
-            📊 Xem Grafana Dashboard
-          </button>
-          <button class="btn btn-grey" onclick="closeNodePanel()" style="width:100%;justify-content:center;font-size:0.75em">
-            ✕ Đóng
-          </button>
+        <div class="panel-actions">
+          <button class="btn btn-green" onclick="runNodeMeasure()" style="width:100%;justify-content:center">▶ Đo kiểm riêng trạm này</button>
+          <button class="btn btn-blue"  onclick="openNodeGrafana()" style="width:100%;justify-content:center">📊 Xem Grafana Dashboard</button>
+          <button class="btn btn-grey btn-sm"  onclick="closePanel()" style="width:100%;justify-content:center">✕ Đóng</button>
         </div>
       </div>
-    </div><!-- /topology-wrapper -->
+
+    </div><!-- /topo-wrap -->
   </div>
 
-  <!-- ================================================================ -->
-  <!-- TAB: DASHBOARD — Grafana Iframes                                 -->
-  <!-- ================================================================ -->
+  <!-- ============================================================ -->
+  <!-- TAB: DASHBOARD                                               -->
+  <!-- ============================================================ -->
   <div id="tab-dashboard" class="tab-content">
-    <p class="section-title">📈 Grafana — Giám sát trực quan (nhúng Iframe)</p>
-    <p style="font-size:0.8em;color:var(--text2);margin-bottom:12px">
-      Grafana tại <a href="http://localhost:3000" target="_blank" style="color:var(--blue)">http://localhost:3000</a> ·
-      Login mặc định: admin / vatm2025
+    <div class="section-title">📈 Grafana — Giám sát trực quan (Iframe embed)</div>
+    <p style="font-size:.8em;color:var(--text2);margin-bottom:12px">
+      Grafana: <a href="http://localhost:3000" target="_blank" style="color:var(--blue)">http://localhost:3000</a>
+      · Login: <span class="mono">admin / vatm2025</span>
     </p>
     <div class="grid-2">
       <div>
         <div class="card-title">🏭 Trạm TX — T6-TV Status</div>
         <div class="iframe-wrap">
-          <iframe id="grafana-tx" src="about:blank" height="280" title="TX Dashboard"></iframe>
-          <div class="iframe-placeholder" id="grafana-tx-placeholder">⬆ Nhấn nút bên dưới để tải<br><small>Yêu cầu: Grafana chạy &amp; allow_embedding=true</small></div>
+          <iframe id="gf-tx" src="about:blank" height="260"></iframe>
+          <div class="iframe-ph" id="gfph-tx">Nhấn "Tải Grafana" để load dashboard</div>
         </div>
       </div>
       <div>
         <div class="card-title">📡 Trạm RX — T6-RV Status</div>
         <div class="iframe-wrap">
-          <iframe id="grafana-rx" src="about:blank" height="280" title="RX Dashboard"></iframe>
-          <div class="iframe-placeholder" id="grafana-rx-placeholder">⬆ Nhấn nút bên dưới để tải</div>
+          <iframe id="gf-rx" src="about:blank" height="260"></iframe>
+          <div class="iframe-ph" id="gfph-rx">Nhấn "Tải Grafana" để load dashboard</div>
         </div>
       </div>
       <div>
-        <div class="card-title">⚡ UBVHF TWR T20 — T6-TRV + S4-IP</div>
+        <div class="card-title">⚡ UBVHF TWR — T6-TRV + S4-IP</div>
         <div class="iframe-wrap">
-          <iframe id="grafana-ubvhf" src="about:blank" height="280" title="UBVHF Dashboard"></iframe>
-          <div class="iframe-placeholder" id="grafana-ubvhf-placeholder">⬆ Nhấn nút bên dưới để tải</div>
+          <iframe id="gf-ubvhf" src="about:blank" height="260"></iframe>
+          <div class="iframe-ph" id="gfph-ubvhf">Nhấn "Tải Grafana" để load dashboard</div>
         </div>
       </div>
       <div>
         <div class="card-title">📊 ED-137 KPI — Toàn tuyến</div>
         <div class="iframe-wrap">
-          <iframe id="grafana-kpi" src="about:blank" height="280" title="ED-137 KPI"></iframe>
-          <div class="iframe-placeholder" id="grafana-kpi-placeholder">⬆ Nhấn nút bên dưới để tải</div>
+          <iframe id="gf-kpi" src="about:blank" height="260"></iframe>
+          <div class="iframe-ph" id="gfph-kpi">Nhấn "Tải Grafana" để load dashboard</div>
         </div>
       </div>
     </div>
     <div class="btn-group" style="margin-top:12px">
-      <button class="btn btn-blue" onclick="loadGrafana()">📊 Tải Grafana Dashboards</button>
-      <button class="btn btn-orange" onclick="openGrafana()">↗ Mở Grafana (tab mới)</button>
+      <button class="btn btn-blue"   onclick="loadGrafana()">📊 Tải Grafana</button>
+      <button class="btn btn-orange" onclick="window.open('http://localhost:3000','_blank')">↗ Mở Grafana</button>
     </div>
   </div>
 
-  <!-- ================================================================ -->
-  <!-- TAB: THIẾT BỊ                                                    -->
-  <!-- ================================================================ -->
-  <div id="tab-devices" class="tab-content">
-    <p class="section-title">📡 Trạng thái thiết bị — T6 Radios (Park Air)</p>
-    <div id="device-loading" style="color:var(--text2);font-size:0.85em"><span class="spinner"></span> Đang tải…</div>
-    <div style="overflow-x:auto">
-      <table class="dev-table" id="device-table" style="display:none">
-        <thead>
-          <tr><th>Trạng thái</th><th>IP (LAN3 RCMS)</th><th>Thiết bị</th><th>Trạm</th><th>Dự phòng</th><th>Job Prometheus</th></tr>
-        </thead>
-        <tbody id="device-tbody"></tbody>
-      </table>
-    </div>
-    <div style="margin-top:12px">
-      <div class="card-title">S4-IP Controller (TCP:5001 — Blackbox Exporter)</div>
-      <div id="s4ip-status" style="font-size:0.8em;color:var(--text2)">Đang tải…</div>
-    </div>
-  </div>
-
-  <!-- ================================================================ -->
-  <!-- TAB: ĐO KIỂM ANSIBLE                                             -->
-  <!-- ================================================================ -->
+  <!-- ============================================================ -->
+  <!-- TAB: ĐO KIỂM ANSIBLE                                        -->
+  <!-- ============================================================ -->
   <div id="tab-ansible" class="tab-content">
-    <p class="section-title">⚡ Kịch bản Ansible — Đo kiểm tự động theo ED-137</p>
-    <div class="grid-3" style="margin-bottom:16px">
+    <div class="section-title">⚡ Kịch bản Ansible — Đo kiểm tự động theo ED-137</div>
+    <div class="grid-3" style="margin-bottom:14px">
       <div class="card">
         <div class="card-title">📡 Thu thập số liệu</div>
-        <p style="font-size:0.78em;color:var(--text2);margin-bottom:10px">SNMP walk + ping + TCP check toàn tuyến TX→ATCC→RX<br><small>Playbook: 01_collect_metrics</small></p>
+        <p style="font-size:.77em;color:var(--text2);margin-bottom:10px">SNMP + ping + TCP toàn tuyến<br><small style="opacity:.7">Playbook: 01_collect_metrics</small></p>
         <div style="margin-bottom:8px">
-          <label style="font-size:0.75em;color:var(--text2)">Nhóm thiết bị:</label>
+          <label style="font-size:.73em;color:var(--text2)">Nhóm thiết bị:</label>
           <select id="target-metrics">
-            <option value="all_rcms">RCMS Workstations (Toàn tuyến)</option>
-            <option value="rcms_tx">RCMS — Trạm TX</option>
-            <option value="rcms_rx">RCMS — Trạm RX</option>
-            <option value="rcms_ubvhf">RCMS — UBVHF TWR</option>
+            <option value="all_rcms">Toàn tuyến (RCMS)</option>
+            <option value="rcms_tx">Trạm TX</option>
+            <option value="rcms_rx">Trạm RX</option>
+            <option value="rcms_ubvhf">UBVHF TWR</option>
           </select>
         </div>
-        <button class="btn btn-green" onclick="runPlaybook('01_collect_metrics','target-metrics')">▶ Chạy đo kiểm</button>
+        <button class="btn btn-green btn-sm" onclick="runPlaybook('01_collect_metrics','target-metrics')">▶ Chạy đo kiểm</button>
       </div>
       <div class="card">
         <div class="card-title">📄 Xuất báo cáo</div>
-        <p style="font-size:0.78em;color:var(--text2);margin-bottom:10px">Tổng hợp thành báo cáo kỹ thuật Markdown/Excel<br><small>Playbook: 02_generate_report</small></p>
-        <button class="btn btn-orange" onclick="runPlaybook('02_generate_report',null,'all_rcms')">📄 Xuất báo cáo</button>
+        <p style="font-size:.77em;color:var(--text2);margin-bottom:10px">Tổng hợp báo cáo Markdown/Excel<br><small style="opacity:.7">Playbook: 02_generate_report</small></p>
+        <button class="btn btn-orange btn-sm" onclick="runPlaybook('02_generate_report',null,'all_rcms')">📄 Xuất báo cáo</button>
       </div>
       <div class="card">
         <div class="card-title">🏓 Ping check nhanh</div>
-        <p style="font-size:0.78em;color:var(--text2);margin-bottom:10px">ICMP ping kiểm tra kết nối tất cả thiết bị<br><small>Playbook: 03_ping_check</small></p>
-        <button class="btn btn-blue" onclick="runPlaybook('03_ping_check',null,'all_rcms')">🏓 Ping All</button>
+        <p style="font-size:.77em;color:var(--text2);margin-bottom:10px">ICMP ping tất cả thiết bị RCMS<br><small style="opacity:.7">Playbook: 03_ping_check</small></p>
+        <button class="btn btn-blue btn-sm" onclick="runPlaybook('03_ping_check',null,'all_rcms')">🏓 Ping All</button>
       </div>
     </div>
     <div class="card-title">📋 Lịch sử Jobs</div>
-    <div id="job-list" style="font-size:0.8em;color:var(--text2)">Chưa có job nào.</div>
+    <div id="job-list" style="font-size:.8em;color:var(--text2)">Chưa có job nào.</div>
   </div>
 
-  <!-- ================================================================ -->
-  <!-- TAB: CẢNH BÁO                                                    -->
-  <!-- ================================================================ -->
-  <div id="tab-alerts" class="tab-content">
-    <p class="section-title">🔔 Cảnh báo đang kích hoạt</p>
+  <!-- ============================================================ -->
+  <!-- TAB: THÔNG SỐ (gộp Thiết bị + Cảnh báo + ED-137)           -->
+  <!-- ============================================================ -->
+  <div id="tab-thongso" class="tab-content">
+
+    <!-- Trạng thái thiết bị -->
+    <div class="section-title">📡 Trạng thái thiết bị — T6 Radios (Park Air)</div>
+    <div id="dev-loading" style="color:var(--text2);font-size:.84em"><span class="spinner"></span> Đang tải…</div>
+    <div style="overflow-x:auto;margin-bottom:16px">
+      <table class="dev-table" id="dev-table" style="display:none">
+        <thead>
+          <tr><th>Trạng thái</th><th>IP (LAN3 RCMS)</th><th>Thiết bị</th><th>Trạm</th><th>Dự phòng</th><th>Job</th></tr>
+        </thead>
+        <tbody id="dev-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-bottom:6px">
+      <div class="card-title">S4-IP Controller (TCP:5001 — Blackbox)</div>
+      <div id="s4ip-status" style="font-size:.8em;color:var(--text2)">Đang tải…</div>
+    </div>
+
+    <!-- Cảnh báo -->
+    <div class="section-title">🔔 Cảnh báo đang kích hoạt</div>
     <div id="alert-list"><span class="spinner"></span> Đang tải…</div>
-  </div>
 
-  <!-- ================================================================ -->
-  <!-- TAB: CHUẨN ED-137                                                -->
-  <!-- ================================================================ -->
-  <div id="tab-standards" class="tab-content">
-    <p class="section-title">📋 Ngưỡng KPI — EUROCAE ED-137 VoIP ATM Applications</p>
-    <table class="threshold-table">
+    <!-- ED-137 Thresholds -->
+    <div class="section-title">📋 Ngưỡng KPI — EUROCAE ED-137 VoIP ATM</div>
+    <table class="thr-table" style="margin-bottom:16px">
       <tr><th>Chỉ số KPI</th><th class="ok">🟢 Bình thường</th><th class="warn">🟡 Cảnh báo</th><th class="crit">🔴 Vi phạm ED-137</th></tr>
       <tr><td>One-way Delay</td><td class="ok">&lt; 50 ms</td><td class="warn">50 – 100 ms</td><td class="crit">&gt; 100 ms</td></tr>
       <tr><td>Jitter</td><td class="ok">&lt; 10 ms</td><td class="warn">10 – 20 ms</td><td class="crit">&gt; 20 ms</td></tr>
       <tr><td>Packet Loss</td><td class="ok">&lt; 0.1 %</td><td class="warn">0.1 – 1 %</td><td class="crit">&gt; 1 %</td></tr>
-      <tr><td>VSWR Anten</td><td class="ok">≤ 1.5 : 1</td><td class="warn">1.5 – 2.0 : 1</td><td class="crit">&gt; 2.0 : 1</td></tr>
+      <tr><td>VSWR Anten</td><td class="ok">≤ 1.5:1</td><td class="warn">1.5 – 2.0:1</td><td class="crit">&gt; 2.0:1</td></tr>
       <tr><td>BER Đường truyền</td><td class="ok">&lt; 10⁻⁶</td><td class="warn">10⁻⁶ – 10⁻⁴</td><td class="crit">&gt; 10⁻⁴</td></tr>
     </table>
-    <p class="section-title" style="margin-top:24px">📡 Tần số VHF — Danh sách kênh hệ thống</p>
-    <table class="dev-table">
-      <thead><tr><th>#</th><th>Tần số (MHz)</th><th>Chức năng</th><th>TX IP MAIN</th><th>TX IP STBY</th><th>RX IP MAIN</th><th>RX IP STBY</th></tr></thead>
-      <tbody>
-        <tr><td>1</td><td class="mono">118.425</td><td>Clearance Delivery chính</td><td class="mono">10.60.7.71</td><td class="mono">10.60.7.81</td><td class="mono">10.60.6.71</td><td class="mono">10.60.6.81</td></tr>
-        <tr><td>2</td><td class="mono">121.725</td><td>CLD dự phòng</td><td class="mono">10.60.7.72</td><td class="mono">10.60.7.82</td><td class="mono">10.60.6.72</td><td class="mono">10.60.6.82</td></tr>
-        <tr><td>3</td><td class="mono">121.775</td><td>Aerodrome Control chính</td><td class="mono">10.60.7.73</td><td class="mono">10.60.7.83</td><td class="mono">10.60.6.73</td><td class="mono">10.60.6.83</td></tr>
-        <tr><td>4</td><td class="mono">121.850</td><td>AD dự phòng</td><td class="mono">10.60.7.74</td><td class="mono">10.60.7.84</td><td class="mono">10.60.6.74</td><td class="mono">10.60.6.84</td></tr>
-        <tr><td>5</td><td class="mono">121.925</td><td>NW Ground chính</td><td class="mono">10.60.7.75</td><td class="mono">10.60.7.85</td><td class="mono">10.60.6.75</td><td class="mono">10.60.6.85</td></tr>
-        <tr><td>6</td><td class="mono">124.325</td><td>NW Ground dự phòng</td><td class="mono">10.60.7.76</td><td class="mono">10.60.7.86</td><td class="mono">10.60.6.76</td><td class="mono">10.60.6.86</td></tr>
-        <tr><td>7</td><td class="mono">124.625</td><td>NE Ground chính</td><td class="mono">10.60.7.77</td><td class="mono">10.60.7.87</td><td class="mono">10.60.6.77</td><td class="mono">10.60.6.87</td></tr>
-        <tr><td>8</td><td class="mono">125.275</td><td>NE Ground dự phòng</td><td class="mono">10.60.7.78</td><td class="mono">10.60.7.88</td><td class="mono">10.60.6.78</td><td class="mono">10.60.6.88</td></tr>
-        <tr><td>9</td><td class="mono" style="color:var(--red)">121.500</td><td>⚠️ EMERGENCY</td><td class="mono">10.60.7.79</td><td class="mono">10.60.7.89</td><td class="mono">10.60.6.79</td><td class="mono">10.60.6.89</td></tr>
-      </tbody>
-    </table>
+
+    <!-- Bảng tần số -->
+    <div class="section-title">📡 Tần số VHF — Danh sách kênh hệ thống</div>
+    <div style="overflow-x:auto">
+      <table class="dev-table">
+        <thead>
+          <tr><th>#</th><th>Tần số (MHz)</th><th>Chức năng</th><th>TX MAIN</th><th>TX STBY</th><th>RX MAIN</th><th>RX STBY</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td class="mono">118.425</td><td>Clearance Delivery chính</td><td class="mono">10.60.7.71</td><td class="mono">10.60.7.81</td><td class="mono">10.60.6.71</td><td class="mono">10.60.6.81</td></tr>
+          <tr><td>2</td><td class="mono">121.725</td><td>CLD dự phòng</td><td class="mono">10.60.7.72</td><td class="mono">10.60.7.82</td><td class="mono">10.60.6.72</td><td class="mono">10.60.6.82</td></tr>
+          <tr><td>3</td><td class="mono">121.775</td><td>Aerodrome Control chính</td><td class="mono">10.60.7.73</td><td class="mono">10.60.7.83</td><td class="mono">10.60.6.73</td><td class="mono">10.60.6.83</td></tr>
+          <tr><td>4</td><td class="mono">121.850</td><td>AD dự phòng</td><td class="mono">10.60.7.74</td><td class="mono">10.60.7.84</td><td class="mono">10.60.6.74</td><td class="mono">10.60.6.84</td></tr>
+          <tr><td>5</td><td class="mono">121.925</td><td>NW Ground chính</td><td class="mono">10.60.7.75</td><td class="mono">10.60.7.85</td><td class="mono">10.60.6.75</td><td class="mono">10.60.6.85</td></tr>
+          <tr><td>6</td><td class="mono">124.325</td><td>NW Ground dự phòng</td><td class="mono">10.60.7.76</td><td class="mono">10.60.7.86</td><td class="mono">10.60.6.76</td><td class="mono">10.60.6.86</td></tr>
+          <tr><td>7</td><td class="mono">124.625</td><td>NE Ground chính</td><td class="mono">10.60.7.77</td><td class="mono">10.60.7.87</td><td class="mono">10.60.6.77</td><td class="mono">10.60.6.87</td></tr>
+          <tr><td>8</td><td class="mono">125.275</td><td>NE Ground dự phòng</td><td class="mono">10.60.7.78</td><td class="mono">10.60.7.88</td><td class="mono">10.60.6.78</td><td class="mono">10.60.6.88</td></tr>
+          <tr><td>9</td><td class="mono" style="color:var(--red)">121.500</td><td>⚠️ EMERGENCY</td><td class="mono">10.60.7.79</td><td class="mono">10.60.7.89</td><td class="mono">10.60.6.79</td><td class="mono">10.60.6.89</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </div><!-- /container -->
 
 <!-- ================================================================ -->
 <!-- JAVASCRIPT                                                        -->
-<!-- Chú thích tiếng Việt phục vụ đào tạo ATSEP nội bộ               -->
+<!-- Chú thích tiếng Việt — Tài liệu đào tạo ATSEP nội bộ VATM       -->
 <!-- ================================================================ -->
 <script>
 'use strict';
 
-// ── Hằng số cấu hình ──
+/* ─── Cấu hình ─── */
 const API     = '/api';
 const GRAFANA = window.location.protocol + '//' + window.location.hostname + ':3000';
-const GRAFANA_DASHBOARDS = {
-  tx:    '/d/vatm-tx/tx-station?orgId=1&kiosk',
-  rx:    '/d/vatm-rx/rx-station?orgId=1&kiosk',
-  ubvhf: '/d/vatm-ubvhf/ubvhf-twr?orgId=1&kiosk',
-  kpi:   '/d/vatm-ed137/ed137-kpi?orgId=1&kiosk',
+const GF_DASH = {
+  tx:    '/d/vatm-parkair-t6/park-air-t6-vhf-radio-detail?orgId=1&kiosk',
+  rx:    '/d/vatm-parkair-t6/park-air-t6-vhf-radio-detail?orgId=1&kiosk',
+  ubvhf: '/d/vatm-vm-health/vm-network-health?orgId=1&kiosk',
+  kpi:   '/d/vatm-ed137-overview/ed137-overview-vatm-atcc-long-thanh?orgId=1&kiosk',
 };
 
 /* ================================================================
-   THEME MANAGEMENT — Quản lý chế độ Sáng / Tối
+   THEME — Quản lý Dark / Light Mode
    ================================================================ */
-
-/**
- * Áp dụng theme lên toàn bộ giao diện.
- * Thay đổi data-theme trên <html> → CSS variables tự động cập nhật.
- * @param {string} theme - 'dark' hoặc 'light'
- */
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
   const btn = document.getElementById('theme-btn');
-  // ☀️ = đang Dark, nhấn để sang Light
-  // 🌙 = đang Light, nhấn để sang Dark
-  btn.textContent = theme === 'dark' ? '☀️' : '🌙';
-  btn.title = theme === 'dark' ? 'Chuyển sang chế độ Sáng' : 'Chuyển sang chế độ Tối';
+  btn.textContent = t === 'dark' ? '☀️' : '🌙';
+  btn.title = t === 'dark' ? 'Chuyển sang chế độ Sáng' : 'Chuyển sang chế độ Tối';
 }
-
-/**
- * Toggle giữa Dark và Light Mode.
- * Lưu lựa chọn vào localStorage để nhớ qua các lần mở trang.
- */
 function toggleTheme() {
-  const cur = document.documentElement.getAttribute('data-theme');
-  const nxt = cur === 'dark' ? 'light' : 'dark';
-  applyTheme(nxt);
-  try { localStorage.setItem('vatm-theme', nxt); } catch(e) {}
-  // Vẽ lại canvas với màu nền mới
-  requestAnimationFrame(drawTopology);
+  const n = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  applyTheme(n);
+  try { localStorage.setItem('vatm-theme', n); } catch(e) {}
+  requestAnimationFrame(drawTopo);
 }
-
-// Khởi tạo theme khi load trang — lấy từ localStorage nếu có
-(function initTheme() {
-  let saved = 'dark';
-  try { saved = localStorage.getItem('vatm-theme') || 'dark'; } catch(e) {}
-  applyTheme(saved);
+(function(){
+  let t = 'dark';
+  try { t = localStorage.getItem('vatm-theme') || 'dark'; } catch(e){}
+  applyTheme(t);
 })();
 
 /* ================================================================
-   CLOCK — Đồng hồ thời gian thực
+   CLOCK
    ================================================================ */
-function updateClock() {
+function tickClock() {
   document.getElementById('clock').textContent =
-    new Date().toLocaleTimeString('vi-VN', { hour12: false }) + ' ICT';
+    new Date().toLocaleTimeString('vi-VN', { hour12:false }) + ' ICT';
 }
-setInterval(updateClock, 1000);
-updateClock();
+setInterval(tickClock, 1000); tickClock();
 
 /* ================================================================
-   TAB SWITCHING — Chuyển đổi giữa các tab
+   NAV / TAB SWITCHING
    ================================================================ */
-const TAB_NAMES = ['topology','dashboard','devices','ansible','alerts','standards'];
-
+const TABS = ['topology','dashboard','ansible','thongso'];
 function switchTab(name) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  const idx = TAB_NAMES.indexOf(name);
-  if (idx >= 0) document.querySelectorAll('.tab')[idx].classList.add('active');
-  // Lazy load khi chuyển tab
-  if (name === 'devices')  loadDevices();
-  if (name === 'alerts')   loadAlerts();
+  const idx = TABS.indexOf(name);
+  if (idx >= 0) document.querySelectorAll('.nav-item')[idx].classList.add('active');
+  if (name === 'thongso') { loadDevices(); loadAlerts(); }
   if (name === 'topology') resizeCanvas();
 }
 
 /* ================================================================
-   CANVAS TOPOLOGY — Sơ đồ mạng tương tác
+   CANVAS TOPOLOGY
    ================================================================
 
-   Tọa độ logic canvas: 960 x 320 pixels
-   Ba node được đặt theo trục ngang:
-     TX (trái) ←→ ATCC Long Thành (giữa) ←→ RX (phải)
-   Hai đường kết nối với xung tín hiệu chạy từ TX→ATCC→RX
+   Canvas logic: 960 × 380 px
+   Lớp 1: Nền cảnh — bầu trời, mặt đất, lưới phối cảnh
+   Lớp 2: Tòa nhà + Tháp ATCC Long Thành (silhouette)
+   Lớp 3: Đường kết nối + xung tín hiệu (topology overlay)
+   Lớp 4: Node boxes (TX / ATCC / RX)
 */
-
-const canvas = document.getElementById('topology-canvas');
+const canvas = document.getElementById('topo-canvas');
 const ctx    = canvas.getContext('2d');
 
-// Kích thước logic canvas (viewport ảo, độc lập với kích thước màn hình)
-const CANVAS_W = 960;
-const CANVAS_H = 320;
+const CW = 960;  /* chiều rộng canvas logic */
+const CH = 380;  /* chiều cao canvas logic — tăng để vẽ được tòa nhà */
 
-/**
- * ĐỊNH NGHĨA CÁC NODE MẠNG
- *
- * cx, cy: tọa độ tâm trong không gian logic 960×320
- * hw, hh: nửa chiều rộng / nửa chiều cao (bounding box click)
- * info:   thông tin hiển thị trong panel chi tiết
- */
-const NODE_DEFS = {
+/* ── NODE DEFINITIONS ── */
+const NODES = {
   tx: {
-    id: 'tx', icon: '📡',
-    label: ['TRẠM PHÁT', 'TX Station'], sub: 'Park Air T6-TV',
-    cx: 155, cy: 160, hw: 90, hh: 58,
-    playbook_target: 'rcms_tx',
-    grafana_dash: 'vatm-tx',
-    info: {
-      'Thiết bị':       'Park Air T6-TV',
-      'Số kênh':        '9 kênh VHF',
-      'IP MAIN (LAN3)': '10.60.7.71–79',
-      'IP STBY (LAN3)': '10.60.7.81–89',
-      'SNMP Targets':   '18 (v2c)',
-      'Community':      'vatm_ro',
-      'Poll qua':       'LAN3 — RCMS subnet',
+    id:'tx', icon:'📡',
+    label:['TRẠM PHÁT','TX Station'], sub:'Park Air T6-TV',
+    cx:155, cy:148, hw:90, hh:55,
+    playbook:'rcms_tx', grafana:'vatm-parkair-t6',
+    info:{
+      'Thiết bị':'Park Air T6-TV',
+      'Số kênh':'9 kênh VHF (118–125 MHz)',
+      'IP MAIN (LAN3)':'10.60.7.71–79',
+      'IP STBY (LAN3)':'10.60.7.81–89',
+      'SNMP Targets':'18 (community: vatm_ro)',
+      'Poll qua':'LAN3 — RCMS subnet only',
     },
   },
   atcc: {
-    id: 'atcc', icon: '🗼',
-    label: ['ĐÀI KSKL', 'Long Thành'], sub: 'ALE OS6860E + S4-IP',
-    cx: 480, cy: 160, hw: 105, hh: 62,
-    playbook_target: 'all_rcms',
-    grafana_dash: 'vatm-ed137',
-    info: {
-      'Vai trò':     'Trung tâm điều phối',
-      'Switch':      'ALE OS6860E-24 (SNMP v2c)',
-      'Controller':  'S4-IP (TCP port 5001)',
-      'Monitoring':  'Blackbox Exporter',
-      'Community':   'vatm_ro',
+    id:'atcc', icon:'🗼',
+    label:['ĐÀI KSKL','Long Thành'], sub:'ALE OS6860E + S4-IP',
+    cx:480, cy:140, hw:105, hh:58,
+    playbook:'all_rcms', grafana:'vatm-ed137-overview',
+    info:{
+      'Vai trò':'Trung tâm điều phối',
+      'Switch':'ALE OS6860E-24 (SNMP v2c)',
+      'Controller':'S4-IP (TCP port 5001)',
+      'Monitoring':'Blackbox Exporter',
+      'Location':'Long Thành, Đồng Nai',
     },
   },
   rx: {
-    id: 'rx', icon: '📻',
-    label: ['TRẠM THU', 'RX Station'], sub: 'Park Air T6-RV',
-    cx: 805, cy: 160, hw: 90, hh: 58,
-    playbook_target: 'rcms_rx',
-    grafana_dash: 'vatm-rx',
-    info: {
-      'Thiết bị':       'Park Air T6-RV',
-      'Số kênh':        '9 kênh VHF',
-      'IP MAIN (LAN3)': '10.60.6.71–79',
-      'IP STBY (LAN3)': '10.60.6.81–89',
-      'SNMP Targets':   '18 (v2c)',
-      'Community':      'vatm_ro',
-      'Poll qua':       'LAN3 — RCMS subnet',
+    id:'rx', icon:'📻',
+    label:['TRẠM THU','RX Station'], sub:'Park Air T6-RV',
+    cx:805, cy:148, hw:90, hh:55,
+    playbook:'rcms_rx', grafana:'vatm-parkair-t6',
+    info:{
+      'Thiết bị':'Park Air T6-RV',
+      'Số kênh':'9 kênh VHF',
+      'IP MAIN (LAN3)':'10.60.6.71–79',
+      'IP STBY (LAN3)':'10.60.6.81–89',
+      'SNMP Targets':'18 (community: vatm_ro)',
+      'Poll qua':'LAN3 — RCMS subnet only',
     },
   },
 };
 
-/**
- * ĐỊNH NGHĨA ĐƯỜNG KẾT NỐI (links)
- * from/to: id của node nguồn/đích
- * label:   nhãn hiển thị giữa đường (dùng \n để xuống dòng)
- */
-const LINK_DEFS = [
-  { id: 'tx_atcc', from: 'tx',   to: 'atcc', label: 'IP/VSAT\nTX → ATCC' },
-  { id: 'atcc_rx', from: 'atcc', to: 'rx',   label: 'IP/VSAT\nATCC → RX' },
+/* ── LINK DEFINITIONS ── */
+const LINKS = [
+  { id:'tx_atcc', from:'tx',   to:'atcc', label:'IP / VSAT\nTX → ATCC' },
+  { id:'atcc_rx', from:'atcc', to:'rx',   label:'IP / VSAT\nATCC → RX' },
 ];
 
-/**
- * TRẠNG THÁI TOPOLOGY — Cập nhật từ WebSocket /ws/topology
- * Giá trị: 'ok' | 'warn' | 'crit' | 'unknown'
- */
-let topoState = {
-  tx_status: 'unknown', atcc_status: 'unknown', rx_status: 'unknown',
-  link_tx_atcc: 'unknown', link_atcc_rx: 'unknown',
-  delay_tx_atcc: null, jitter_tx_atcc: null, loss_tx_atcc: null,
-  delay_atcc_rx: null, jitter_atcc_rx: null, loss_atcc_rx: null,
-  ts: null,
+/* ── TOPOLOGY STATE — Cập nhật từ WebSocket ── */
+let topo = {
+  tx_status:'unknown', atcc_status:'unknown', rx_status:'unknown',
+  link_tx_atcc:'unknown', link_atcc_rx:'unknown',
+  delay_tx_atcc:null, jitter_tx_atcc:null, loss_tx_atcc:null,
+  delay_atcc_rx:null, jitter_atcc_rx:null, loss_atcc_rx:null,
+  ts:null,
 };
 
-/**
- * Trả về màu theo trạng thái ED-137:
- * ok → xanh lá | warn → vàng | crit → đỏ | unknown → xám
- */
-function statusColor(s) {
-  return { ok:'#4ade80', warn:'#fbbf24', crit:'#f87171', unknown:'#64748b' }[s] || '#64748b';
+/* Màu theo trạng thái ED-137 */
+function sColor(s) {
+  return {ok:'#34d399', warn:'#fbbf24', crit:'#f87171', unknown:'#3d5a7a'}[s]||'#3d5a7a';
 }
-function statusFill(s) {
-  return { ok:'rgba(74,222,128,0.1)', warn:'rgba(251,191,36,0.1)', crit:'rgba(248,113,113,0.12)', unknown:'rgba(100,116,139,0.08)' }[s] || 'rgba(100,116,139,0.08)';
+function sFill(s) {
+  return {
+    ok:  'rgba(52,211,153,0.09)',
+    warn:'rgba(251,191,36,0.09)',
+    crit:'rgba(248,113,113,0.11)',
+    unknown:'rgba(30,58,92,0.08)',
+  }[s]||'rgba(30,58,92,0.08)';
 }
 
-// ── ANIMATION STATE ──
-let pulses        = [];   // Danh sách xung tín hiệu đang chạy
-let lastFrameTime = 0;
-let animFrameId   = null;
-let selectedNode  = null; // ID node đang được chọn (để highlight)
-let lastPulseTime = { tx_atcc: 0, atcc_rx: 0 }; // Thời điểm tạo xung cuối
+/* ── Animation state ── */
+let pulses        = [];
+let lastFrame     = 0;
+let animId        = null;
+let selNode       = null;
+let curPanel      = null;
+let lastPulse     = { tx_atcc:0, atcc_rx:0 };
+const PULSE_SPEED = 0.20;
+const PULSE_INT   = 1.5;
 
-const PULSE_SPEED    = 0.22;  // Tốc độ xung: đơn vị/giây trên đoạn 0→1
-const PULSE_INTERVAL = 1.4;   // Giây giữa 2 xung liên tiếp
-
-/* ── RESPONSIVE CANVAS RESIZE ── */
-
-/**
- * Thiết lập kích thước vật lý của canvas theo container CSS.
- * Nhân với devicePixelRatio để hiển thị sắc nét trên màn hình HiDPI.
- */
+/* ── Canvas resize (HiDPI aware) ── */
 function resizeCanvas() {
-  const container = document.getElementById('canvas-container');
+  const cont = document.getElementById('canvas-container');
   const dpr  = window.devicePixelRatio || 1;
-  const cssW = container.clientWidth;
-  const cssH = Math.round(cssW * CANVAS_H / CANVAS_W);
-
+  const cssW = cont.clientWidth;
+  const cssH = Math.round(cssW * CH / CW);
   canvas.width        = cssW * dpr;
   canvas.height       = cssH * dpr;
   canvas.style.height = cssH + 'px';
-
-  // Scale context: mọi lệnh vẽ dùng tọa độ logic 0–960 × 0–320
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(dpr * cssW / CANVAS_W, dpr * cssH / CANVAS_H);
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr * cssW / CW, dpr * cssH / CH);
 }
+window.addEventListener('resize', () => { resizeCanvas(); drawTopo(); });
 
-window.addEventListener('resize', () => { resizeCanvas(); drawTopology(); });
-
-/* ── HIT DETECTION — Phát hiện vùng click ── */
-
-/**
- * Chuyển tọa độ chuột (viewport) → tọa độ canvas logic (0–960 × 0–320)
- */
-function mouseToLogic(e) {
+/* ── Mouse interaction ── */
+function mouseLogic(e) {
   const r = canvas.getBoundingClientRect();
-  return {
-    x: (e.clientX - r.left)  * (CANVAS_W / r.width),
-    y: (e.clientY - r.top)   * (CANVAS_H / r.height),
-  };
+  return { x:(e.clientX-r.left)*(CW/r.width), y:(e.clientY-r.top)*(CH/r.height) };
 }
-
-/**
- * Kiểm tra điểm (px,py) có nằm trong bounding box của node không.
- * Mở rộng thêm 12px để dễ click hơn.
- */
-function hitNode(px, py) {
-  const M = 12;
-  for (const key in NODE_DEFS) {
-    const n = NODE_DEFS[key];
-    if (px >= n.cx - n.hw - M && px <= n.cx + n.hw + M &&
-        py >= n.cy - n.hh - M && py <= n.cy + n.hh + M) return n;
+function hitNode(px,py) {
+  const M=12;
+  for (const k in NODES) {
+    const n=NODES[k];
+    if (px>=n.cx-n.hw-M&&px<=n.cx+n.hw+M&&py>=n.cy-n.hh-M&&py<=n.cy+n.hh+M) return n;
   }
   return null;
 }
-
-/**
- * Sự kiện CLICK: mở panel chi tiết hoặc đóng nếu click ra ngoài
- */
 canvas.addEventListener('click', e => {
-  const { x, y } = mouseToLogic(e);
-  const hit = hitNode(x, y);
-  if (hit) {
-    selectedNode = hit.id;
-    openNodePanel(hit);
-  } else {
-    selectedNode = null;
-    closeNodePanel();
-  }
-  drawTopology();
+  const {x,y} = mouseLogic(e);
+  const n = hitNode(x,y);
+  if (n) { selNode=n.id; openPanel(n); }
+  else   { selNode=null; closePanel(); }
+  drawTopo();
 });
-
-/**
- * Sự kiện MOUSEMOVE: đổi cursor thành 'pointer' khi hover trên node
- */
 canvas.addEventListener('mousemove', e => {
-  const { x, y } = mouseToLogic(e);
-  document.getElementById('canvas-container').style.cursor =
-    hitNode(x, y) ? 'pointer' : 'default';
+  const {x,y} = mouseLogic(e);
+  document.getElementById('canvas-container').style.cursor = hitNode(x,y)?'pointer':'default';
 });
 
-/* ── DRAWING HELPERS ── */
-
-/** Màu nền canvas theo theme hiện tại */
-function canvasBg()   { return document.documentElement.getAttribute('data-theme') === 'light' ? '#f1f5f9' : '#0f172a'; }
-/** Màu chữ chính canvas */
-function canvasText() { return document.documentElement.getAttribute('data-theme') === 'light' ? '#334155' : '#cbd5e1'; }
-/** Màu chữ phụ canvas */
-function canvasSub()  { return '#64748b'; }
+/* ================================================================
+   BACKGROUND DRAWING — Cảnh nền Đài KSKL Long Thành
+   ================================================================ */
 
 /**
- * Vẽ hình chữ nhật bo góc (tiện ích dùng chung)
+ * Vẽ lớp nền: bầu trời + mặt đất + lưới phối cảnh
  */
-function roundRect(x, y, w, h, r) {
+function drawBackground() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const HORIZON = CH * 0.62;
+
+  /* --- Bầu trời (gradient) --- */
+  const sky = ctx.createLinearGradient(0,0,0,HORIZON);
+  if (dark) {
+    sky.addColorStop(0,'#010810');
+    sky.addColorStop(0.6,'#051525');
+    sky.addColorStop(1,'#071e3d');
+  } else {
+    sky.addColorStop(0,'#bcd8f0');
+    sky.addColorStop(0.6,'#d4eaf8');
+    sky.addColorStop(1,'#e8f4fb');
+  }
+  ctx.fillStyle = sky;
+  ctx.fillRect(0,0,CW,HORIZON);
+
+  /* --- Mặt đất --- */
+  const gnd = ctx.createLinearGradient(0,HORIZON,0,CH);
+  if (dark) {
+    gnd.addColorStop(0,'#040e06');
+    gnd.addColorStop(1,'#020a03');
+  } else {
+    gnd.addColorStop(0,'#c8e6c0');
+    gnd.addColorStop(1,'#afd8a5');
+  }
+  ctx.fillStyle = gnd;
+  ctx.fillRect(0,HORIZON,CW,CH-HORIZON);
+
+  /* --- Sao (chỉ dark mode) --- */
+  if (dark) {
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    const stars = [
+      [40,22],[90,12],[170,38],[240,18],[330,28],[410,8],[490,20],
+      [580,30],[660,14],[740,35],[820,20],[880,10],[920,28],
+      [130,55],[290,48],[450,55],[610,45],[770,52],[60,48],
+    ];
+    stars.forEach(([sx,sy]) => {
+      ctx.beginPath(); ctx.arc(sx,sy,0.8,0,Math.PI*2); ctx.fill();
+    });
+    /* Stars lớn hơn (ít hơn) */
+    ctx.fillStyle = 'rgba(200,230,255,0.8)';
+    [[200,28],[500,15],[720,40]].forEach(([sx,sy]) => {
+      ctx.beginPath(); ctx.arc(sx,sy,1.3,0,Math.PI*2); ctx.fill();
+    });
+  }
+
+  /* --- Vầng trăng / mặt trời --- */
+  if (dark) {
+    /* Trăng lưỡi liềm */
+    ctx.save();
+    ctx.fillStyle = 'rgba(220,230,255,0.85)';
+    ctx.beginPath(); ctx.arc(860,36,12,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#010810';
+    ctx.beginPath(); ctx.arc(868,33,10,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  } else {
+    /* Mặt trời */
+    ctx.save();
+    const sunGrad = ctx.createRadialGradient(860,45,4,860,45,22);
+    sunGrad.addColorStop(0,'rgba(255,220,50,0.9)');
+    sunGrad.addColorStop(1,'rgba(255,160,50,0)');
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath(); ctx.arc(860,45,22,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  /* --- Mây nhẹ --- */
+  drawCloud(ctx, 200, 55, 0.4, dark);
+  drawCloud(ctx, 650, 42, 0.35, dark);
+  drawCloud(ctx, 420, 70, 0.3, dark);
+
+  /* --- Lưới phối cảnh trên mặt đất --- */
+  const VP = { x:CW/2, y:HORIZON }; /* điểm tụ */
+  ctx.strokeStyle = dark ? 'rgba(0,200,80,0.08)' : 'rgba(50,120,50,0.12)';
+  ctx.lineWidth = 0.7;
+  /* Đường hội tụ (radial lines) */
+  for (let i=-7; i<=7; i++) {
+    ctx.beginPath();
+    ctx.moveTo(VP.x, VP.y);
+    ctx.lineTo(VP.x + i*160, CH);
+    ctx.stroke();
+  }
+  /* Đường ngang trên đất */
+  ctx.strokeStyle = dark ? 'rgba(0,200,80,0.05)' : 'rgba(50,120,50,0.08)';
+  for (let y=HORIZON+12; y<CH; y+=16) {
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
+  }
+
+  /* --- Đường băng (runway silhouette) --- */
+  drawRunway(ctx, CW/2, CH, HORIZON, dark);
+
+  /* --- TÒA NHÀ BACKGROUND --- */
+  /* Dãy núi / đồi phía xa */
+  drawHills(ctx, HORIZON, dark);
+  /* TX Station building */
+  drawStationBuilding(ctx, 155, HORIZON+2, 56, 72, true, dark, 'TX');
+  /* ATCC Tower (trung tâm) */
+  drawATCCTower(ctx, 480, HORIZON, dark);
+  /* RX Station building */
+  drawStationBuilding(ctx, 805, HORIZON+2, 56, 65, false, dark, 'RX');
+}
+
+/* Vẽ đám mây nhẹ */
+function drawCloud(ctx, x, y, opacity, dark) {
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.fillStyle = dark ? 'rgba(100,140,200,0.4)' : 'rgba(255,255,255,0.75)';
+  [[0,0,18],[22,5,14],[38,-3,16],[55,5,12],[-14,8,12]].forEach(([ox,oy,r]) => {
+    ctx.beginPath(); ctx.arc(x+ox, y+oy, r, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.restore();
+}
+
+/* Vẽ đường băng */
+function drawRunway(ctx, cx, bottom, horizon, dark) {
+  ctx.save();
+  ctx.globalAlpha = dark ? 0.25 : 0.18;
+  const w1=18, w2=90;
+  ctx.fillStyle = dark ? '#1a2a3a' : '#aabbcc';
+  ctx.beginPath();
+  ctx.moveTo(cx-w1/2, horizon+2);
+  ctx.lineTo(cx+w1/2, horizon+2);
+  ctx.lineTo(cx+w2/2, bottom);
+  ctx.lineTo(cx-w2/2, bottom);
+  ctx.closePath(); ctx.fill();
+  /* Vạch kẻ đường băng */
+  ctx.strokeStyle = dark ? 'rgba(255,255,200,0.5)' : 'rgba(255,255,255,0.7)';
+  ctx.setLineDash([4,6]);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, horizon+6); ctx.lineTo(cx, bottom); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+/* Vẽ dãy đồi núi phía xa */
+function drawHills(ctx, horizon, dark) {
+  ctx.save();
+  ctx.globalAlpha = dark ? 0.5 : 0.3;
+  const hillColor = dark ? '#071a12' : '#9dbeaa';
+  ctx.fillStyle = hillColor;
+  ctx.beginPath();
+  ctx.moveTo(0, horizon);
+  /* Đồi trái */
+  ctx.quadraticCurveTo(80, horizon-32, 180, horizon-18);
+  ctx.quadraticCurveTo(250, horizon-28, 310, horizon-12);
+  /* Giữa thấp (khu vực ATCC) */
+  ctx.quadraticCurveTo(380, horizon-8, 480, horizon-6);
+  ctx.quadraticCurveTo(560, horizon-4, 620, horizon-12);
+  /* Đồi phải */
+  ctx.quadraticCurveTo(720, horizon-22, 800, horizon-15);
+  ctx.quadraticCurveTo(880, horizon-25, 960, horizon-10);
+  ctx.lineTo(960, horizon); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+/* Vẽ tòa nhà trạm TX/RX (nhỏ, nền) */
+function drawStationBuilding(ctx, cx, groundY, w, h, hasParabola, dark, tag) {
+  ctx.save();
+  ctx.globalAlpha = dark ? 0.55 : 0.4;
+
+  /* Thân nhà */
+  const fill = dark ? '#0c1e32' : '#7a9ab5';
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  roundRectPath(ctx, cx-w/2, groundY-h, w, h, 4);
+  ctx.fill();
+  ctx.strokeStyle = dark ? '#1e3a5f' : '#5a7a9a';
+  ctx.lineWidth = 1; ctx.stroke();
+
+  /* Mái dốc */
+  ctx.fillStyle = dark ? '#081628' : '#5a7a95';
+  ctx.beginPath();
+  ctx.moveTo(cx-w/2-4, groundY-h);
+  ctx.lineTo(cx, groundY-h-16);
+  ctx.lineTo(cx+w/2+4, groundY-h);
+  ctx.closePath(); ctx.fill();
+
+  /* Cửa sổ phát sáng */
+  ctx.fillStyle = dark ? 'rgba(255,220,80,0.35)' : 'rgba(255,230,100,0.5)';
+  for (let row=0;row<3;row++) {
+    for (let col=0;col<3;col++) {
+      ctx.fillRect(cx-w/2+6+col*15, groundY-h+12+row*18, 9,11);
+    }
+  }
+
+  /* Cửa ra vào */
+  ctx.fillStyle = dark ? '#040e1a' : '#4a6a84';
+  ctx.fillRect(cx-8, groundY-22, 16, 22);
+
+  /* Cột anten (mast) */
+  ctx.strokeStyle = dark ? '#38bdf8' : '#0369a1';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(cx, groundY-h-16);
+  ctx.lineTo(cx, groundY-h-48);
+  ctx.stroke();
+
+  /* Dish anten hoặc whip */
+  if (hasParabola) {
+    /* Dish hình parabol (TX) */
+    ctx.beginPath();
+    ctx.arc(cx, groundY-h-48, 10, 0.3, Math.PI-0.3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, groundY-h-48);
+    ctx.lineTo(cx+10, groundY-h-42);
+    ctx.stroke();
+  } else {
+    /* Whip anten (RX) */
+    ctx.beginPath();
+    ctx.moveTo(cx-12, groundY-h-48);
+    ctx.lineTo(cx,    groundY-h-56);
+    ctx.lineTo(cx+12, groundY-h-48);
+    ctx.stroke();
+  }
+
+  /* Label */
+  ctx.globalAlpha = dark ? 0.45 : 0.35;
+  ctx.fillStyle = dark ? '#94a3b8' : '#334155';
+  ctx.font = 'bold 10px Consolas, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(tag, cx, groundY-h+2);
+
+  ctx.restore();
+}
+
+/**
+ * Vẽ tháp ATC (Air Traffic Control Tower) — Đài KSKL Long Thành
+ * Phong cách: tháp quan sát với cầu thang, buồng kính, radar xoay
+ */
+function drawATCCTower(ctx, cx, groundY, dark) {
+  ctx.save();
+  ctx.globalAlpha = dark ? 0.62 : 0.45;
+
+  const baseCol  = dark ? '#0a1e32' : '#6a8aa8';
+  const stemCol  = dark ? '#071528' : '#547894';
+  const cabCol   = dark ? '#0f2540' : '#4a6a88';
+  const glassCol = dark ? 'rgba(56,189,248,0.18)' : 'rgba(147,197,253,0.4)';
+  const borderC  = dark ? '#1e3a5f' : '#3a5a7a';
+
+  /* Tòa nhà đế rộng */
+  ctx.fillStyle = baseCol;
+  roundRectPath(ctx, cx-44, groundY-68, 88, 68, 5);
+  ctx.fill();
+  ctx.strokeStyle = borderC; ctx.lineWidth=1.2; ctx.stroke();
+
+  /* Cột anten tháp trung gian */
+  ctx.fillStyle = stemCol;
+  ctx.fillRect(cx-9, groundY-130, 18, 66);
+
+  /* Cầu thang (đường chéo) */
+  ctx.strokeStyle = dark ? '#1a3050' : '#5a7a98';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(cx-9, groundY-68);
+  ctx.lineTo(cx-24, groundY-130);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx+9, groundY-68);
+  ctx.lineTo(cx+24, groundY-130);
+  ctx.stroke();
+
+  /* Buồng quan sát (observation cab) — hexagonal feel */
+  ctx.fillStyle = cabCol;
+  roundRectPath(ctx, cx-36, groundY-160, 72, 32, 4);
+  ctx.fill();
+  ctx.strokeStyle = borderC; ctx.lineWidth=1.2; ctx.stroke();
+
+  /* Kính buồng quan sát — phản chiếu bầu trời */
+  const glassGrad = ctx.createLinearGradient(cx-33, groundY-157, cx+33, groundY-130);
+  glassGrad.addColorStop(0, glassCol);
+  glassGrad.addColorStop(1, 'rgba(30,60,120,0.05)');
+  ctx.fillStyle = glassGrad;
+  roundRectPath(ctx, cx-33, groundY-157, 66, 26, 3);
+  ctx.fill();
+
+  /* Ống kính (séctơ kính riêng) */
+  ctx.strokeStyle = dark ? 'rgba(56,189,248,0.3)' : 'rgba(3,105,161,0.3)';
+  ctx.lineWidth = 0.7;
+  for (let i=-3; i<=3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(cx+i*9, groundY-160);
+    ctx.lineTo(cx+i*9, groundY-131);
+    ctx.stroke();
+  }
+
+  /* Cột anten đỉnh tháp */
+  ctx.strokeStyle = dark ? '#38bdf8' : '#0369a1';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx, groundY-160);
+  ctx.lineTo(cx, groundY-195);
+  ctx.stroke();
+
+  /* Radar dish trên đỉnh (tròn) */
+  ctx.strokeStyle = dark ? '#38bdf8' : '#0284c7';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, groundY-196, 8, 0, Math.PI, true);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx, groundY-196); ctx.lineTo(cx+8, groundY-190);
+  ctx.stroke();
+
+  /* Đèn hiệu hàng không (aviation beacon) — đỏ nhấp nháy */
+  ctx.globalAlpha = (dark ? 0.9 : 0.75) * (0.5 + 0.5 * Math.sin(Date.now()/400));
+  ctx.fillStyle = '#f87171';
+  ctx.shadowColor = '#f87171'; ctx.shadowBlur = dark?10:5;
+  ctx.beginPath();
+  ctx.arc(cx, groundY-198, 3.5, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  /* Label "ATCC LONG THÀNH" */
+  ctx.globalAlpha = dark ? 0.35 : 0.28;
+  ctx.fillStyle = dark ? '#94a3b8' : '#334155';
+  ctx.font = 'bold 9px Consolas, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('ATCC', cx, groundY-64);
+  ctx.fillText('LONG THÀNH', cx, groundY-53);
+
+  ctx.restore();
+}
+
+/* Utility: vẽ rectangle bo góc lên path (không stroke/fill) */
+function roundRectPath(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
   ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
@@ -875,600 +1307,443 @@ function roundRect(x, y, w, h, r) {
   ctx.closePath();
 }
 
-/**
- * Vẽ một node trạm viễn thông.
- * Bao gồm: hình nền, viền màu trạng thái, icon, tên, badge nhỏ.
- */
-function drawNode(node, status, isSelected) {
-  const { cx, cy, hw, hh } = node;
-  const border = statusColor(status);
-  const fill   = statusFill(status);
+/* ── Lưới nhẹ overlay ── */
+function drawOverlayGrid() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  ctx.strokeStyle = dark ? 'rgba(30,58,92,0.2)' : 'rgba(148,163,184,0.15)';
+  ctx.lineWidth = 0.4;
+  for (let x=0; x<=CW; x+=48) {
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,CH); ctx.stroke();
+  }
+  for (let y=0; y<=CH; y+=48) {
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
+  }
+}
+
+/* ── Vẽ node topology box ── */
+function drawNode(node, status, selected) {
+  const {cx,cy,hw,hh} = node;
+  const border = sColor(status);
+  const fill   = sFill(status);
 
   ctx.save();
-
-  // Vòng sáng ngoài khi được chọn
-  if (isSelected) {
-    ctx.shadowColor = border;
-    ctx.shadowBlur  = 22;
-    ctx.strokeStyle = border;
-    ctx.lineWidth   = 2.5;
-    roundRect(cx - hw - 5, cy - hh - 5, (hw+5)*2, (hh+5)*2, 13);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+  if (selected) {
+    ctx.shadowColor = border; ctx.shadowBlur = 20;
+    ctx.strokeStyle = border; ctx.lineWidth = 3;
+    roundRectPath(ctx, cx-hw-6, cy-hh-6, (hw+6)*2, (hh+6)*2, 13);
+    ctx.stroke(); ctx.shadowBlur = 0;
   }
 
-  // Nền node
+  /* Nền node */
+  const bg = document.documentElement.getAttribute('data-theme')==='dark'
+    ? 'rgba(6,13,26,0.88)' : 'rgba(255,255,255,0.88)';
+  ctx.fillStyle = bg;
+  roundRectPath(ctx, cx-hw, cy-hh, hw*2, hh*2, 10);
+  ctx.fill();
+
   ctx.fillStyle = fill;
-  roundRect(cx - hw, cy - hh, hw*2, hh*2, 10);
+  roundRectPath(ctx, cx-hw, cy-hh, hw*2, hh*2, 10);
   ctx.fill();
 
-  // Viền node — dày hơn khi được chọn
-  ctx.strokeStyle = border;
-  ctx.lineWidth   = isSelected ? 2.5 : 1.5;
-  roundRect(cx - hw, cy - hh, hw*2, hh*2, 10);
+  ctx.strokeStyle = border; ctx.lineWidth = selected?2.5:1.5;
+  roundRectPath(ctx, cx-hw, cy-hh, hw*2, hh*2, 10);
   ctx.stroke();
 
-  // Icon + tên thiết bị
-  ctx.fillStyle    = canvasText();
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'middle';
-
-  ctx.font = '18px Segoe UI, sans-serif';
-  ctx.fillText(node.icon, cx, cy - 20);
-
+  /* Nội dung */
+  const dark = document.documentElement.getAttribute('data-theme')==='dark';
+  ctx.fillStyle = dark ? '#cdd9e8' : '#0f2340';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '17px Segoe UI, sans-serif';
+  ctx.fillText(node.icon, cx, cy-18);
   ctx.font = 'bold 13px Segoe UI, sans-serif';
-  ctx.fillText(node.label[0], cx, cy - 4);
-
+  ctx.fillText(node.label[0], cx, cy-4);
   ctx.font = '12px Segoe UI, sans-serif';
-  ctx.fillText(node.label[1], cx, cy + 12);
+  ctx.fillText(node.label[1], cx, cy+10);
+  ctx.fillStyle = dark?'#3d5a7a':'#6b8aaa';
+  ctx.font = '9.5px Consolas, monospace';
+  ctx.fillText(node.sub, cx, cy+24);
 
-  ctx.fillStyle = canvasSub();
-  ctx.font      = '10px Consolas, monospace';
-  ctx.fillText(node.sub, cx, cy + 27);
-
-  // Badge trạng thái nhỏ (góc trên node)
-  drawBadge(cx, cy - hh + 10, status);
+  /* Badge trạng thái */
+  drawStatusBadge(cx, cy-hh+10, status);
 
   ctx.restore();
 }
 
-/**
- * Vẽ badge trạng thái nhỏ (ok/warn/crit/unknown)
- */
-function drawBadge(bx, by, status) {
-  const labels = { ok:'OK', warn:'WARN', crit:'CRIT', unknown:'—' };
-  const color  = statusColor(status);
+function drawStatusBadge(bx, by, status) {
+  const c = sColor(status);
+  const lb = {ok:'OK',warn:'WARN',crit:'CRIT',unknown:'—'}[status]||'—';
   ctx.save();
-  ctx.fillStyle = color + '33';
-  roundRect(bx - 20, by - 7, 40, 14, 5);
+  ctx.fillStyle = c+'22';
+  roundRectPath(ctx, bx-18, by-6, 36, 13, 4);
   ctx.fill();
-  ctx.strokeStyle = color; ctx.lineWidth = 0.8;
-  roundRect(bx - 20, by - 7, 40, 14, 5);
+  ctx.strokeStyle = c; ctx.lineWidth = 0.8;
+  roundRectPath(ctx, bx-18, by-6, 36, 13, 4);
   ctx.stroke();
-  ctx.fillStyle = color; ctx.font = 'bold 9px Segoe UI,sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(labels[status] || '—', bx, by);
+  ctx.fillStyle = c; ctx.font = 'bold 8.5px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(lb, bx, by);
   ctx.restore();
 }
 
-/**
- * Vẽ đường kết nối giữa 2 node.
- * Dùng Bezier curve để tạo đường cong nhẹ.
- * Màu sắc theo trạng thái link: ok=xanh, warn=vàng, crit=đỏ.
- */
-function drawLink(link, linkStatus) {
-  const fn = NODE_DEFS[link.from];
-  const tn = NODE_DEFS[link.to];
-  const x1 = fn.cx + fn.hw, y1 = fn.cy;
-  const x2 = tn.cx - tn.hw, y2 = tn.cy;
-  const mx  = (x1 + x2) / 2;
-  const color = statusColor(linkStatus);
+/* ── Vẽ đường kết nối ── */
+function drawLink(link, status) {
+  const fn = NODES[link.from], tn = NODES[link.to];
+  const x1 = fn.cx+fn.hw, y1 = fn.cy;
+  const x2 = tn.cx-tn.hw, y2 = tn.cy;
+  const mx = (x1+x2)/2;
+  const c  = sColor(status);
 
   ctx.save();
-
-  // Glow effect
-  ctx.shadowColor = color;
-  ctx.shadowBlur  = linkStatus === 'crit' ? 14 : 6;
-
-  // Đường truyền
-  ctx.strokeStyle = color;
-  ctx.lineWidth   = linkStatus === 'crit' ? 3 : 2;
-  ctx.setLineDash(linkStatus === 'unknown' ? [8,5] : []);
-
+  ctx.shadowColor = c; ctx.shadowBlur = status==='crit'?12:5;
+  ctx.strokeStyle = c; ctx.lineWidth = status==='crit'?2.5:1.8;
+  ctx.setLineDash(status==='unknown'?[8,5]:[]);
   ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.bezierCurveTo(mx, y1, mx, y2, x2, y2);
+  ctx.moveTo(x1,y1);
+  ctx.bezierCurveTo(mx,y1,mx,y2,x2,y2);
   ctx.stroke();
+  ctx.setLineDash([]); ctx.shadowBlur=0;
 
-  ctx.setLineDash([]); ctx.shadowBlur = 0;
-
-  // Nhãn link (giữa đường)
-  const lx = mx, ly = (y1 + y2) / 2 - 20;
-  ctx.fillStyle = canvasBg() + 'dd';
-  roundRect(lx - 46, ly - 10, 92, 22, 4);
+  /* Nhãn link */
+  const lx=mx, ly=(y1+y2)/2-18;
+  const dark = document.documentElement.getAttribute('data-theme')==='dark';
+  ctx.fillStyle = dark?'rgba(6,13,26,0.82)':'rgba(238,242,247,0.85)';
+  roundRectPath(ctx, lx-44, ly-10, 88, 22, 4);
   ctx.fill();
-  ctx.fillStyle = color;
-  ctx.font = '10px Consolas, monospace';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const lines = link.label.split('\n');
-  lines.forEach((ln, i) => ctx.fillText(ln, lx, ly - 5 + i * 12));
-
+  ctx.fillStyle = c;
+  ctx.font = '9.5px Consolas,monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  link.label.split('\n').forEach((l,i) => ctx.fillText(l, lx, ly-4+i*12));
   ctx.restore();
 }
 
-/**
- * Nội suy điểm trên đường Bezier bậc 3 tại tham số t (0→1).
- * Công thức: B(t) = (1-t)³P0 + 3(1-t)²tP1 + 3(1-t)t²P2 + t³P3
- */
-function bezier(p0, p1, p2, p3, t) {
-  const u = 1 - t;
+/* ── Bezier interpolation ── */
+function bez(p0,p1,p2,p3,t) {
+  const u=1-t;
   return u*u*u*p0 + 3*u*u*t*p1 + 3*u*t*t*p2 + t*t*t*p3;
 }
 
-/**
- * Vẽ các xung tín hiệu (chấm tròn di chuyển dọc đường truyền).
- * Mỗi xung có vệt sáng phía sau tạo cảm giác chuyển động.
- */
+/* ── Xung tín hiệu (signal pulse) ── */
 function drawPulses(link) {
-  const fn = NODE_DEFS[link.from];
-  const tn = NODE_DEFS[link.to];
-  const x1 = fn.cx + fn.hw, y1 = fn.cy;
-  const x2 = tn.cx - tn.hw, y2 = tn.cy;
-  const mx = (x1 + x2) / 2;
-
-  pulses.filter(p => p.linkId === link.id).forEach(p => {
-    const px = bezier(x1, mx, mx, x2, p.t);
-    const py = bezier(y1, y1, y2, y2, p.t);
-
+  const fn=NODES[link.from], tn=NODES[link.to];
+  const x1=fn.cx+fn.hw, y1=fn.cy, x2=tn.cx-tn.hw, y2=tn.cy, mx=(x1+x2)/2;
+  pulses.filter(p=>p.lid===link.id).forEach(p=>{
+    const px=bez(x1,mx,mx,x2,p.t);
+    const py=bez(y1,y1,y2,y2,p.t);
     ctx.save();
-    // Đầu xung
-    ctx.shadowColor = p.color; ctx.shadowBlur = 9;
-    ctx.fillStyle   = p.color;
-    ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill();
-
-    // Vệt sáng phía sau (alpha thấp)
-    ctx.globalAlpha = 0.35; ctx.shadowBlur = 4;
-    const t2 = Math.max(0, p.t - 0.04);
-    const px2 = bezier(x1, mx, mx, x2, t2);
-    const py2 = bezier(y1, y1, y2, y2, t2);
-    ctx.beginPath(); ctx.arc(px2, py2, 3, 0, Math.PI * 2); ctx.fill();
-
+    ctx.shadowColor=p.c; ctx.shadowBlur=10;
+    ctx.fillStyle=p.c;
+    ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2); ctx.fill();
+    /* vệt sáng */
+    const t2=Math.max(0,p.t-0.04);
+    const px2=bez(x1,mx,mx,x2,t2), py2=bez(y1,y1,y2,y2,t2);
+    ctx.globalAlpha=0.3; ctx.shadowBlur=4;
+    ctx.beginPath(); ctx.arc(px2,py2,3,0,Math.PI*2); ctx.fill();
     ctx.restore();
   });
 }
 
-/**
- * Vẽ lưới nền nhạt (grid pattern — phong cách SCADA)
- */
-function drawGrid() {
-  const theme = document.documentElement.getAttribute('data-theme');
-  ctx.strokeStyle = theme === 'light' ? 'rgba(148,163,184,0.18)' : 'rgba(51,65,85,0.45)';
-  ctx.lineWidth = 0.5;
-  for (let x = 0; x <= CANVAS_W; x += 40) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_H); ctx.stroke();
-  }
-  for (let y = 0; y <= CANVAS_H; y += 40) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_W, y); ctx.stroke();
-  }
-}
+/* ── HÀM VẼ CHÍNH ── */
+function drawTopo() {
+  ctx.clearRect(0,0,CW,CH);
 
-/**
- * HÀM VẼ CHÍNH — Vẽ toàn bộ sơ đồ topology.
- * Thứ tự: nền → grid → links → pulses → nodes → chú thích
- */
-function drawTopology() {
-  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-  ctx.fillStyle = canvasBg();
-  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  /* Lớp 1: Nền cảnh (sky + ground + tòa nhà) */
+  drawBackground();
 
-  drawGrid();
+  /* Lớp 2: Grid overlay nhẹ */
+  drawOverlayGrid();
 
-  // Vẽ đường kết nối (phía dưới nodes)
-  LINK_DEFS.forEach(lk => {
-    const st = lk.id === 'tx_atcc' ? topoState.link_tx_atcc : topoState.link_atcc_rx;
+  /* Lớp 3: Links */
+  LINKS.forEach(lk => {
+    const st = lk.id==='tx_atcc' ? topo.link_tx_atcc : topo.link_atcc_rx;
     drawLink(lk, st);
   });
 
-  // Vẽ xung tín hiệu
-  LINK_DEFS.forEach(lk => drawPulses(lk));
+  /* Lớp 4: Signal pulses */
+  LINKS.forEach(lk => drawPulses(lk));
 
-  // Vẽ các node (phía trên đường)
-  const stMap = { tx: topoState.tx_status, atcc: topoState.atcc_status, rx: topoState.rx_status };
-  Object.values(NODE_DEFS).forEach(n => drawNode(n, stMap[n.id] || 'unknown', selectedNode === n.id));
+  /* Lớp 5: Nodes */
+  const stMap = {tx:topo.tx_status, atcc:topo.atcc_status, rx:topo.rx_status};
+  Object.values(NODES).forEach(n => drawNode(n, stMap[n.id]||'unknown', selNode===n.id));
 
-  // Tiêu đề + timestamp
+  /* Lớp 6: Nhãn tiêu đề + timestamp */
+  const dark = document.documentElement.getAttribute('data-theme')==='dark';
   ctx.save();
-  ctx.fillStyle = canvasSub(); ctx.font = '11px Segoe UI, sans-serif';
-  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  ctx.fillText('RCMS Topology — TX ⟶ ATCC Long Thành ⟶ RX', 12, 8);
-  if (topoState.ts) {
-    ctx.textAlign = 'right';
-    ctx.fillText('Cập nhật: ' + new Date(topoState.ts).toLocaleTimeString('vi-VN'), CANVAS_W - 12, 8);
+  ctx.fillStyle = dark?'#1e3a5f':'#6b8aaa';
+  ctx.font = '11px Segoe UI, sans-serif';
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.fillText('RCMS — TX ⟶ ATCC Long Thành ⟶ RX', 10, 8);
+  if (topo.ts) {
+    ctx.textAlign='right';
+    ctx.fillText('Cập nhật: '+new Date(topo.ts).toLocaleTimeString('vi-VN'), CW-10, 8);
   }
   ctx.restore();
 }
 
-/* ── ANIMATION LOOP — Vòng lặp hoạt ảnh ── */
-
-/**
- * Vòng lặp chính chạy 60fps:
- * 1. Tính delta-time
- * 2. Cập nhật vị trí xung
- * 3. Sinh xung mới
- * 4. Vẽ lại canvas
- */
+/* ── Animation loop ── */
 function animLoop(ts) {
-  const dt = Math.min((ts - lastFrameTime) / 1000, 0.1);
-  lastFrameTime = ts;
-
-  // Di chuyển xung theo thời gian
-  pulses = pulses.map(p => ({ ...p, t: p.t + PULSE_SPEED * dt })).filter(p => p.t < 1.0);
-
-  // Tạo xung mới cho mỗi link
-  const now = ts / 1000;
-  LINK_DEFS.forEach(lk => {
-    const st = lk.id === 'tx_atcc' ? topoState.link_tx_atcc : topoState.link_atcc_rx;
-    if (st === 'crit' || st === 'unknown') return; // Không tạo xung khi mất kết nối
-    if (now - lastPulseTime[lk.id] > PULSE_INTERVAL) {
-      pulses.push({ linkId: lk.id, t: 0, color: st === 'warn' ? '#fbbf24' : '#60a5fa' });
-      lastPulseTime[lk.id] = now;
+  const dt = Math.min((ts-lastFrame)/1000, 0.1);
+  lastFrame = ts;
+  /* Di chuyển xung */
+  pulses = pulses.map(p=>({...p,t:p.t+PULSE_SPEED*dt})).filter(p=>p.t<1);
+  /* Tạo xung mới */
+  const now = ts/1000;
+  LINKS.forEach(lk => {
+    const st = lk.id==='tx_atcc'?topo.link_tx_atcc:topo.link_atcc_rx;
+    if (st==='crit'||st==='unknown') return;
+    if (now-lastPulse[lk.id]>PULSE_INT) {
+      pulses.push({lid:lk.id, t:0, c:st==='warn'?'#fbbf24':'#38bdf8'});
+      lastPulse[lk.id]=now;
     }
   });
-
-  drawTopology();
-  animFrameId = requestAnimationFrame(animLoop);
+  drawTopo();
+  animId = requestAnimationFrame(animLoop);
 }
-animFrameId = requestAnimationFrame(animLoop);
+animId = requestAnimationFrame(animLoop);
 
 /* ================================================================
-   NODE DETAIL PANEL — Hàm quản lý panel chi tiết
+   NODE DETAIL PANEL
    ================================================================ */
-
-let currentPanelNode = null; // Node đang mở panel
-
-/**
- * Mở panel chi tiết cho node được click.
- * Điền: tên, badge trạng thái, bảng thông tin, KPI bars.
- */
-function openNodePanel(node) {
-  currentPanelNode = node;
-  const panel = document.getElementById('node-panel');
-
-  document.getElementById('panel-title').textContent    = node.label.join(' ');
-  document.getElementById('panel-subtitle').textContent = node.icon + ' ' + node.sub;
-
-  // Badge trạng thái
-  const stMap = { tx: topoState.tx_status, atcc: topoState.atcc_status, rx: topoState.rx_status };
-  const st    = stMap[node.id] || 'unknown';
-  const badgeEl = document.getElementById('panel-status-badge');
-  const badgeTxt = { ok:'● NORMAL', warn:'⚠ WARNING', crit:'✕ CRITICAL', unknown:'? UNKNOWN' };
-  const badgeCls = { ok:'badge-green', warn:'badge-yellow', crit:'badge-red', unknown:'badge-blue' };
-  badgeEl.textContent = badgeTxt[st] || '? UNKNOWN';
-  badgeEl.className   = 'badge ' + (badgeCls[st] || 'badge-blue');
-  document.getElementById('panel-ts').textContent =
-    topoState.ts ? new Date(topoState.ts).toLocaleTimeString('vi-VN') : '';
-
-  // Bảng thông tin
-  const infoEl = document.getElementById('panel-info-rows');
-  infoEl.innerHTML = '';
-  Object.entries(node.info).forEach(([k, v]) => {
-    const isMono = /\d{1,3}\.\d/.test(v) || v.includes(':');
-    infoEl.innerHTML += `<div class="info-row">
-      <span class="info-key">${k}</span>
-      <span class="info-value ${isMono ? 'mono' : ''}">${v}</span>
-    </div>`;
-  });
-
-  // KPI bars
-  refreshKpiBars(node.id);
-  panel.style.display = 'block';
+function openPanel(node) {
+  curPanel = node;
+  document.getElementById('panel-title').textContent = node.label.join(' ');
+  document.getElementById('panel-sub').textContent   = node.icon + ' ' + node.sub;
+  const stMap = {tx:topo.tx_status,atcc:topo.atcc_status,rx:topo.rx_status};
+  const st = stMap[node.id]||'unknown';
+  const badgeTxt = {ok:'● NORMAL',warn:'⚠ WARNING',crit:'✕ CRITICAL',unknown:'? UNKNOWN'};
+  const badgeCls = {ok:'bg-green',warn:'bg-yellow',crit:'bg-red',unknown:'bg-blue'};
+  const b = document.getElementById('panel-badge');
+  b.textContent = badgeTxt[st]; b.className = 'badge ' + badgeCls[st];
+  document.getElementById('panel-ts').textContent = topo.ts?new Date(topo.ts).toLocaleTimeString('vi-VN'):'';
+  /* Bảng thông tin */
+  document.getElementById('panel-info').innerHTML =
+    Object.entries(node.info).map(([k,v])=>`
+      <div class="info-row">
+        <span class="ik">${k}</span>
+        <span class="iv ${/\d{1,3}\.\d/.test(v)||v.includes(':')?' mono':''}">${v}</span>
+      </div>`).join('');
+  updatePanelKpi(node.id);
+  document.getElementById('node-panel').style.display = 'block';
 }
 
-/**
- * Cập nhật 3 thanh KPI (Delay, Jitter, Loss) trong panel.
- * Dữ liệu lấy từ topoState — được cập nhật qua WebSocket.
- */
-function refreshKpiBars(nodeId) {
-  // TX/ATCC → dùng dữ liệu link tx_atcc; RX → link atcc_rx
-  const keys = nodeId === 'rx'
-    ? { d: 'delay_atcc_rx',  j: 'jitter_atcc_rx',  l: 'loss_atcc_rx'  }
-    : { d: 'delay_tx_atcc',  j: 'jitter_tx_atcc',  l: 'loss_tx_atcc'  };
-
-  function setBar(barId, valId, val, max) {
-    if (val === null || val === undefined) return;
-    const pct = Math.min((val / max) * 100, 100);
-    const clr = pct < 50 ? 'var(--green)' : pct < 100 ? 'var(--yellow)' : 'var(--red)';
-    document.getElementById(barId).style.width      = pct + '%';
-    document.getElementById(barId).style.background = clr;
-    document.getElementById(valId).textContent      = typeof val === 'number' ? val.toFixed(val < 1 ? 3 : 1) + (valId.includes('loss') ? ' %' : ' ms') : val;
+function updatePanelKpi(nodeId) {
+  const keys = nodeId==='rx'
+    ? {d:'delay_atcc_rx', j:'jitter_atcc_rx', l:'loss_atcc_rx'}
+    : {d:'delay_tx_atcc', j:'jitter_tx_atcc', l:'loss_tx_atcc'};
+  function setBar(bid,vid,val,max,unit) {
+    if (val===null||val===undefined) return;
+    const p = Math.min((val/max)*100,100);
+    const c = p<50?'var(--green)':p<100?'var(--yellow)':'var(--red)';
+    document.getElementById(bid).style.width = p+'%';
+    document.getElementById(bid).style.background = c;
+    document.getElementById(vid).textContent = typeof val==='number'
+      ? val.toFixed(val<1?3:1)+unit : val;
   }
-
-  setBar('panel-bar-delay',  'panel-val-delay',  topoState[keys.d], 100);
-  setBar('panel-bar-jitter', 'panel-val-jitter', topoState[keys.j], 20);
-  setBar('panel-bar-loss',   'panel-val-loss',   topoState[keys.l], 1);
+  setBar('pb-delay','pv-delay',topo[keys.d],100,' ms');
+  setBar('pb-jitter','pv-jitter',topo[keys.j],20,' ms');
+  setBar('pb-loss','pv-loss',topo[keys.l],1,' %');
 }
 
-/** Đóng node detail panel */
-function closeNodePanel() {
-  document.getElementById('node-panel').style.display = 'none';
-  selectedNode = null; currentPanelNode = null;
-  drawTopology();
+function closePanel() {
+  document.getElementById('node-panel').style.display='none';
+  selNode=null; curPanel=null; drawTopo();
 }
 
-/**
- * Kích hoạt đo kiểm Ansible cho trạm được chọn trên canvas.
- * Chuyển sang tab Ansible, chọn đúng target group, chạy playbook.
- */
 function runNodeMeasure() {
-  if (!currentPanelNode) return;
-  const target = currentPanelNode.playbook_target;
+  if (!curPanel) return;
   switchTab('ansible');
-  const sel = document.getElementById('target-metrics');
-  for (let i = 0; i < sel.options.length; i++) {
-    if (sel.options[i].value === target) { sel.selectedIndex = i; break; }
+  const sel=document.getElementById('target-metrics');
+  for (let i=0;i<sel.options.length;i++) {
+    if (sel.options[i].value===curPanel.playbook){sel.selectedIndex=i;break;}
   }
-  runPlaybook('01_collect_metrics', 'target-metrics');
-  closeNodePanel();
+  runPlaybook('01_collect_metrics','target-metrics');
+  closePanel();
 }
 
-/** Mở Grafana dashboard của node đang chọn */
 function openNodeGrafana() {
-  if (!currentPanelNode) return;
-  window.open(GRAFANA + '/d/' + currentPanelNode.grafana_dash + '?orgId=1', '_blank');
+  if (!curPanel) return;
+  window.open(GRAFANA+'/d/'+curPanel.grafana+'?orgId=1','_blank');
 }
 
 /* ================================================================
-   WEBSOCKET — Nhận dữ liệu topology thời gian thực
-   ================================================================
-
-   Endpoint: ws://{host}/ws/topology
-   Backend gửi JSON có cấu trúc giống topoState.
-
-   Ví dụ payload:
-   {
-     "tx_status": "ok",  "atcc_status": "ok",  "rx_status": "warn",
-     "link_tx_atcc": "ok", "link_atcc_rx": "warn",
-     "delay_tx_atcc": 28.5, "jitter_tx_atcc": 3.2, "loss_tx_atcc": 0.01,
-     "delay_atcc_rx": 74.2, "jitter_atcc_rx": 14.5, "loss_atcc_rx": 0.48,
-     "ts": "2026-06-12T15:30:00Z"
-   }
-*/
-
-let ws = null, wsTimer = null, wsDelay = 2000;
+   WEBSOCKET — Nhận dữ liệu topology realtime
+   ================================================================ */
+let ws=null, wsTimer=null, wsDelay=2000;
 
 function connectWS() {
-  try { ws = new WebSocket('ws://' + window.location.host + '/ws/topology'); }
-  catch(e) { setWsStatus('error'); scheduleReconnect(); return; }
-
-  ws.onopen = () => {
-    wsDelay = 2000; // Reset backoff khi kết nối thành công
-    setWsStatus('connected');
-  };
-
+  try { ws = new WebSocket('ws://'+window.location.host+'/ws/topology'); }
+  catch(e) { setWsLabel('err'); schedReconnect(); return; }
+  ws.onopen  = () => { wsDelay=2000; setWsLabel('ok'); };
   ws.onmessage = e => {
     try {
-      const d = JSON.parse(e.data);
-      Object.assign(topoState, d);
-      // Nếu panel đang mở: cập nhật KPI bars + badge ngay lập tức
-      if (currentPanelNode) {
-        refreshKpiBars(currentPanelNode.id);
-        const stMap = { tx: topoState.tx_status, atcc: topoState.atcc_status, rx: topoState.rx_status };
-        const st    = stMap[currentPanelNode.id] || 'unknown';
-        const badgeTxt = { ok:'● NORMAL', warn:'⚠ WARNING', crit:'✕ CRITICAL', unknown:'? UNKNOWN' };
-        const badgeCls = { ok:'badge-green', warn:'badge-yellow', crit:'badge-red', unknown:'badge-blue' };
-        const b = document.getElementById('panel-status-badge');
-        b.textContent = badgeTxt[st]; b.className = 'badge ' + (badgeCls[st] || 'badge-blue');
-      }
-    } catch(e) { console.warn('[WS] Lỗi parse JSON:', e); }
+      Object.assign(topo, JSON.parse(e.data));
+      if (curPanel) { updatePanelKpi(curPanel.id); }
+    } catch(e){}
   };
-
-  ws.onerror = () => setWsStatus('error');
-  ws.onclose = () => { setWsStatus('disconnected'); scheduleReconnect(); };
+  ws.onerror  = () => setWsLabel('err');
+  ws.onclose  = () => { setWsLabel('dc'); schedReconnect(); };
 }
-
-/**
- * Lên lịch kết nối lại với Exponential Backoff (tránh spam khi server ngắt).
- * Delay tăng dần: 2s → 3s → 4.5s → ... tối đa 30s
- */
-function scheduleReconnect() {
+function schedReconnect() {
   clearTimeout(wsTimer);
-  wsTimer = setTimeout(() => { wsDelay = Math.min(wsDelay * 1.5, 30000); connectWS(); }, wsDelay);
+  wsTimer = setTimeout(()=>{ wsDelay=Math.min(wsDelay*1.5,30000); connectWS(); }, wsDelay);
 }
-
-/** Cập nhật nhãn trạng thái WS trên canvas */
-function setWsStatus(state) {
-  const el = document.getElementById('ws-status');
-  const map = { connected:'⬤ WS Connected', disconnected:'○ WS Disconnected', error:'⬤ WS Error' };
-  const clr = { connected:'var(--green)', disconnected:'var(--text2)', error:'var(--red)' };
-  el.textContent = map[state] || '○ WS...';
-  el.style.color = clr[state] || 'var(--text2)';
+function setWsLabel(s) {
+  const el=document.getElementById('ws-label');
+  const m={ok:'⬤ WS Live',dc:'○ WS Offline',err:'⬤ WS Error'};
+  const c={ok:'var(--green)',dc:'var(--text2)',err:'var(--red)'};
+  el.textContent=m[s]||'○ WS...'; el.style.color=c[s]||'var(--text2)';
 }
-
-connectWS(); // Khởi động kết nối WS khi tải trang
+connectWS();
 
 /* ================================================================
-   API CALLS — Giao tiếp với Backend REST
+   API CALLS
    ================================================================ */
-
-/** Tải 4 KPI boxes ở đầu trang */
 async function loadSummary() {
   try {
-    const r = await fetch(API + '/metrics/summary');
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const r = await fetch(API+'/metrics/summary');
+    if (!r.ok) throw new Error();
     const d = await r.json();
     document.getElementById('kpi-tx').textContent    = d.t6_radio_up_tx_main ?? '—';
     document.getElementById('kpi-rx').textContent    = d.t6_radio_up_rx_main ?? '—';
     document.getElementById('kpi-ubvhf').textContent = d.t6_radio_up_ubvhf   ?? '—';
-    const alerts = (d.critical_alerts || 0) + (d.warning_alerts || 0);
-    const el = document.getElementById('kpi-alerts');
-    el.textContent = alerts; el.style.color = alerts > 0 ? 'var(--red)' : 'var(--green)';
-    document.getElementById('status-badge').innerHTML = '<span class="dot dot-green"></span> Connected';
-    document.getElementById('status-badge').className = 'badge badge-green';
-    // Cập nhật topoState từ API (fallback nếu WS chưa kết nối được)
-    if (d.tx_status)   topoState.tx_status   = d.tx_status;
-    if (d.rx_status)   topoState.rx_status   = d.rx_status;
-    if (d.atcc_status) topoState.atcc_status = d.atcc_status;
+    const al = (d.critical_alerts||0)+(d.warning_alerts||0);
+    const ae = document.getElementById('kpi-alerts');
+    ae.textContent = al; ae.style.color = al>0?'var(--red)':'var(--green)';
+    const sb = document.getElementById('status-badge');
+    sb.innerHTML = '<span class="dot dot-g"></span> Connected';
+    sb.className = 'status-ok';
+    if (d.tx_status) topo.tx_status=d.tx_status;
+    if (d.rx_status) topo.rx_status=d.rx_status;
+    if (d.atcc_status) topo.atcc_status=d.atcc_status;
   } catch(e) {
-    document.getElementById('status-badge').innerHTML = '<span class="dot dot-red"></span> Lỗi kết nối';
-    document.getElementById('status-badge').className = 'badge badge-red';
+    const sb=document.getElementById('status-badge');
+    sb.innerHTML='<span class="dot dot-r"></span> Lỗi kết nối';
+    sb.className='status-err';
   }
 }
 
-/** Tải bảng thiết bị T6 radios */
 async function loadDevices() {
-  const loadEl = document.getElementById('device-loading');
-  const tblEl  = document.getElementById('device-table');
-  loadEl.style.display = 'block'; tblEl.style.display = 'none';
+  const le=document.getElementById('dev-loading');
+  const tb=document.getElementById('dev-table');
+  le.style.display='block'; tb.style.display='none';
   try {
-    const [devR, s4R] = await Promise.all([
-      fetch(API + '/metrics/t6_status'),
-      fetch(API + '/metrics/s4ip_status'),
-    ]);
-    const devData = await devR.json();
-    const s4Data  = await s4R.json();
-    const tbody = document.getElementById('device-tbody');
-    tbody.innerHTML = '';
-    (devData.devices || []).forEach(d => {
-      const up = d.status === 'up';
-      tbody.innerHTML += `<tr>
-        <td><span class="badge ${up?'badge-green':'badge-red'}"><span class="dot ${up?'dot-green':'dot-red'}"></span>${up?'UP':'DOWN'}</span></td>
-        <td class="mono">${d.instance}</td>
-        <td>${d.device||'—'}</td>
-        <td>${d.site||'—'}</td>
-        <td>${d.redundancy||'—'}</td>
-        <td style="color:var(--text2);font-size:0.9em">${d.job}</td>
-      </tr>`;
+    const [dr,sr] = await Promise.all([fetch(API+'/metrics/t6_status'),fetch(API+'/metrics/s4ip_status')]);
+    const dd=await dr.json(), sd=await sr.json();
+    const tbody=document.getElementById('dev-tbody');
+    tbody.innerHTML='';
+    (dd.devices||[]).forEach(d=>{
+      const up=d.status==='up';
+      tbody.innerHTML+=`<tr>
+        <td><span class="badge ${up?'bg-green':'bg-red'}"><span class="dot ${up?'dot-g':'dot-r'}"></span>${up?'UP':'DOWN'}</span></td>
+        <td class="mono">${d.instance}</td><td>${d.device||'—'}</td>
+        <td>${d.site||'—'}</td><td>${d.redundancy||'—'}</td>
+        <td style="color:var(--text2);font-size:.9em">${d.job}</td></tr>`;
     });
-    loadEl.style.display = 'none'; tblEl.style.display = 'table';
-    const s4html = (s4Data.s4ip_controllers || []).map(s => {
-      const up = s.status === 'up';
-      return `<span class="badge ${up?'badge-green':'badge-red'}" style="margin:2px"><span class="dot ${up?'dot-green':'dot-red'}"></span>${s.instance}</span>`;
-    }).join('');
-    document.getElementById('s4ip-status').innerHTML = s4html || 'Chưa có dữ liệu';
+    le.style.display='none'; tb.style.display='table';
+    document.getElementById('s4ip-status').innerHTML=
+      (sd.s4ip_controllers||[]).map(s=>{
+        const up=s.status==='up';
+        return `<span class="badge ${up?'bg-green':'bg-red'}" style="margin:2px">
+          <span class="dot ${up?'dot-g':'dot-r'}"></span>${s.instance}</span>`;
+      }).join('')||'Chưa có dữ liệu';
   } catch(e) {
-    loadEl.innerHTML = '<span style="color:var(--red)">⚠ Lỗi: ' + e.message + '</span>';
+    le.innerHTML='<span style="color:var(--red)">⚠ Lỗi: '+e.message+'</span>';
   }
 }
 
-/** Tải cảnh báo từ Alertmanager */
 async function loadAlerts() {
   try {
-    const r = await fetch(API + '/metrics/alerts');
-    const d = await r.json();
-    const el = document.getElementById('alert-list');
-    if (!d.alerts || !d.alerts.length) {
-      el.innerHTML = '<div class="badge badge-green" style="padding:8px 12px">✅ Không có cảnh báo nào đang kích hoạt</div>';
+    const r=await fetch(API+'/metrics/alerts'), d=await r.json();
+    const el=document.getElementById('alert-list');
+    if (!d.alerts||!d.alerts.length) {
+      el.innerHTML='<div class="badge bg-green" style="padding:8px 12px">✅ Không có cảnh báo đang kích hoạt</div>';
       return;
     }
-    el.innerHTML = d.alerts.map(a => `
-      <div class="alert-item ${a.severity==='critical'?'alert-critical':'alert-warning'}">
-        <div style="font-size:1.2em">${a.severity==='critical'?'🔴':'⚠️'}</div>
+    el.innerHTML=d.alerts.map(a=>`
+      <div class="alert-item ${a.severity==='critical'?'a-crit':'a-warn'}">
+        <div style="font-size:1.1em">${a.severity==='critical'?'🔴':'⚠️'}</div>
         <div style="flex:1">
           <div style="font-weight:600">${a.alertname}</div>
-          <div style="color:var(--text2);font-size:0.9em">${a.instance||''} ${a.site?'· '+a.site:''} ${a.kpi?'· KPI: '+a.kpi:''}</div>
+          <div style="color:var(--text2);font-size:.88em">${a.instance||''} ${a.site?'· '+a.site:''}</div>
         </div>
-        <div><span class="badge ${a.severity==='critical'?'badge-red':'badge-yellow'}">${a.severity.toUpperCase()}</span></div>
+        <span class="badge ${a.severity==='critical'?'bg-red':'bg-yellow'}">${a.severity.toUpperCase()}</span>
       </div>`).join('');
   } catch(e) {
-    document.getElementById('alert-list').innerHTML = '<span style="color:var(--red)">⚠ Lỗi: ' + e.message + '</span>';
+    document.getElementById('alert-list').innerHTML='<span style="color:var(--red)">⚠ Lỗi: '+e.message+'</span>';
   }
 }
 
 /* ================================================================
-   ANSIBLE JOB MANAGEMENT
+   ANSIBLE
    ================================================================ */
-
-/**
- * Kích hoạt Ansible Playbook qua REST API.
- * @param {string} playbookId  - ID playbook (01_collect_metrics, ...)
- * @param {string|null} selId  - ID của <select> chứa target group
- * @param {string} defTarget   - Target mặc định nếu không có select
- */
-async function runPlaybook(playbookId, selId, defTarget) {
-  const target = selId ? document.getElementById(selId).value : (defTarget || 'all_rcms');
+async function runPlaybook(pid, selId, def) {
+  const target = selId?document.getElementById(selId).value:(def||'all_rcms');
   try {
-    const r = await fetch(API + '/ansible/run', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playbook: playbookId, target_group: target }),
+    const r=await fetch(API+'/ansible/run',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({playbook:pid,target_group:target}),
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const job = await r.json();
-    addJobCard(job);
-    pollJob(job.job_id);
-  } catch(e) { alert('⚠ Lỗi khởi chạy playbook: ' + e.message); }
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const job=await r.json();
+    addJobCard(job); pollJob(job.job_id);
+  } catch(e) { alert('⚠ Lỗi khởi chạy: '+e.message); }
 }
-
-/** Thêm card Job mới vào danh sách */
 function addJobCard(job) {
-  const el = document.getElementById('job-list');
-  if (el.textContent.includes('Chưa có')) el.innerHTML = '';
-  const div = document.createElement('div');
-  div.id = 'job-' + job.job_id; div.className = 'card'; div.style.marginBottom = '8px';
-  div.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div><strong>${job.playbook}</strong>
-        <span style="color:var(--text2);font-size:0.82em;margin-left:8px">→ ${job.job_id}</span>
-        <span style="color:var(--text2);font-size:0.78em;margin-left:8px">Target: ${job.target_group||'all'}</span>
-      </div>
-      <span class="badge badge-blue" id="status-${job.job_id}"><span class="spinner"></span> Đang chạy</span>
+  const el=document.getElementById('job-list');
+  if (el.textContent.includes('Chưa có')) el.innerHTML='';
+  const d=document.createElement('div');
+  d.id='job-'+job.job_id; d.className='card'; d.style.marginBottom='8px';
+  d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
+    <div><strong>${job.playbook}</strong>
+      <span style="color:var(--text2);font-size:.78em;margin-left:8px">→ ${job.job_id}</span>
+      <span style="color:var(--text2);font-size:.75em;margin-left:6px">Target: ${job.target_group||'all'}</span>
     </div>
-    <div id="output-${job.job_id}" class="job-output"></div>`;
-  el.prepend(div);
+    <span class="badge bg-blue" id="jst-${job.job_id}"><span class="spinner"></span> Đang chạy</span>
+  </div>
+  <div id="jout-${job.job_id}" class="job-output"></div>`;
+  el.prepend(d);
 }
-
-/** Polling trạng thái Job mỗi 3 giây */
-function pollJob(jobId) {
-  const iv = setInterval(async () => {
+function pollJob(jid) {
+  const iv=setInterval(async()=>{
     try {
-      const r = await fetch(API + '/ansible/jobs/' + jobId);
-      const job = await r.json();
-      const stEl  = document.getElementById('status-' + jobId);
-      const outEl = document.getElementById('output-' + jobId);
-      if (job.status === 'completed') {
-        stEl.innerHTML = '✅ Hoàn tất'; stEl.className = 'badge badge-green';
-        if (job.output) { outEl.textContent = job.output; outEl.style.display = 'block'; }
+      const r=await fetch(API+'/ansible/jobs/'+jid), j=await r.json();
+      const se=document.getElementById('jst-'+jid);
+      const oe=document.getElementById('jout-'+jid);
+      if (j.status==='completed'){
+        se.innerHTML='✅ Hoàn tất'; se.className='badge bg-green';
+        if (j.output){oe.textContent=j.output;oe.style.display='block';}
         clearInterval(iv); loadSummary();
-      } else if (job.status === 'failed') {
-        stEl.innerHTML = '❌ Thất bại'; stEl.className = 'badge badge-red';
-        if (job.output) { outEl.textContent = job.output; outEl.style.display = 'block'; }
+      } else if (j.status==='failed'){
+        se.innerHTML='❌ Thất bại'; se.className='badge bg-red';
+        if (j.output){oe.textContent=j.output;oe.style.display='block';}
         clearInterval(iv);
       }
-    } catch(e) { clearInterval(iv); }
-  }, 3000);
+    } catch(e){clearInterval(iv);}
+  },3000);
 }
 
 /* ================================================================
-   GRAFANA IFRAMES
+   GRAFANA
    ================================================================ */
-
 function loadGrafana() {
-  Object.entries(GRAFANA_DASHBOARDS).forEach(([key, path]) => {
-    const iframe = document.getElementById('grafana-' + key);
-    const ph     = document.getElementById('grafana-' + key + '-placeholder');
-    iframe.src = GRAFANA + path; iframe.style.display = 'block';
-    if (ph) ph.style.display = 'none';
+  Object.entries(GF_DASH).forEach(([k,p])=>{
+    const f=document.getElementById('gf-'+k), ph=document.getElementById('gfph-'+k);
+    f.src=GRAFANA+p; f.style.display='block'; if(ph) ph.style.display='none';
   });
 }
-function openGrafana() { window.open(GRAFANA, '_blank'); }
 
 /* ================================================================
-   REFRESH & INIT
+   REFRESH
    ================================================================ */
-
 function refreshAll() {
   loadSummary();
-  const active = (document.querySelector('.tab-content.active') || {}).id || '';
-  if (active === 'tab-devices') loadDevices();
-  if (active === 'tab-alerts')  loadAlerts();
+  const act=(document.querySelector('.tab-content.active')||{}).id||'';
+  if (act==='tab-thongso') { loadDevices(); loadAlerts(); }
 }
+setInterval(refreshAll, 30000);
 
-setInterval(refreshAll, 30000); // Tự động làm mới mỗi 30 giây
-
-// Khởi tạo khi DOM sẵn sàng
-window.addEventListener('DOMContentLoaded', () => {
-  resizeCanvas();   // Thiết lập kích thước canvas
-  loadSummary();    // Tải KPI summary ban đầu
+/* ── INIT ── */
+window.addEventListener('DOMContentLoaded', ()=>{
+  resizeCanvas();
+  loadSummary();
 });
 </script>
 </body>
