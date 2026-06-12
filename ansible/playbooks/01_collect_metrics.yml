@@ -1,44 +1,37 @@
 ---
 # ============================================================
-# Playbook 01: Thu thập metrics từ Nokia SR OS
-# Mục đích: SSH vào các router truyền dẫn, thu thập BER/Jitter/
-#           Latency/Port Status và lưu về Control Node
-# Lịch chạy: Ansible-cron mỗi giờ hoặc đầu ca sáng 06:00
-# Sử dụng: ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml
-#           Chỉ lab:   --limit lab_simulation
-#           Chỉ remote: --limit all_remote
+# Playbook 01: Thu thập SNMP metrics từ Park Air T6 radios
+# Mục đích: Query SNMP từ T6-TV/T6-RV/T6-TRV qua LAN3 RCMS,
+#           lưu trạng thái cổng, uptime, lỗi về Control Node
+# Lịch chạy: Đầu ca sáng 06:00 (Quy trình 2999)
+#
+# Sử dụng:
+#   Lab:  ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml --limit lab_simulation
+#   Prod: ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml --limit all_rcms
+#
+# CẢNH BÁO: Chỉ poll T6 radios qua LAN3 (RCMS subnet)
+#            KHÔNG poll qua LAN1 (VoIP subnet)
 # ============================================================
 
-- name: "VATM | Thu thập metrics từ Nokia SR OS - Production"
-  hosts: nokia_sros
-  gather_facts: false
-  serial: 5          # Xử lý 5 thiết bị song song (tránh quá tải)
-  max_fail_percentage: 50  # Tiếp tục ngay cả khi < 50% thiết bị fail
-
-  pre_tasks:
-    - name: "Tạo thư mục lưu báo cáo trên Control Node"
-      file:
-        path: "{{ report_base_dir }}/{{ report_date }}/raw"
-        state: directory
-        mode: '0755'
-      delegate_to: localhost
-      run_once: true
-      become: false
-
-    - name: "Ghi nhận thời gian bắt đầu thu thập"
-      set_fact:
-        collection_start: "{{ ansible_date_time.epoch }}"
-      delegate_to: localhost
-
-  roles:
-    - nokia_sros_collector
-
-  post_tasks:
-    - name: "Tổng kết: Số thiết bị thành công"
-      debug:
-        msg: "Đã thu thập xong {{ ansible_play_hosts_all | length }} thiết bị"
-      run_once: true
-      delegate_to: localhost
+# ----------------------------------------------------------
+# PLAY 1: Production SNMP — Park Air T6 radios
+# TODO: Implement SNMP collect khi xác nhận Park Air T6 MIB OIDs
+#       Standard IETF OIDs đã định nghĩa trong group_vars/all.yml
+#       (parkair_t6.oid_ifOperStatus, oid_sysUpTime, ...)
+#       Prometheus SNMP Exporter (Docker) sẽ poll liên tục qua LAN3
+# ----------------------------------------------------------
+# - name: "VATM | SNMP Collect — Park Air T6 (Production)"
+#   hosts: all_t6_radios
+#   gather_facts: false
+#   serial: 10
+#   tasks:
+#     - name: "SNMP poll sysUpTime + ifOperStatus"
+#       community.general.snmp_facts:
+#         host:      "{{ ansible_host }}"
+#         version:   "{{ snmp_version }}"
+#         community: "{{ snmp_community }}"
+#       register: t6_snmp_facts
+#       ignore_errors: true
 
 
 - name: "VATM | Thu thập metrics từ Lab Simulation (Ubuntu VMs)"
@@ -72,7 +65,7 @@
       register: lab_latency
       ignore_errors: true
 
-    - name: "[LAB] Lấy SNMP counters (simulate Nokia OIDs)"
+    - name: "[LAB] Lấy SNMP counters (simulate Park Air T6 via standard IF-MIB)"
       command: "snmpget -v2c -c {{ snmp_community }} localhost IF-MIB::ifInOctets.1 IF-MIB::ifOutOctets.1 IF-MIB::ifInErrors.1"
       register: lab_snmp
       ignore_errors: true
