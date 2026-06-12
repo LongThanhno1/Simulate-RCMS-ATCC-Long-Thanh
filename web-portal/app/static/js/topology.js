@@ -198,105 +198,203 @@ function drawHills(horizon, dark) {
   ctx.restore();
 }
 
-function drawStationBuilding(cx, groundY, w, h, hasParabola, dark, tag) {
+function drawStationBuilding(cx, groundY, w, h, isTransmitter, dark, tag) {
+  /* isTransmitter=true → TX (trái canvas), Yagi chỉ phải về ATCC
+     isTransmitter=false → RX (phải canvas), Yagi chỉ trái về ATCC  */
   ctx.save();
-  ctx.globalAlpha = dark ? 0.55 : 0.4;
-  ctx.fillStyle = dark ? '#0c1e32' : '#7a9ab5';
-  ctx.beginPath();
+  ctx.globalAlpha = dark ? 0.55 : 0.40;
+
+  const bldCol  = dark ? '#0c1e32' : '#7a9ab5';
+  const roofCol = dark ? '#081628' : '#5a7a95';
+  const borderC = dark ? '#1e3a5f' : '#5a7a9a';
+  const antCol  = dark ? '#38bdf8' : '#0369a1';
+
+  /* ── Tòa nhà chính ── */
+  ctx.fillStyle = bldCol;
   roundRectPath(cx-w/2, groundY-h, w, h, 4); ctx.fill();
-  ctx.strokeStyle = dark ? '#1e3a5f' : '#5a7a9a';
-  ctx.lineWidth=1; ctx.stroke();
+  ctx.strokeStyle = borderC; ctx.lineWidth = 1; ctx.stroke();
+
   /* Mái dốc */
-  ctx.fillStyle = dark ? '#081628' : '#5a7a95';
+  ctx.fillStyle = roofCol;
   ctx.beginPath();
-  ctx.moveTo(cx-w/2-4, groundY-h); ctx.lineTo(cx, groundY-h-16);
-  ctx.lineTo(cx+w/2+4, groundY-h); ctx.closePath(); ctx.fill();
+  ctx.moveTo(cx-w/2-4, groundY-h); ctx.lineTo(cx, groundY-h-16); ctx.lineTo(cx+w/2+4, groundY-h);
+  ctx.closePath(); ctx.fill();
+
   /* Cửa sổ */
   ctx.fillStyle = dark ? 'rgba(255,220,80,0.35)' : 'rgba(255,230,100,0.5)';
-  for (let row=0;row<3;row++) for (let col=0;col<3;col++)
-    ctx.fillRect(cx-w/2+6+col*15, groundY-h+12+row*18, 9, 11);
+  for (let row=0; row<3; row++)
+    for (let col=0; col<3; col++)
+      ctx.fillRect(cx-w/2+6+col*15, groundY-h+12+row*18, 9, 11);
+
   /* Cửa ra vào */
   ctx.fillStyle = dark ? '#040e1a' : '#4a6a84';
   ctx.fillRect(cx-8, groundY-22, 16, 22);
-  /* Cột anten */
-  ctx.strokeStyle = dark ? '#38bdf8' : '#0369a1';
-  ctx.lineWidth=1.8;
-  ctx.beginPath(); ctx.moveTo(cx,groundY-h-16); ctx.lineTo(cx,groundY-h-48); ctx.stroke();
-  if (hasParabola) {
-    ctx.beginPath(); ctx.arc(cx,groundY-h-48,10,0.3,Math.PI-0.3); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx,groundY-h-48); ctx.lineTo(cx+10,groundY-h-42); ctx.stroke();
-  } else {
+
+  /* ── Cột anten (cao hơn để Yagi nhô trên node box) ── */
+  ctx.strokeStyle = antCol; ctx.lineWidth = 1.8;
+  const mastTopY = groundY - h - 80;   /* đủ cao vượt node box (cy-hh≈93) */
+  ctx.beginPath(); ctx.moveTo(cx, groundY-h-16); ctx.lineTo(cx, mastTopY); ctx.stroke();
+
+  /* ── Anten Yagi VHF (118–136 MHz) — nằm ngang, hướng về ATCC ── */
+  const boomY = mastTopY - 6;
+  const dir   = isTransmitter ? 1 : -1;   /* TX→phải, RX→trái */
+  const backX = cx - dir * 10;            /* reflector phía sau */
+
+  /* Boom nằm ngang */
+  ctx.strokeStyle = antCol; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.moveTo(backX, boomY); ctx.lineTo(cx + dir*26, boomY); ctx.stroke();
+
+  ctx.lineWidth = 1.6;
+  /* Reflector — dài nhất, phía sau */
+  ctx.beginPath(); ctx.moveTo(backX, boomY-13); ctx.lineTo(backX, boomY+13); ctx.stroke();
+  /* Driven element — trung bình, ở gốc boom */
+  ctx.beginPath(); ctx.moveTo(cx,          boomY-11); ctx.lineTo(cx,          boomY+11); ctx.stroke();
+  /* Directors — ngắn dần, phía trước (×3) */
+  [ [dir*8, 10], [dir*16, 8.5], [dir*24, 7] ].forEach(([off, elen]) => {
     ctx.beginPath();
-    ctx.moveTo(cx-12,groundY-h-48); ctx.lineTo(cx,groundY-h-56); ctx.lineTo(cx+12,groundY-h-48);
-    ctx.stroke();
-  }
+    ctx.moveTo(cx+off, boomY-elen); ctx.lineTo(cx+off, boomY+elen); ctx.stroke();
+  });
+
+  /* Feed line mảnh từ driven element → đỉnh cột */
+  ctx.lineWidth = 0.7; ctx.setLineDash([2,3]);
+  ctx.beginPath(); ctx.moveTo(cx, boomY); ctx.lineTo(cx, mastTopY); ctx.stroke();
+  ctx.setLineDash([]);
+
   /* Label */
   ctx.globalAlpha = dark ? 0.45 : 0.35;
-  ctx.fillStyle = dark ? '#94a3b8' : '#334155';
-  ctx.font='bold 10px Consolas, monospace';
-  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillStyle   = dark ? '#94a3b8' : '#334155';
+  ctx.font        = 'bold 10px Consolas, monospace';
+  ctx.textAlign   = 'center'; ctx.textBaseline = 'top';
   ctx.fillText(tag, cx, groundY-h+2);
   ctx.restore();
 }
 
 function drawATCCTower(cx, groundY, dark) {
+  /* Tháp KSKL Long Thành — thiết kế nụ sen (lotus bud)
+     Cấu trúc từ dưới lên:
+       1. Tòa nhà đế rộng
+       2. Thân tháp thuôn
+       3. Cánh sen đế (5 ellipse xòe ra)
+       4. Nụ sen (buồng quan sát — bezier oval nhọn đỉnh)
+       5. Vành nền + cột anten + radar + đèn hiệu  */
   ctx.save();
-  ctx.globalAlpha = dark ? 0.62 : 0.45;
+
   const baseCol  = dark ? '#0a1e32' : '#6a8aa8';
   const stemCol  = dark ? '#071528' : '#547894';
-  const cabCol   = dark ? '#0f2540' : '#4a6a88';
-  const glassCol = dark ? 'rgba(56,189,248,0.18)' : 'rgba(147,197,253,0.4)';
+  const petalCol = dark ? '#0e2444' : '#456a8a';
+  const cabCol   = dark ? '#102b4e' : '#3a5e7c';
+  const glassCol = dark ? 'rgba(56,189,248,0.22)' : 'rgba(147,197,253,0.44)';
   const borderC  = dark ? '#1e3a5f' : '#3a5a7a';
-  /* Tòa nhà đế */
+  const accentC  = dark ? '#38bdf8' : '#0284c7';
+
+  /* ── 1. Tòa nhà đế ── */
+  ctx.globalAlpha = dark ? 0.62 : 0.46;
   ctx.fillStyle = baseCol;
-  roundRectPath(cx-44, groundY-68, 88, 68, 5); ctx.fill();
-  ctx.strokeStyle=borderC; ctx.lineWidth=1.2; ctx.stroke();
-  /* Cột tháp trung gian */
+  roundRectPath(cx-44, groundY-72, 88, 72, 5); ctx.fill();
+  ctx.strokeStyle = borderC; ctx.lineWidth = 1.2; ctx.stroke();
+
+  ctx.fillStyle = dark ? 'rgba(255,220,80,0.28)' : 'rgba(255,230,100,0.42)';
+  for (let c=0; c<4; c++) ctx.fillRect(cx-36+c*18, groundY-64, 11, 14);
+  for (let c=0; c<4; c++) ctx.fillRect(cx-36+c*18, groundY-44, 11, 14);
+
+  ctx.fillStyle = dark ? '#030c18' : '#4a6a84';
+  roundRectPath(cx-10, groundY-24, 20, 24, 2); ctx.fill();
+
+  /* ── 2. Thân tháp thuôn dần ── */
   ctx.fillStyle = stemCol;
-  ctx.fillRect(cx-9, groundY-130, 18, 66);
-  /* Cầu thang */
+  ctx.beginPath();
+  ctx.moveTo(cx-8, groundY-72);  ctx.lineTo(cx-5, groundY-138);
+  ctx.lineTo(cx+5, groundY-138); ctx.lineTo(cx+8, groundY-72);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = borderC; ctx.lineWidth = 0.8; ctx.stroke();
+
+  /* Thanh chống xiên */
   ctx.strokeStyle = dark ? '#1a3050' : '#5a7a98';
-  ctx.lineWidth=1.8;
-  ctx.beginPath(); ctx.moveTo(cx-9,groundY-68); ctx.lineTo(cx-24,groundY-130); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx+9,groundY-68); ctx.lineTo(cx+24,groundY-130); ctx.stroke();
-  /* Buồng quan sát */
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(cx-8, groundY-78);  ctx.lineTo(cx-30, groundY-135); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+8, groundY-78);  ctx.lineTo(cx+30, groundY-135); ctx.stroke();
+
+  /* ── 3. Cánh sen đế (5 petals xòe ra) ── */
+  ctx.globalAlpha = dark ? 0.58 : 0.42;
+  ctx.fillStyle   = petalCol;
+  ctx.strokeStyle = borderC; ctx.lineWidth = 0.9;
+  const pY = groundY - 142;
+  [ [-34, 9, 7], [-18, 13, 8], [0, 15, 9], [18, 13, 8], [34, 9, 7] ]
+    .forEach(([ox, rw, rh]) => {
+      ctx.beginPath();
+      ctx.ellipse(cx+ox, pY, rw, rh, 0, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+    });
+
+  /* ── 4. Nụ sen — buồng quan sát (bezier oval thuôn nhọn đỉnh) ── */
+  ctx.globalAlpha = dark ? 0.65 : 0.48;
+  const budBot = groundY - 138;   /* đáy nụ (khớp petals) */
+  const budMid = groundY - 158;   /* vị trí rộng nhất */
+  const budTop = groundY - 176;   /* đỉnh nụ */
+  const budW   = 30;              /* bán kính ngang tại budMid */
+
+  /* Vỏ nụ sen */
   ctx.fillStyle = cabCol;
-  roundRectPath(cx-36, groundY-160, 72, 32, 4); ctx.fill();
-  ctx.strokeStyle=borderC; ctx.lineWidth=1.2; ctx.stroke();
-  /* Kính */
-  const glassGrad = ctx.createLinearGradient(cx-33,groundY-157,cx+33,groundY-130);
-  glassGrad.addColorStop(0, glassCol);
-  glassGrad.addColorStop(1, 'rgba(30,60,120,0.05)');
+  ctx.beginPath();
+  ctx.moveTo(cx, budBot);
+  /* Trái — bezier từ đáy rộng, qua điểm rộng nhất, thu hẹp lên đỉnh */
+  ctx.bezierCurveTo(cx-budW-4, budBot-4,  cx-budW, budMid-2,  cx, budTop);
+  /* Phải — đối xứng */
+  ctx.bezierCurveTo(cx+budW,   budMid-2,  cx+budW+4, budBot-4, cx, budBot);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = borderC; ctx.lineWidth = 1.3; ctx.stroke();
+
+  /* Kính buồng quan sát (gradient nội) */
+  const glassGrad = ctx.createLinearGradient(cx-budW+4, budMid, cx+budW-4, budMid);
+  glassGrad.addColorStop(0,   'rgba(56,189,248,0.04)');
+  glassGrad.addColorStop(0.5, glassCol);
+  glassGrad.addColorStop(1,   'rgba(56,189,248,0.04)');
   ctx.fillStyle = glassGrad;
-  roundRectPath(cx-33, groundY-157, 66, 26, 3); ctx.fill();
-  /* Ống kính */
-  ctx.strokeStyle = dark ? 'rgba(56,189,248,0.3)' : 'rgba(3,105,161,0.3)';
-  ctx.lineWidth=0.7;
-  for (let i=-3;i<=3;i++) {
-    ctx.beginPath(); ctx.moveTo(cx+i*9,groundY-160); ctx.lineTo(cx+i*9,groundY-131); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx, budBot+2);
+  ctx.bezierCurveTo(cx-budW+5, budBot-2, cx-budW+5, budMid, cx, budTop+4);
+  ctx.bezierCurveTo(cx+budW-5, budMid,   cx+budW-5, budBot-2, cx, budBot+2);
+  ctx.closePath(); ctx.fill();
+
+  /* Đường kính dọc trên kính (thuôn theo hình) */
+  ctx.strokeStyle = dark ? 'rgba(56,189,248,0.22)' : 'rgba(3,105,161,0.28)';
+  ctx.lineWidth = 0.7;
+  for (let i=-2; i<=2; i++) {
+    ctx.beginPath();
+    ctx.moveTo(cx+i*9, budBot-1); ctx.lineTo(cx+i*6, budTop+5); ctx.stroke();
   }
-  /* Cột anten đỉnh */
-  ctx.strokeStyle = dark ? '#38bdf8' : '#0369a1';
-  ctx.lineWidth=2;
-  ctx.beginPath(); ctx.moveTo(cx,groundY-160); ctx.lineTo(cx,groundY-195); ctx.stroke();
+
+  /* Đường viền ngang tại điểm rộng nhất */
+  ctx.strokeStyle = borderC; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(cx-budW+6, budMid+3); ctx.lineTo(cx+budW-6, budMid+3); ctx.stroke();
+
+  /* Vành nền trên đỉnh nụ */
+  ctx.strokeStyle = accentC; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(cx, budTop, 9, 3.5, 0, 0, Math.PI*2); ctx.stroke();
+
+  /* ── 5. Cột anten đỉnh ── */
+  ctx.strokeStyle = accentC; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, budTop-1); ctx.lineTo(cx, budTop-32); ctx.stroke();
+
   /* Radar dish */
-  ctx.strokeStyle = dark ? '#38bdf8' : '#0284c7';
-  ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.arc(cx,groundY-196,8,0,Math.PI,true); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx,groundY-196); ctx.lineTo(cx+8,groundY-190); ctx.stroke();
-  /* Đèn hiệu hàng không (nhấp nháy) */
-  ctx.globalAlpha = (dark?0.9:0.75) * (0.5 + 0.5*Math.sin(Date.now()/400));
-  ctx.fillStyle='#f87171';
-  ctx.shadowColor='#f87171'; ctx.shadowBlur=dark?10:5;
-  ctx.beginPath(); ctx.arc(cx,groundY-198,3.5,0,Math.PI*2); ctx.fill();
-  ctx.shadowBlur=0;
-  /* Label */
+  ctx.strokeStyle = accentC; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, budTop-32, 8, 0, Math.PI, true); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, budTop-32); ctx.lineTo(cx+8, budTop-26); ctx.stroke();
+
+  /* ── 6. Đèn hiệu hàng không nhấp nháy ── */
+  ctx.globalAlpha = (dark ? 0.9 : 0.75) * (0.5 + 0.5*Math.sin(Date.now()/400));
+  ctx.fillStyle   = '#f87171';
+  ctx.shadowColor = '#f87171'; ctx.shadowBlur = dark ? 10 : 5;
+  ctx.beginPath(); ctx.arc(cx, budTop-34, 3.5, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  /* ── 7. Label ── */
   ctx.globalAlpha = dark ? 0.35 : 0.28;
-  ctx.fillStyle = dark ? '#94a3b8' : '#334155';
-  ctx.font='bold 9px Consolas, monospace';
-  ctx.textAlign='center'; ctx.textBaseline='top';
-  ctx.fillText('ATCC', cx, groundY-64);
-  ctx.fillText('LONG THÀNH', cx, groundY-53);
+  ctx.fillStyle   = dark ? '#94a3b8' : '#334155';
+  ctx.font        = 'bold 9px Consolas, monospace';
+  ctx.textAlign   = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('ATCC',        cx, groundY-67);
+  ctx.fillText('LONG THÀNH',  cx, groundY-56);
   ctx.restore();
 }
 
@@ -377,15 +475,39 @@ function drawLink(link, status) {
   ctx.setLineDash(status==='unknown'?[8,5]:[]);
   ctx.beginPath(); ctx.moveTo(x1,y1); ctx.bezierCurveTo(mx,y1,mx,y2,x2,y2); ctx.stroke();
   ctx.setLineDash([]); ctx.shadowBlur=0;
-  /* Nhãn link */
+  /* Nhãn link + HMI KPI overlay */
   const lx=mx, ly=(y1+y2)/2-18;
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
-  ctx.fillStyle=dark?'rgba(6,13,26,0.82)':'rgba(238,242,247,0.85)';
-  roundRectPath(lx-44,ly-10,88,22,4); ctx.fill();
+
+  /* Lấy số liệu KPI thực tế từ topo (global, app.js) */
+  const kd = link.id==='tx_atcc' ? topo.delay_tx_atcc : topo.delay_atcc_rx;
+  const kl = link.id==='tx_atcc' ? topo.loss_tx_atcc  : topo.loss_atcc_rx;
+  const hasKpi = kd !== null && kd !== undefined;
+  const boxH = hasKpi ? 34 : 22;   /* chiều cao box tăng khi có KPI */
+
+  ctx.fillStyle=dark?'rgba(6,13,26,0.84)':'rgba(238,242,247,0.88)';
+  roundRectPath(lx-48, ly-10, 96, boxH, 4); ctx.fill();
+  ctx.strokeStyle=c; ctx.lineWidth=0.7;
+  roundRectPath(lx-48, ly-10, 96, boxH, 4); ctx.stroke();
+
+  /* Nhãn tên link */
   ctx.fillStyle=c;
   ctx.font='9.5px Consolas,monospace';
   ctx.textAlign='center'; ctx.textBaseline='middle';
   link.label.split('\n').forEach((l,i) => ctx.fillText(l,lx,ly-4+i*12));
+
+  /* KPI metric dòng 3 — HMI readout */
+  if (hasKpi) {
+    const dColor = kd>100?'#f87171': kd>50?'#fbbf24':'#34d399';
+    const lColor = kl>1  ?'#f87171': kl>0.1?'#fbbf24':'#34d399';
+    ctx.font='bold 8px Consolas,monospace';
+    ctx.fillStyle=dColor;
+    ctx.fillText('Δ'+kd.toFixed(1)+'ms', lx-22, ly+20);
+    ctx.fillStyle=dark?'#3d5a7a':'#94a3b8';
+    ctx.fillText('|', lx, ly+20);
+    ctx.fillStyle=lColor;
+    ctx.fillText((kl||0).toFixed(2)+'%loss', lx+22, ly+20);
+  }
   ctx.restore();
 }
 
