@@ -1,0 +1,357 @@
+{
+  "uid": "vatm-ed137-overview",
+  "title": "ED-137 Overview — VATM ATCC Long Thành",
+  "description": "Tổng quan trạng thái ED-137: Jitter / Loss / Delay và kết nối TX ↔ ATCC ↔ RX",
+  "tags": ["vatm", "ed137", "overview"],
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "Asia/Ho_Chi_Minh",
+  "panels": [
+
+    {
+      "id": 1, "type": "text", "title": "Sơ đồ truyền dẫn",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 4 },
+      "options": {
+        "mode": "html",
+        "content": "<div style='text-align:center;font-size:16px;padding:8px;font-family:monospace'><b style='color:#1a9fff'>[ Trạm TX — 18× T6-TV ]</b> &nbsp;←── Fo1/Fo2 ──→&nbsp; <b style='color:#f5a623'>[ ATCC Long Thành ]</b> &nbsp;←── Fo1/Fo2 ──→&nbsp; <b style='color:#1a9fff'>[ Trạm RX — 18× T6-RV ]</b><br/><small style='color:#aaa'>LAN3 SNMP (SW6360) &nbsp;|&nbsp; Chuẩn: EUROCAE ED-137 &nbsp;|&nbsp; Ngưỡng: Delay &lt;100ms · Jitter &lt;20ms · Loss &lt;1%</small></div>"
+      }
+    },
+
+    {
+      "id": 10, "type": "stat", "title": "Jitter TX→ATCC (ms)",
+      "gridPos": { "x": 0, "y": 4, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 10 },
+            { "color": "red",    "value": 20 }
+          ]},
+          "mappings": []
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "vatm_voip_jitter_ms{site=\"tx\"}",
+        "legendFormat": "{{target}}", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 11, "type": "stat", "title": "Jitter ATCC→RX (ms)",
+      "gridPos": { "x": 4, "y": 4, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 10 },
+            { "color": "red",    "value": 20 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "vatm_voip_jitter_ms{site=\"rx\"}",
+        "legendFormat": "{{target}}", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 12, "type": "stat", "title": "Packet Loss TX (%)",
+      "gridPos": { "x": 8, "y": 4, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 0.1 },
+            { "color": "red",    "value": 1 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "vatm_voip_loss_percent{site=\"tx\"}",
+        "legendFormat": "{{target}}", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 13, "type": "stat", "title": "Packet Loss RX (%)",
+      "gridPos": { "x": 12, "y": 4, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 0.1 },
+            { "color": "red",    "value": 1 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "vatm_voip_loss_percent{site=\"rx\"}",
+        "legendFormat": "{{target}}", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 14, "type": "stat", "title": "One-way Delay TX→ATCC (ms)",
+      "description": "RTT/2 từ probe_duration_seconds. ED-137: < 100ms",
+      "gridPos": { "x": 16, "y": 4, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 50 },
+            { "color": "red",    "value": 100 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "probe_duration_seconds{job=\"blackbox_ping_workstations\"} * 500",
+        "legendFormat": "{{instance}}", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 15, "type": "stat", "title": "One-way Delay ATCC→RX (ms)",
+      "description": "RTT/2 từ probe_duration_seconds. ED-137: < 100ms",
+      "gridPos": { "x": 20, "y": 4, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 50 },
+            { "color": "red",    "value": 100 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "probe_duration_seconds{job=\"blackbox_ping_workstations\"} * 500",
+        "legendFormat": "{{instance}}", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 20, "type": "table", "title": "Trạng thái kết nối — Tất cả targets",
+      "gridPos": { "x": 0, "y": 8, "w": 14, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Value" },
+            "properties": [{
+              "id": "mappings",
+              "value": [
+                { "type": "value", "options": { "1": { "text": "✅ UP",   "color": "green" } } },
+                { "type": "value", "options": { "0": { "text": "🔴 DOWN", "color": "red"   } } }
+              ]
+            }, { "id": "custom.displayMode", "value": "color-text" }]
+          }
+        ]
+      },
+      "options": { "sortBy": [{ "displayName": "Value", "desc": false }] },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "probe_success",
+        "legendFormat": "{{instance}} ({{job}})",
+        "refId": "A",
+        "instant": true
+      }],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        { "id": "organize", "options": { "renameByName": { "instance": "Target", "job": "Job", "Value": "Trạng thái" } } }
+      ]
+    },
+
+    {
+      "id": 21, "type": "stat", "title": "SNMP Targets UP",
+      "gridPos": { "x": 14, "y": 8, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "green", "value": 1 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "count(up{job=~\"snmp.*\"} == 1)",
+        "legendFormat": "UP", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 22, "type": "stat", "title": "SNMP Targets DOWN",
+      "gridPos": { "x": 19, "y": 8, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "red", "value": 1 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "count(up{job=~\"snmp.*\"} == 0) or vector(0)",
+        "legendFormat": "DOWN", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 23, "type": "stat", "title": "S4-IP TCP:5001 UP",
+      "gridPos": { "x": 14, "y": 12, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "green", "value": 1 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "count(probe_success{job=\"blackbox_s4ip_tcp5001\"} == 1)",
+        "legendFormat": "UP", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 24, "type": "stat", "title": "S4-IP TCP:5001 DOWN",
+      "gridPos": { "x": 19, "y": 12, "w": 5, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "red", "value": 1 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "count(probe_success{job=\"blackbox_s4ip_tcp5001\"} == 0) or vector(0)",
+        "legendFormat": "DOWN", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 30, "type": "timeseries", "title": "Jitter theo thời gian (ms) — ED-137 ngưỡng 20ms",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "spanNulls": false },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 10 },
+            { "color": "red",    "value": 20 }
+          ]}
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+          "expr": "vatm_voip_jitter_ms",
+          "legendFormat": "{{site}} / {{target}}", "refId": "A"
+        }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "thresholdMarkers": true,
+        "thresholdStyle": { "mode": "line+area" }
+      }
+    },
+
+    {
+      "id": 31, "type": "timeseries", "title": "Packet Loss theo thời gian (%) — ED-137 ngưỡng 1%",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "spanNulls": false },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green",  "value": null },
+            { "color": "yellow", "value": 0.1 },
+            { "color": "red",    "value": 1 }
+          ]}
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+          "expr": "vatm_voip_loss_percent",
+          "legendFormat": "{{site}} / {{target}}", "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 32, "type": "timeseries", "title": "One-way Delay (RTT/2, ms) — ED-137 ngưỡng 100ms",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "lineWidth": 2, "fillOpacity": 5, "spanNulls": false },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green",  "value": null },
+            { "color": "yellow", "value": 50 },
+            { "color": "red",    "value": 100 }
+          ]}
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+          "expr": "probe_duration_seconds{job=~\"blackbox.*\"} * 500",
+          "legendFormat": "{{instance}}", "refId": "A"
+        }
+      ]
+    }
+
+  ]
+}

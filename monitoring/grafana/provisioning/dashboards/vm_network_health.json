@@ -1,0 +1,293 @@
+{
+  "uid": "vatm-vm-health",
+  "title": "VM & Network Health — VATM Monitor Host",
+  "description": "Tài nguyên VM chạy Docker stack: CPU / RAM / Disk / Network + S4-IP TCP probe + ALE Switch status",
+  "tags": ["vatm", "vm", "node-exporter", "infrastructure"],
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "timezone": "Asia/Ho_Chi_Minh",
+  "panels": [
+
+    {
+      "id": 1, "type": "stat", "title": "CPU Usage (%)",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "100 - (avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+        "legendFormat": "CPU %", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 2, "type": "stat", "title": "RAM Usage (%)",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 75 }, { "color": "red", "value": 90 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
+        "legendFormat": "RAM %", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 3, "type": "stat", "title": "RAM Available (GB)",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decgbytes",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 0.5 }, { "color": "green", "value": 1 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "node_memory_MemAvailable_bytes / 1024 / 1024 / 1024",
+        "legendFormat": "RAM free", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 4, "type": "stat", "title": "Disk Usage / (root)",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "(1 - node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"}) * 100",
+        "legendFormat": "Disk /", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 5, "type": "stat", "title": "VM Uptime",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "orange", "value": null }, { "color": "green", "value": 3600 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "node_time_seconds - node_boot_time_seconds",
+        "legendFormat": "Uptime", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 6, "type": "stat", "title": "Docker Containers (node)",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 5 }, { "color": "green", "value": 8 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "count(up == 1)",
+        "legendFormat": "Services UP", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 10, "type": "timeseries", "title": "CPU Usage (%) theo thời gian",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "max": 100, "min": 0
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "100 - (avg by(cpu) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+        "legendFormat": "CPU {{cpu}}", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 11, "type": "timeseries", "title": "RAM Usage theo thời gian",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "custom": { "lineWidth": 2, "fillOpacity": 8 }
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+          "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+          "legendFormat": "RAM Used", "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+          "expr": "node_memory_MemAvailable_bytes",
+          "legendFormat": "RAM Free", "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 12, "type": "timeseries", "title": "Network I/O — eth0 (bytes/s)",
+      "gridPos": { "x": 0, "y": 11, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+          "expr": "rate(node_network_receive_bytes_total{device!~\"lo|docker.*|br.*|veth.*\"}[5m])",
+          "legendFormat": "RX {{device}}", "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+          "expr": "rate(node_network_transmit_bytes_total{device!~\"lo|docker.*|br.*|veth.*\"}[5m])",
+          "legendFormat": "TX {{device}}", "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 13, "type": "timeseries", "title": "Disk I/O (bytes/s)",
+      "gridPos": { "x": 12, "y": 11, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+          "expr": "rate(node_disk_read_bytes_total[5m])",
+          "legendFormat": "Read {{device}}", "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+          "expr": "rate(node_disk_written_bytes_total[5m])",
+          "legendFormat": "Write {{device}}", "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 20, "type": "table", "title": "ALE Switch Status (SW6860 VoIP + SW6360 RCMS)",
+      "description": "up=1: SNMP reachable. Port crit nếu uplink down.",
+      "gridPos": { "x": 0, "y": 18, "w": 14, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Value" },
+            "properties": [
+              { "id": "mappings", "value": [
+                  { "type": "value", "options": { "1": { "text": "✅ UP",   "color": "green" } } },
+                  { "type": "value", "options": { "0": { "text": "🔴 DOWN", "color": "red"   } } }
+              ]},
+              { "id": "custom.displayMode", "value": "color-text" }
+            ]
+          }
+        ]
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "up{job=~\"snmp_sw.*\"}",
+        "legendFormat": "{{instance}} ({{job}})",
+        "refId": "A",
+        "instant": true
+      }],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        { "id": "organize", "options": { "renameByName": { "instance": "Switch IP", "job": "Job", "Value": "SNMP" } } }
+      ]
+    },
+
+    {
+      "id": 21, "type": "table", "title": "S4-IP Controller — TCP:5001 Probe (Park Air RCMS)",
+      "description": "S4-IP không có SNMP. Blackbox TCP probe trên port 5001 là cách duy nhất kiểm tra.",
+      "gridPos": { "x": 14, "y": 18, "w": 10, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Value" },
+            "properties": [
+              { "id": "mappings", "value": [
+                  { "type": "value", "options": { "1": { "text": "✅ TCP OK",  "color": "green" } } },
+                  { "type": "value", "options": { "0": { "text": "🔴 TCP FAIL","color": "red"   } } }
+              ]},
+              { "id": "custom.displayMode", "value": "color-text" }
+            ]
+          }
+        ]
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "probe_success{job=\"blackbox_s4ip_tcp5001\"}",
+        "legendFormat": "{{instance}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        { "id": "organize", "options": { "renameByName": { "instance": "S4-IP Controller", "Value": "TCP:5001" } } }
+      ]
+    }
+
+  ]
+}
