@@ -106,6 +106,10 @@ s4ip:
 # Lịch chạy cron tham khảo (Quy trình 2999)
 # ============================================================
 cron_schedule:
-  morning_check: "0 6 * * *"    # 06:00 — kiểm tra đầu ca
-  ping_interval: "*/30 * * * *" # Mỗi 30 phút — đo Jitter/Loss
-  daily_report:  "0 7 * * *"    # 07:00 — xuất báo cáo tổng hợp
+  # Đo Jitter/Loss/Latency tại đầu các ca trực (UTC)
+  # Ca ngày:  01:00 UTC (08:00 ICT) | 09:00 UTC (16:00 ICT)
+  # Ca đêm:   13:00 UTC (20:00 ICT) | 22:00 UTC (05:00 ICT hôm sau)
+  ping_shift_check: "0 1,9,13,22 * * *"
+  # Full pipeline đầu ca sáng ICT
+  morning_full:  "0 6 * * *"    # 06:00 UTC (13:00 ICT) — full: ping + collect + report
+  daily_report:  "0 7 * * *"    # 07:00 UTC (14:00 ICT) — xuất báo cáo tổng hợp

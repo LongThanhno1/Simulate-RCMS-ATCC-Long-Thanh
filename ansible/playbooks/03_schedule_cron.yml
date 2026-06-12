@@ -56,17 +56,19 @@
         state: present
       become: true
 
-    # --- Cron 2: Đo kiểm mỗi giờ (chỉ metrics, không generate report) ---
-    - name: "Cài đặt cron: Đo kiểm mỗi giờ"
+    # --- Cron 2: Đo kiểm Jitter/Loss tại đầu các ca trực ---
+    # Ca ngày:  01:00 UTC (08:00 ICT) và 09:00 UTC (16:00 ICT)
+    # Ca đêm:   13:00 UTC (20:00 ICT) và 22:00 UTC (05:00 ICT hôm sau)
+    - name: "Cài đặt cron: Ping check đầu ca trực (01,09,13,22 UTC)"
       cron:
-        name: "VATM_HOURLY_COLLECT"
+        name: "VATM_SHIFT_PING_CHECK"
         minute: "0"
-        hour: "*"
+        hour:   "1,9,13,22"
         job: >-
           cd {{ project_dir }} &&
-          {{ ansible_playbook_path }} -i hosts.ini playbooks/01_collect_metrics.yml
-          --limit all_remote
-          >> {{ log_dir }}/hourly_$(date +\%Y\%m\%d_\%H).log 2>&1
+          {{ ansible_playbook_path }} -i hosts.ini playbooks/03_ping_check.yml
+          --tags ping
+          >> {{ log_dir }}/ping_check_$(date +\%Y\%m\%d_\%H).log 2>&1
         user: "{{ cron_user }}"
         state: present
       become: true
@@ -103,10 +105,14 @@
           ============================================================
           LỊCH CHẠY TỰ ĐỘNG ĐÃ CÀI ĐẶT:
           ============================================================
-          1. 06:00 hàng ngày   → site.yml (full pipeline: collect + report)
-          2. Mỗi giờ (:00)     → 01_collect_metrics.yml (chỉ remote sites)
-          3. 22:00 hàng ngày   → 02_generate_report.yml (tổng hợp báo cáo)
-          4. Chủ nhật 23:00    → Dọn dẹp log cũ > 90 ngày
+          1. 06:00 UTC hàng ngày → site.yml (full pipeline: ping + collect + report)
+          2. 01,09,13,22 UTC    → 03_ping_check.yml (Jitter/Loss đầu ca trực)
+             - 01:00 UTC = 08:00 ICT (đầu ca trực ngày)
+             - 09:00 UTC = 16:00 ICT (ca trực ngày)
+             - 13:00 UTC = 20:00 ICT (đầu ca trực đêm)
+             - 22:00 UTC = 05:00 ICT (ca trực đêm)
+          3. 22:00 UTC hàng ngày → 02_generate_report.yml (tổng hợp báo cáo)
+          4. Chủ nhật 23:00 UTC  → Dọn dẹp log cũ > 90 ngày
 
           User cron: {{ cron_user }}
           Project dir: {{ project_dir }}
