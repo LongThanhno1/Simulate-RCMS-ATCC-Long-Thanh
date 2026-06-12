@@ -194,7 +194,7 @@ services:
       - ANSIBLE_INVENTORY=/app/ansible/hosts.ini
       - LOG_LEVEL=INFO
     ports:
-      - "8080:8080"
+      - "8080:8000"          # host:8080 → container:8000 (uvicorn chạy port 8000)
     volumes:
       # Mount ansible folder vào container để chạy playbooks
       - ../ansible:/app/ansible:ro

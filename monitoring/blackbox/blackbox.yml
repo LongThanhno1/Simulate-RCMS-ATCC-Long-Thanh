@@ -54,6 +54,18 @@ modules:
       payload_size: 1400         # Gần MTU 1500 để test fragmentation
 
   # ─────────────────────────────────────────────────────────
+  # ICMP alias — dùng cho prometheus.yml job blackbox_ping_workstations
+  # Module name phải khớp với params.module trong prometheus.yml
+  # ─────────────────────────────────────────────────────────
+  icmp:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: false
+      dont_fragment: false
+
+  # ─────────────────────────────────────────────────────────
   # TCP Generic — kiểm tra port dịch vụ khác nếu cần
   # ─────────────────────────────────────────────────────────
   tcp_connect:

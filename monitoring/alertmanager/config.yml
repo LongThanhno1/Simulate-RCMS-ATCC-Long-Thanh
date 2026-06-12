@@ -13,11 +13,11 @@ global:
   # Thời gian chờ trước khi alert được coi là đã resolve
   resolve_timeout: 5m
 
-  # SMTP defaults (sử dụng Gmail hoặc email VATM)
+  # SMTP defaults — đọc từ biến môi trường trong .env
   smtp_smarthost:     'smtp.gmail.com:587'
-  smtp_from:          'vatm.longthanh.alert@gmail.com'
-  smtp_auth_username: 'vatm.longthanh.alert@gmail.com'
-  smtp_auth_password: '<GMAIL_APP_PASSWORD>'    # App password, không phải mật khẩu Gmail
+  smtp_from:          '${ALERT_EMAIL_FROM}'
+  smtp_auth_username: '${ALERT_EMAIL_FROM}'
+  smtp_auth_password: '${GMAIL_APP_PASSWORD}'
   smtp_require_tls:   true
 
 # ─────────────────────────────────────────────────────────
@@ -94,8 +94,8 @@ receivers:
   # ── Telegram: Critical alerts ──
   - name: 'telegram_critical'
     telegram_configs:
-      - bot_token:  '<TELEGRAM_BOT_TOKEN>'
-        chat_id:    <TELEGRAM_CHAT_ID>         # Số nguyên, VD: -1001234567890
+      - bot_token:  '${TELEGRAM_BOT_TOKEN}'
+        chat_id:    ${TELEGRAM_CHAT_ID}        # Số nguyên, VD: -1001234567890 hoặc cá nhân: 1327606546
         parse_mode: 'HTML'
         message: |
           🔴 <b>[CRIT] VATM ATCC Long Thành</b>
@@ -112,8 +112,8 @@ receivers:
   # ── Telegram: ED-137 vi phạm ──
   - name: 'telegram_ed137_violation'
     telegram_configs:
-      - bot_token:  '<TELEGRAM_BOT_TOKEN>'
-        chat_id:    <TELEGRAM_CHAT_ID>
+      - bot_token:  '${TELEGRAM_BOT_TOKEN}'
+        chat_id:    ${TELEGRAM_CHAT_ID}
         parse_mode: 'HTML'
         message: |
           ⚡ <b>VI PHẠM CHUẨN ED-137</b> ⚡
@@ -131,8 +131,8 @@ receivers:
   # ── Telegram: Warning ──
   - name: 'telegram_warning'
     telegram_configs:
-      - bot_token:  '<TELEGRAM_BOT_TOKEN>'
-        chat_id:    <TELEGRAM_CHAT_ID>
+      - bot_token:  '${TELEGRAM_BOT_TOKEN}'
+        chat_id:    ${TELEGRAM_CHAT_ID}
         parse_mode: 'HTML'
         message: |
           ⚠️ <b>[WARN] VATM ATCC Long Thành</b>
@@ -147,7 +147,7 @@ receivers:
   # ── Email: Critical ──
   - name: 'email_critical'
     email_configs:
-      - to:           'longthanh.kythuat@vatm.vn'    # Email ca trực kỹ thuật
+      - to:           '${ALERT_EMAIL_TO}'
         subject:      '[CRIT] {{ .GroupLabels.alertname }} — VATM ATCC Long Thành'
         body:         |
           CẢNH BÁO NGHIÊM TRỌNG
