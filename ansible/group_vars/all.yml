@@ -1,0 +1,41 @@
+---
+# ============================================================
+# VATM ATCC Long Thành - Global Variables
+# Áp dụng cho tất cả hosts
+# ============================================================
+
+# --- SSH Credentials (Nokia SR OS) ---
+ansible_user: "admin"
+ansible_ssh_pass: "{{ vault_ssh_pass }}"  # Dùng ansible-vault trong production
+ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o ConnectTimeout=20"
+
+# --- Thư mục báo cáo trên Ansible Control Node ---
+report_base_dir: "/opt/vatm/monitoring/reports"
+report_archive_dir: "/opt/vatm/monitoring/archive"
+report_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+report_time: "{{ lookup('pipe', 'date +%H%M') }}"
+
+# --- Ngưỡng cảnh báo (Thresholds) ---
+thresholds:
+  latency_warn_ms: 50        # Cảnh báo vàng khi latency > 50ms
+  latency_crit_ms: 150       # Cảnh báo đỏ khi latency > 150ms
+  jitter_warn_ms: 10         # Cảnh báo vàng khi jitter > 10ms
+  jitter_crit_ms: 30         # Cảnh báo đỏ khi jitter > 30ms
+  ber_warn: "1e-6"           # BER cảnh báo (1 lỗi/triệu bit)
+  ber_crit: "1e-4"           # BER ngưỡng nghiêm trọng
+  port_down_crit: true       # Cổng Down = luôn cảnh báo đỏ
+  bandwidth_util_warn_pct: 70  # Cảnh báo khi băng thông > 70%
+  bandwidth_util_crit_pct: 90  # Nghiêm trọng khi > 90%
+
+# --- Nokia SR OS CLI timeout ---
+sros_cli_timeout: 30
+sros_prompt: "A:.*#|B:.*#"   # Nokia SR OS prompt pattern
+
+# --- Các cổng cần monitor (mặc định, override trong host_vars nếu cần) ---
+monitor_ports:
+  - "1/1/1"    # ISP Uplink 1 (VNPT)
+  - "1/1/2"    # ISP Uplink 2 (VIETTEL)
+  - "1/2/1"    # Internal/Core link
+
+# --- SAA Test name prefix (Nokia Service Assurance Agent) ---
+saa_test_prefix: "VATM-LAT"

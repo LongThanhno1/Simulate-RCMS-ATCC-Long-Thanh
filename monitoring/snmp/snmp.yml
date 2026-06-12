@@ -1,0 +1,284 @@
+# ============================================================
+# VATM ATCC Long Thành — SNMP Exporter Configuration
+# Thiết bị: Nokia 7250 IXR-e + Nokia 7705 SAR-8 (SR OS)
+# SNMP: v2c | Community: vatm_ro (production), public (lab)
+#
+# NOTE: File này được tạo thủ công (không qua generator)
+# vì Nokia SR OS dùng standard MIBs + một số OID proprietary.
+# OID Nokia SAR-8 tham chiếu: TIMETRA-PORT-MIB, TIMETRA-SAA-MIB
+# ============================================================
+
+# ─────────────────────────────────────────────────────────
+# MODULE 1: nokia_sros_if
+# Áp dụng: Nokia 7250 IXR-e (Edge/Distribution TWR LTIA)
+# ─────────────────────────────────────────────────────────
+modules:
+  nokia_sros_if:
+    walk:
+      # IF-MIB — Standard interface stats
+      - 1.3.6.1.2.1.2.2          # ifTable
+      - 1.3.6.1.2.1.31.1.1       # ifXTable (64-bit counters)
+      # ENTITY-MIB — Physical component info
+      - 1.3.6.1.2.1.47.1.1.1     # entPhysicalTable
+      # IP-MIB — IP stats
+      - 1.3.6.1.2.1.4.20         # ipAddrTable
+      # OSPF-MIB (nếu chạy OSPF)
+      - 1.3.6.1.2.1.14.10        # ospfNbrTable
+
+    metrics:
+      # ── ifOperStatus: 1=up, 2=down ──
+      - name: ifOperStatus
+        oid:  1.3.6.1.2.1.2.2.1.8
+        type: gauge
+        help: "Interface operational status (1=up, 2=down)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.2.2.1.2
+            type: DisplayString
+
+      # ── ifAdminStatus ──
+      - name: ifAdminStatus
+        oid:  1.3.6.1.2.1.2.2.1.7
+        type: gauge
+        help: "Interface admin status (1=up, 2=down)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.2.2.1.2
+            type: DisplayString
+
+      # ── ifSpeed (bandwidth) ──
+      - name: ifSpeed
+        oid:  1.3.6.1.2.1.2.2.1.5
+        type: gauge
+        help: "Interface speed in bps"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      # ── 64-bit counters (ifXTable) ──
+      - name: ifInOctets
+        oid:  1.3.6.1.2.1.31.1.1.1.6
+        type: counter
+        help: "Inbound bytes (64-bit)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.31.1.1.1.1
+            type: DisplayString
+
+      - name: ifOutOctets
+        oid:  1.3.6.1.2.1.31.1.1.1.10
+        type: counter
+        help: "Outbound bytes (64-bit)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.31.1.1.1.1
+            type: DisplayString
+
+      - name: ifInErrors
+        oid:  1.3.6.1.2.1.2.2.1.14
+        type: counter
+        help: "Inbound error frames"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.2.2.1.2
+            type: DisplayString
+
+      - name: ifOutErrors
+        oid:  1.3.6.1.2.1.2.2.1.20
+        type: counter
+        help: "Outbound error frames"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+    auth:
+      community: vatm_ro      # Production community (override qua URL param)
+    version: 2
+
+  # ─────────────────────────────────────────────────────────
+  # MODULE 2: nokia_sros_sar8
+  # Áp dụng: Nokia 7705 SAR-8 (ATCC HCM + Remote Sites)
+  # Bổ sung: Nokia SAA OIDs (proprietary TIMETRA-SAA-MIB)
+  # ─────────────────────────────────────────────────────────
+  nokia_sros_sar8:
+    walk:
+      - 1.3.6.1.2.1.2.2          # ifTable
+      - 1.3.6.1.2.1.31.1.1       # ifXTable
+      - 1.3.6.1.2.1.47.1.1.1     # entPhysicalTable
+      # Nokia TIMETRA-SAA-MIB (SAA latency/jitter results)
+      # OID prefix: 1.3.6.1.4.1.6527.3.1.2.16
+      - 1.3.6.1.4.1.6527.3.1.2.16.2   # tmnxSaaTestResultsTable
+      # Nokia TIMETRA-PORT-MIB (port detail + E1 BER)
+      # OID prefix: 1.3.6.1.4.1.6527.3.1.2.2
+      - 1.3.6.1.4.1.6527.3.1.2.2.3    # tmnxPortTable
+
+    metrics:
+      # ── Standard IF metrics (tương tự module trên) ──
+      - name: ifOperStatus
+        oid:  1.3.6.1.2.1.2.2.1.8
+        type: gauge
+        help: "Interface operational status"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.2.2.1.2
+            type: DisplayString
+
+      - name: ifInOctets
+        oid:  1.3.6.1.2.1.31.1.1.1.6
+        type: counter
+        help: "Inbound bytes 64-bit"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.31.1.1.1.1
+            type: DisplayString
+
+      - name: ifOutOctets
+        oid:  1.3.6.1.2.1.31.1.1.1.10
+        type: counter
+        help: "Outbound bytes 64-bit"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      - name: ifInErrors
+        oid:  1.3.6.1.2.1.2.2.1.14
+        type: counter
+        help: "Inbound error frames"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      # ── Nokia SAA — RTT/Latency (TIMETRA-SAA-MIB) ──
+      # tmnxSaaResultsLastRunRtt: OID .16.2.1.x
+      # NOTE: OID cần xác nhận bằng snmpwalk thực tế trên thiết bị
+      - name: nokia_saa_rtt_avg_ms
+        oid:  1.3.6.1.4.1.6527.3.1.2.16.2.1.5
+        type: gauge
+        help: "Nokia SAA average RTT (ms) — ED-137 latency metric"
+        indexes:
+          - labelname: saaTestIndex
+            type: gauge
+        lookups:
+          - labels: [saaTestIndex]
+            labelname: saaTestName
+            oid: 1.3.6.1.4.1.6527.3.1.2.16.1.1.2
+            type: DisplayString
+
+      # tmnxSaaResultsLastRunJitter
+      - name: nokia_saa_jitter_avg_ms
+        oid:  1.3.6.1.4.1.6527.3.1.2.16.2.1.8
+        type: gauge
+        help: "Nokia SAA jitter average (ms) — ED-137 jitter metric"
+        indexes:
+          - labelname: saaTestIndex
+            type: gauge
+
+      # tmnxSaaResultsLastRunPacketLoss
+      - name: nokia_saa_packet_loss_pct
+        oid:  1.3.6.1.4.1.6527.3.1.2.16.2.1.10
+        type: gauge
+        help: "Nokia SAA packet loss percentage — ED-137 loss metric"
+        indexes:
+          - labelname: saaTestIndex
+            type: gauge
+
+      # ── Nokia E1 BER (TIMETRA-PORT-MIB) ──
+      # tmnxPortBitsInError — bit error count
+      # NOTE: OID cần xác nhận snmpwalk trên SAR-8 thực
+      - name: nokia_e1_ber_rate
+        oid:  1.3.6.1.4.1.6527.3.1.2.2.3.1.100
+        type: gauge
+        help: "Nokia SAR-8 E1 Bit Error Rate (BER)"
+        indexes:
+          - labelname: portIndex
+            type: gauge
+        lookups:
+          - labels: [portIndex]
+            labelname: port
+            oid: 1.3.6.1.4.1.6527.3.1.2.2.3.1.2
+            type: DisplayString
+
+    auth:
+      community: vatm_ro
+    version: 2
+
+  # ─────────────────────────────────────────────────────────
+  # MODULE 3: linux_snmp
+  # Áp dụng: Lab Simulation Ubuntu VMs (snmpd)
+  # ─────────────────────────────────────────────────────────
+  linux_snmp:
+    walk:
+      - 1.3.6.1.2.1.2.2          # ifTable
+      - 1.3.6.1.2.1.31.1.1       # ifXTable
+      - 1.3.6.1.2.1.25.3.3       # hrProcessorTable (CPU)
+      - 1.3.6.1.2.1.25.2.2       # hrMemorySize
+
+    metrics:
+      - name: ifOperStatus
+        oid:  1.3.6.1.2.1.2.2.1.8
+        type: gauge
+        help: "Interface status (lab)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.2.2.1.2
+            type: DisplayString
+
+      - name: ifInOctets
+        oid:  1.3.6.1.2.1.31.1.1.1.6
+        type: counter
+        help: "Inbound bytes (lab)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      - name: ifOutOctets
+        oid:  1.3.6.1.2.1.31.1.1.1.10
+        type: counter
+        help: "Outbound bytes (lab)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      - name: hrProcessorLoad
+        oid:  1.3.6.1.2.1.25.3.3.1.2
+        type: gauge
+        help: "CPU load % (lab Ubuntu)"
+        indexes:
+          - labelname: hrDeviceIndex
+            type: gauge
+
+    auth:
+      community: public        # Lab community
+    version: 2

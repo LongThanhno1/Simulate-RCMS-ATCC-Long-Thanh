@@ -1,0 +1,39 @@
+# ============================================================
+# VATM ATCC Long Thành — Python Dependencies
+# FastAPI Web Portal + Ansible Runner
+# ============================================================
+
+# ── Web Framework ──
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9     # File upload support
+
+# ── Async & Task Queue ──
+redis==5.0.4
+anyio==4.3.0
+
+# ── Ansible Runner (kích hoạt Playbook từ Python) ──
+ansible-runner==2.4.0
+ansible-core==2.16.7
+
+# ── HTTP Client (query Prometheus + Grafana API) ──
+httpx==0.27.0
+aiohttp==3.9.5
+
+# ── Data Processing ──
+pydantic==2.7.1
+pydantic-settings==2.3.0
+python-dateutil==2.9.0
+jinja2==3.1.4              # Template báo cáo
+
+# ── Export báo cáo ──
+openpyxl==3.1.2             # Xuất Excel
+markdown==3.6               # Render Markdown sang HTML
+
+# ── SNMP (optional — query trực tiếp nếu cần) ──
+pysnmp==6.2.3
+
+# ── Utils ──
+python-jose[cryptography]==3.3.0   # JWT (nếu cần auth)
+passlib[bcrypt]==1.7.4
+loguru==0.7.2

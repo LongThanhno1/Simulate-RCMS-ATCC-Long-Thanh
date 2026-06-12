@@ -1,0 +1,164 @@
+# ============================================================
+# VATM ATCC Long Thành — Alertmanager Configuration
+# Kênh cảnh báo: Telegram Bot + Email (SMTP)
+# Phân cấp: critical → Telegram ngay | warning → group 5m
+# ============================================================
+# HƯỚNG DẪN: Thay thế các placeholder <...> bằng giá trị thực:
+#   TELEGRAM_BOT_TOKEN: Lấy từ @BotFather trên Telegram
+#   TELEGRAM_CHAT_ID:   ID nhóm/kênh nhận cảnh báo
+#   SMTP credentials:   Tài khoản email gửi cảnh báo
+# ============================================================
+
+global:
+  # Thời gian chờ trước khi alert được coi là đã resolve
+  resolve_timeout: 5m
+
+  # SMTP defaults (sử dụng Gmail hoặc email VATM)
+  smtp_smarthost:     'smtp.gmail.com:587'
+  smtp_from:          'vatm.longthanh.alert@gmail.com'
+  smtp_auth_username: 'vatm.longthanh.alert@gmail.com'
+  smtp_auth_password: '<GMAIL_APP_PASSWORD>'    # App password, không phải mật khẩu Gmail
+  smtp_require_tls:   true
+
+# ─────────────────────────────────────────────────────────
+# TEMPLATES
+# ─────────────────────────────────────────────────────────
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# ─────────────────────────────────────────────────────────
+# ROUTING — Phân luồng cảnh báo theo severity
+# ─────────────────────────────────────────────────────────
+route:
+  # Receiver mặc định
+  receiver: 'telegram_critical'
+
+  # Gộp alert cùng job+alertname vào 1 tin
+  group_by: ['alertname', 'job', 'site', 'instance']
+
+  # Đợi 30s gom alert trước khi gửi (lần đầu)
+  group_wait:      30s
+  # Đợi 5m trước khi gửi thêm alert cùng group
+  group_interval:  5m
+  # Gửi lại alert đang active mỗi 1h
+  repeat_interval: 1h
+
+  routes:
+    # ── CRITICAL → Telegram ngay lập tức ──
+    - match:
+        severity: critical
+      receiver:       'telegram_critical'
+      group_wait:     10s        # Gửi ngay sau 10s
+      group_interval: 1m
+      repeat_interval: 30m       # Nhắc lại mỗi 30 phút nếu chưa resolve
+      continue: true             # Tiếp tục kiểm tra route sau
+
+    # ── CRITICAL → Email đồng thời ──
+    - match:
+        severity: critical
+      receiver: 'email_critical'
+      group_wait: 10s
+
+    # ── WARNING → Telegram, delay 5 phút ──
+    - match:
+        severity: warning
+      receiver:       'telegram_warning'
+      group_wait:     5m
+      group_interval: 10m
+      repeat_interval: 2h
+
+    # ── ED-137 VI PHẠM → Kênh riêng ──
+    - match:
+        standard: ed137
+        severity: critical
+      receiver:       'telegram_ed137_violation'
+      group_wait:     5s         # Khẩn nhất — gửi ngay 5s
+      repeat_interval: 15m
+
+# ─────────────────────────────────────────────────────────
+# INHIBIT RULES — Tránh spam khi đã có alert cao hơn
+# ─────────────────────────────────────────────────────────
+inhibit_rules:
+  # Nếu đã có CRIT thì ẩn WARN cùng instance
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+# ─────────────────────────────────────────────────────────
+# RECEIVERS
+# ─────────────────────────────────────────────────────────
+receivers:
+
+  # ── Telegram: Critical alerts ──
+  - name: 'telegram_critical'
+    telegram_configs:
+      - bot_token:  '<TELEGRAM_BOT_TOKEN>'
+        chat_id:    <TELEGRAM_CHAT_ID>         # Số nguyên, VD: -1001234567890
+        parse_mode: 'HTML'
+        message: |
+          🔴 <b>[CRIT] VATM ATCC Long Thành</b>
+          ━━━━━━━━━━━━━━━━━━━━━━
+          <b>Alert:</b> {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+          <b>Mô tả:</b> {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
+          <b>Thời điểm:</b> {{ (index .Alerts 0).StartsAt.Format "2006-01-02 15:04:05" }}
+          <b>Status:</b> {{ .Status | toUpper }}
+          ━━━━━━━━━━━━━━━━━━━━━━
+          🔗 Grafana: http://192.168.100.10:3000
+          🔗 Alertmanager: http://192.168.100.10:9093
+        send_resolved: true
+
+  # ── Telegram: ED-137 vi phạm ──
+  - name: 'telegram_ed137_violation'
+    telegram_configs:
+      - bot_token:  '<TELEGRAM_BOT_TOKEN>'
+        chat_id:    <TELEGRAM_CHAT_ID>
+        parse_mode: 'HTML'
+        message: |
+          ⚡ <b>VI PHẠM CHUẨN ED-137</b> ⚡
+          ━━━━━━━━━━━━━━━━━━━━━━
+          {{ range .Alerts }}
+          <b>KPI:</b> {{ .Labels.kpi | toUpper }}
+          <b>Thiết bị:</b> {{ .Labels.instance }}
+          <b>Site:</b> {{ .Labels.site }}
+          <b>Chi tiết:</b> {{ .Annotations.description }}
+          {{ end }}
+          ⚠️ Yêu cầu xử lý ngay theo quy trình QĐ2999
+          <b>Thời điểm:</b> {{ (index .Alerts 0).StartsAt.Format "15:04:05 02/01/2006" }}
+        send_resolved: true
+
+  # ── Telegram: Warning ──
+  - name: 'telegram_warning'
+    telegram_configs:
+      - bot_token:  '<TELEGRAM_BOT_TOKEN>'
+        chat_id:    <TELEGRAM_CHAT_ID>
+        parse_mode: 'HTML'
+        message: |
+          ⚠️ <b>[WARN] VATM ATCC Long Thành</b>
+          ━━━━━━━━━━━━━━━━━━━━━━
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}
+          <b>Thời điểm:</b> {{ (index .Alerts 0).StartsAt.Format "15:04:05 02/01/2006" }}
+        send_resolved: true
+
+  # ── Email: Critical ──
+  - name: 'email_critical'
+    email_configs:
+      - to:           'longthanh.kythuat@vatm.vn'    # Email ca trực kỹ thuật
+        subject:      '[CRIT] {{ .GroupLabels.alertname }} — VATM ATCC Long Thành'
+        body:         |
+          CẢNH BÁO NGHIÊM TRỌNG
+          ========================
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Mô tả: {{ .Annotations.description }}
+          Bắt đầu: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          Labels: {{ range .Labels.SortedPairs }}{{ .Name }}={{ .Value }} {{ end }}
+          ========================
+          {{ end }}
+          Grafana: http://192.168.100.10:3000
+          Alertmanager: http://192.168.100.10:9093
+        send_resolved: true

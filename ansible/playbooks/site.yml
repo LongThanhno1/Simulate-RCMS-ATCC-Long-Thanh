@@ -1,0 +1,19 @@
+---
+# ============================================================
+# site.yml - Master Playbook (chạy toàn bộ pipeline)
+# Lịch chạy đầu ca sáng (06:00) hoặc mỗi giờ
+#
+# Sử dụng:
+#   ansible-playbook -i ../hosts.ini site.yml              # Full pipeline
+#   ansible-playbook -i ../hosts.ini site.yml --tags collect  # Chỉ thu thập
+#   ansible-playbook -i ../hosts.ini site.yml --tags report   # Chỉ báo cáo
+#   ansible-playbook -i ../hosts.ini site.yml --limit lab_simulation  # Chỉ lab
+# ============================================================
+
+- name: "VATM | Bước 1: Thu thập metrics từ thiết bị"
+  import_playbook: 01_collect_metrics.yml
+  tags: [collect, full]
+
+- name: "VATM | Bước 2: Tổng hợp và xuất báo cáo"
+  import_playbook: 02_generate_report.yml
+  tags: [report, full]

@@ -1,0 +1,233 @@
+# ============================================================
+# VATM ATCC Long Thành — Alert Rules chuẩn EUROCAE ED-137
+# KPI: Delay < 100ms | Jitter < 20ms | Packet Loss < 1%
+# ============================================================
+
+groups:
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 1: ED-137 KPI — VoIP ATM Application Quality
+  # ════════════════════════════════════════════════════════
+  - name: ed137_voip_kpi
+    interval: 15s
+    rules:
+
+      # ── Latency WARN (> 50ms — ngưỡng nội bộ VATM) ──
+      - alert: ED137_Latency_WARN
+        expr: nokia_saa_rtt_avg_ms > 50
+        for: 2m
+        labels:
+          severity: warning
+          standard:  ed137
+          kpi:       latency
+        annotations:
+          summary: "⚠️ [WARN] Latency cao — {{ $labels.instance }}"
+          description: |
+            Site: {{ $labels.site }}
+            Device: {{ $labels.instance }}
+            Latency hiện tại: {{ $value | humanizeDuration }}ms
+            Ngưỡng WARN: 50ms | Ngưỡng CRIT (ED-137): 100ms
+            Hành động: Kiểm tra tải ISP và OSPF path.
+
+      # ── Latency CRIT (> 100ms — vượt ngưỡng ED-137) ──
+      - alert: ED137_Latency_CRITICAL
+        expr: nokia_saa_rtt_avg_ms > 100
+        for: 1m
+        labels:
+          severity: critical
+          standard:  ed137
+          kpi:       latency
+        annotations:
+          summary: "🔴 [CRIT-ED137] Latency vượt ngưỡng — {{ $labels.instance }}"
+          description: |
+            ⚡ VI PHẠM CHUẨN ED-137 ⚡
+            Site: {{ $labels.site }}
+            Device: {{ $labels.instance }}
+            Latency: {{ printf "%.1f" $value }}ms (ngưỡng ED-137: < 100ms)
+            Hành động khẩn: Chuyển ISP dự phòng, báo cáo ca trực.
+
+      # ── Jitter WARN (> 10ms) ──
+      - alert: ED137_Jitter_WARN
+        expr: nokia_saa_jitter_avg_ms > 10
+        for: 2m
+        labels:
+          severity: warning
+          standard:  ed137
+          kpi:       jitter
+        annotations:
+          summary: "⚠️ [WARN] Jitter cao — {{ $labels.instance }}"
+          description: |
+            Site: {{ $labels.site }}
+            Jitter: {{ printf "%.2f" $value }}ms (ngưỡng WARN: 10ms)
+
+      # ── Jitter CRIT (> 20ms — vi phạm ED-137) ──
+      - alert: ED137_Jitter_CRITICAL
+        expr: nokia_saa_jitter_avg_ms > 20
+        for: 1m
+        labels:
+          severity: critical
+          standard:  ed137
+          kpi:       jitter
+        annotations:
+          summary: "🔴 [CRIT-ED137] Jitter vượt ngưỡng — {{ $labels.instance }}"
+          description: |
+            ⚡ VI PHẠM CHUẨN ED-137 ⚡
+            Site: {{ $labels.site }}
+            Jitter: {{ printf "%.2f" $value }}ms (ngưỡng ED-137: < 20ms)
+
+      # ── Packet Loss WARN (> 0.5%) ──
+      - alert: ED137_PacketLoss_WARN
+        expr: nokia_saa_packet_loss_pct > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          standard:  ed137
+          kpi:       packet_loss
+        annotations:
+          summary: "⚠️ [WARN] Mất gói — {{ $labels.instance }}"
+          description: |
+            Site: {{ $labels.site }}
+            Packet Loss: {{ printf "%.2f" $value }}% (ngưỡng WARN: 0.5%)
+
+      # ── Packet Loss CRIT (> 1% — vi phạm ED-137) ──
+      - alert: ED137_PacketLoss_CRITICAL
+        expr: nokia_saa_packet_loss_pct > 1.0
+        for: 1m
+        labels:
+          severity: critical
+          standard:  ed137
+          kpi:       packet_loss
+        annotations:
+          summary: "🔴 [CRIT-ED137] Mất gói vượt ngưỡng — {{ $labels.instance }}"
+          description: |
+            ⚡ VI PHẠM CHUẨN ED-137 ⚡
+            Site: {{ $labels.site }}
+            Packet Loss: {{ printf "%.2f" $value }}% (ngưỡng ED-137: < 1%)
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 2: Port Status — Nokia SR OS Interface
+  # ════════════════════════════════════════════════════════
+  - name: nokia_port_status
+    interval: 15s
+    rules:
+
+      # ── Port ISP DOWN (ifOperStatus != 1) ──
+      - alert: Nokia_ISP_Port_DOWN
+        expr: ifOperStatus{job=~"snmp_.*"} != 1
+        for: 30s
+        labels:
+          severity: critical
+          category:  port_down
+        annotations:
+          summary: "🔴 [DOWN] Cổng ISP mất kết nối — {{ $labels.instance }}"
+          description: |
+            ⚡ ĐƯỜNG TRUYỀN MẤT KẾT NỐI ⚡
+            Device: {{ $labels.instance }}
+            Interface: {{ $labels.ifDescr }}
+            Site: {{ $labels.site }}
+            Thời điểm: {{ $value }}
+            Hành động: Kiểm tra kết nối vật lý + chuyển ISP dự phòng ngay.
+
+      # ── Băng thông > 70% (WARN) ──
+      - alert: Nokia_Bandwidth_High_WARN
+        expr: |
+          (rate(ifInOctets{job=~"snmp_.*"}[5m]) + rate(ifOutOctets{job=~"snmp_.*"}[5m])) * 8
+          / on(instance) group_left() (nokia_interface_bandwidth_bps) * 100 > 70
+        for: 5m
+        labels:
+          severity: warning
+          category:  bandwidth
+        annotations:
+          summary: "⚠️ [WARN] Băng thông cao — {{ $labels.instance }}"
+          description: |
+            Device: {{ $labels.instance }}
+            Sử dụng băng thông: {{ printf "%.1f" $value }}% (ngưỡng: 70%)
+
+      # ── Băng thông > 90% (CRIT) ──
+      - alert: Nokia_Bandwidth_Saturated_CRIT
+        expr: |
+          (rate(ifInOctets{job=~"snmp_.*"}[5m]) + rate(ifOutOctets{job=~"snmp_.*"}[5m])) * 8
+          / on(instance) group_left() (nokia_interface_bandwidth_bps) * 100 > 90
+        for: 2m
+        labels:
+          severity: critical
+          category:  bandwidth
+        annotations:
+          summary: "🔴 [CRIT] Băng thông bão hòa — {{ $labels.instance }}"
+          description: |
+            Device: {{ $labels.instance }}
+            Sử dụng băng thông: {{ printf "%.1f" $value }}% (ngưỡng CRIT: 90%)
+
+      # ── Lỗi frame tăng đột biến ──
+      - alert: Nokia_Interface_Errors_High
+        expr: rate(ifInErrors{job=~"snmp_.*"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          category:  errors
+        annotations:
+          summary: "⚠️ [WARN] Lỗi frame interface — {{ $labels.instance }}"
+          description: |
+            Device: {{ $labels.instance }}
+            Interface: {{ $labels.ifDescr }}
+            Số lỗi: {{ printf "%.2f" $value }} errors/s
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 3: Nokia SAR-8 E1/BER Monitoring
+  # ════════════════════════════════════════════════════════
+  - name: nokia_sar8_e1_ber
+    interval: 60s
+    rules:
+
+      # ── BER WARN (> 1e-6) ──
+      - alert: Nokia_E1_BER_WARN
+        expr: nokia_e1_ber_rate > 1e-6
+        for: 5m
+        labels:
+          severity: warning
+          category:  ber
+        annotations:
+          summary: "⚠️ [WARN] BER cao — {{ $labels.instance }} Port {{ $labels.port }}"
+          description: |
+            Device: {{ $labels.instance }} (Nokia 7705 SAR-8)
+            Port E1: {{ $labels.port }}
+            BER: {{ $value }} (ngưỡng WARN: 1×10⁻⁶)
+
+      # ── BER CRIT (> 1e-4) ──
+      - alert: Nokia_E1_BER_CRITICAL
+        expr: nokia_e1_ber_rate > 1e-4
+        for: 2m
+        labels:
+          severity: critical
+          category:  ber
+        annotations:
+          summary: "🔴 [CRIT] BER nghiêm trọng — {{ $labels.instance }}"
+          description: |
+            ⚡ CÁP/TRUYỀN DẪN E1 SỰ CỐ NGHIÊM TRỌNG ⚡
+            Device: {{ $labels.instance }} (Nokia 7705 SAR-8)
+            Port E1: {{ $labels.port }}
+            BER: {{ $value }} (ngưỡng CRIT: 1×10⁻⁴)
+            Hành động: Kiểm tra tuyến cáp E1 ngay lập tức.
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 4: VHF Rx/Tx — ATCC HCM Specific
+  # ════════════════════════════════════════════════════════
+  - name: atcc_hcm_vhf_monitoring
+    interval: 15s
+    rules:
+
+      # ── VHF SAR-8 MAIN down, STANDBY chưa kịp lên ──
+      - alert: VHF_SAR8_MAIN_DOWN
+        expr: |
+          up{job="snmp_atcc_hcm", device_role=~"rx_vhf|tx_vhf"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          category:  vhf_availability
+        annotations:
+          summary: "🔴 [CRIT] VHF SAR-8 mất kết nối SNMP — {{ $labels.instance }}"
+          description: |
+            ⚡ HỆ THỐNG VHF CÓ SỰ CỐ ⚡
+            Device: {{ $labels.instance }}
+            Channel: {{ $labels.channel }} ({{ $labels.device_role }})
+            Hành động: Kiểm tra nguồn + SSH trực tiếp + thông báo ATCO.

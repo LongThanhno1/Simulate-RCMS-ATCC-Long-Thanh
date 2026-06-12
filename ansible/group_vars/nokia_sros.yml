@@ -1,0 +1,45 @@
+---
+# ============================================================
+# Variables riêng cho group nokia_sros (thiết bị thực Nokia SR OS)
+# ============================================================
+
+ansible_connection: ssh
+ansible_network_os: null    # Nokia SR OS không có Ansible collection chính thức
+                            # Dùng raw SSH + CLI parsing
+# Port SSH Nokia SR OS mặc định
+ansible_port: 22
+
+# Nokia SR OS không dùng pseudo-terminal theo cách thông thường
+# Cần bật pty để tương tác với SR OS CLI
+ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o RequestTTY=yes"
+
+# --- Nokia SR OS CLI Commands ---
+sros_commands:
+  system_info:    "show system information"
+  ospf_neighbors: "show router ospf neighbor"
+  mpls_lsp:       "show router mpls lsp"
+  bgp_summary:    "show router bgp summary"
+
+  # Port status và statistics
+  port_status:    "show port {port_id}"
+  port_stats:     "show port {port_id} statistics"
+  port_errors:    "show port {port_id} detail"
+
+  # E1/DS1 BER monitoring (Nokia 7705 SAR-8 với E1 adapter card)
+  e1_stats:       "show port {port_id} e1"
+  e1_ber:         "show port {port_id} bit-error-rate"
+
+  # SAA (Service Assurance Agent) - Latency/Jitter đầu-cuối
+  saa_results:    "show saa {test_name} results"
+  saa_list:       "show saa"
+
+  # Y.1731 ETH-CFM (Delay Measurement)
+  cfm_dm:         "show oam eth-cfm mep {mep_id} delay-measurement"
+  cfm_stats:      "show oam eth-cfm mep {mep_id} statistics"
+
+  # Router Interface
+  router_iface:   "show router interface"
+  system_iface:   "show router interface \"system\""
+
+  # Exit command
+  logout:         "logout"

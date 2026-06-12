@@ -1,0 +1,216 @@
+# ============================================================
+# VATM ATCC Long Thành — Prometheus Configuration
+# Thiết bị: Nokia 7250 IXR-e + Nokia 7705 SAR-8
+# Chuẩn: EUROCAE ED-137 | Scrape interval: 15s
+# ============================================================
+
+global:
+  scrape_interval: 15s          # Poll SNMP mỗi 15 giây
+  evaluation_interval: 15s      # Đánh giá alert rules mỗi 15s
+  scrape_timeout: 10s
+
+  # Labels gắn vào mọi metric
+  external_labels:
+    system:      'vatm-longthanh-atcc'
+    datacenter:  'ATCC_Long_Thanh'
+    standard:    'ED-137'
+
+# ─────────────────────────────────────────────────────────
+# ALERTMANAGER — Gửi cảnh báo
+# ─────────────────────────────────────────────────────────
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# ─────────────────────────────────────────────────────────
+# ALERT RULES — Load từ thư mục rules/
+# ─────────────────────────────────────────────────────────
+rule_files:
+  - "rules/ed137_alerts.yml"
+  - "rules/nokia_sros_alerts.yml"
+
+# ─────────────────────────────────────────────────────────
+# SCRAPE CONFIGS
+# ─────────────────────────────────────────────────────────
+scrape_configs:
+
+  # ── Prometheus tự monitor ──
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ── Node Exporter — VM1 host metrics ──
+  - job_name: 'node_exporter_vm1'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'VM1-Monitor-Server'
+          role: 'monitoring_host'
+
+  # ════════════════════════════════════════════════════════
+  # SNMP — TWR LTIA CORE (Nokia 7250 IXR-e)
+  # ════════════════════════════════════════════════════════
+  - job_name: 'snmp_twr_ltia_core'
+    scrape_interval: 30s
+    metrics_path: /snmp
+    params:
+      module: [nokia_sros_if]       # Module trong snmp.yml
+    static_configs:
+      - targets:
+          - 10.1.1.1   # TWR-EDGE-ROUTERS-1
+          - 10.1.1.2   # TWR-EDGE-ROUTERS-2
+          - 10.1.1.3   # TWR-DISTRIBUTION-1
+          - 10.1.1.4   # TWR-DISTRIBUTION-2
+        labels:
+          site:  'TWR_LTIA'
+          model: '7250_IXR-e'
+          zone:  'core'
+      - targets:
+          - 10.1.1.5   # TWR-VSAT-SAR8
+        labels:
+          site:  'TWR_LTIA'
+          model: '7705_SAR-8'
+          zone:  'vsat'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: snmp-exporter:9116
+
+  # ════════════════════════════════════════════════════════
+  # SNMP — ATCC HCM (Nokia 7705 SAR-8 | Rx/Tx VHF)
+  # ════════════════════════════════════════════════════════
+  - job_name: 'snmp_atcc_hcm'
+    scrape_interval: 15s          # VHF Rx/Tx — scrape nhanh hơn (ED-137)
+    metrics_path: /snmp
+    params:
+      module: [nokia_sros_sar8]
+    static_configs:
+      - targets:
+          - 10.2.1.1   # Rx-VHF-HCM-SAR8-MAIN-1
+          - 10.2.1.2   # Rx-VHF-HCM-SAR8-STANDBY-2
+        labels:
+          site:        'ATCC_HCM'
+          model:       '7705_SAR-8'
+          device_role: 'rx_vhf'
+          channel:     'RX'
+      - targets:
+          - 10.2.1.3   # Tx-VHF-HCM-SAR8-MAIN-1
+          - 10.2.1.4   # Tx-VHF-HCM-SAR8-STANDBY-2
+        labels:
+          site:        'ATCC_HCM'
+          model:       '7705_SAR-8'
+          device_role: 'tx_vhf'
+          channel:     'TX'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: snmp-exporter:9116
+
+  # ════════════════════════════════════════════════════════
+  # SNMP — Remote Sites (Nokia 7705 SAR-8 | VNPT+VIETTEL)
+  # ════════════════════════════════════════════════════════
+  - job_name: 'snmp_remote_radar_adsb'
+    scrape_interval: 60s          # Remote sites — scrape 60s (băng thông thấp)
+    metrics_path: /snmp
+    params:
+      module: [nokia_sros_sar8]
+    static_configs:
+      - targets:
+          - 10.3.1.1   # TWR-WEATHER-RADAR-SAR8-1 (3 Mb)
+        labels:
+          site:  'WEATHER_RADAR'
+          bw_mb: '3'
+      - targets:
+          - 10.3.2.1   # TWR-ADSB-SAR8-1 (3 Mb)
+        labels:
+          site:  'ADSB_A18'
+          bw_mb: '3'
+      - targets:
+          - 10.3.3.1   # TWR-PSR-MSSR-SAR8-1 (3 Mb)
+        labels:
+          site:  'PSR_SSR_TX'
+          bw_mb: '3'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: snmp-exporter:9116
+    metric_relabel_configs:
+      - source_labels: [instance]
+        target_label: device_role
+        replacement: 'sar8_remote'
+      - source_labels: []
+        target_label: model
+        replacement: '7705_SAR-8'
+
+  - job_name: 'snmp_remote_twr_app'
+    scrape_interval: 60s
+    metrics_path: /snmp
+    params:
+      module: [nokia_sros_sar8]
+    static_configs:
+      - targets:
+          - 10.4.1.1   # APP-TWR-DAN-SAR8-1 (3 Mb)
+          - 10.4.2.1   # TWR-TUY-HOA-SAR8-1 (3 Mb)
+          - 10.4.4.1   # TWR-BMT-SAR8-1 (8 Mb)
+          - 10.4.5.1   # TWR-LKG-SAR8-1 (3 Mb)
+          - 10.4.6.1   # TWR-CTH-SAR8-1 (5 Mb)
+          - 10.4.7.1   # TWR-CMU-SAR8-1 (3 Mb)
+          - 10.4.8.1   # TWR-RGA-SAR8-1 (3 Mb)
+          - 10.4.9.1   # TWR-CSN-SAR8-1 (3 Mb)
+          - 10.4.10.1  # TWR-PQC-SAR8-1 (6 Mb)
+        labels:
+          site_group: 'remote_twr'
+          model:      '7705_SAR-8'
+      - targets:
+          - 10.4.3.1   # APP-TWR-CRA-SAR8-1 (7 Mb)
+        labels:
+          site_group: 'remote_app'
+          model:      '7705_SAR-8'
+      - targets:
+          - 10.4.11.1  # RADAR-QNH-SAR8-1 (4 Mb)
+          - 10.4.12.1  # RADAR-CMU-SAR8-1 (4 Mb)
+        labels:
+          site_group: 'remote_radar'
+          model:      '7705_SAR-8'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: snmp-exporter:9116
+
+  # ── Lab Simulation (Ubuntu VMs) ──
+  - job_name: 'snmp_lab_simulation'
+    scrape_interval: 30s
+    metrics_path: /snmp
+    params:
+      module: [linux_snmp]
+    static_configs:
+      - targets:
+          - 192.168.100.11   # lab-router-01 (sim: TWR-EDGE-ROUTERS-1)
+          - 192.168.100.12   # lab-router-02 (sim: TWR-VSAT-SAR8)
+          - 192.168.100.13   # lab-router-03 (sim: TWR-PSR-MSSR-SAR8-1)
+          - 192.168.100.14   # lab-router-04 (sim: TWR-BMT-SAR8-1)
+          - 192.168.100.15   # lab-router-05 (sim: Rx-VHF-HCM-SAR8-MAIN-1)
+        labels:
+          env:  'lab'
+          mode: 'simulation'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: snmp-exporter:9116

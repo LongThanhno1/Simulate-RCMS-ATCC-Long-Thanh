@@ -1,0 +1,38 @@
+---
+# ============================================================
+# Variables riêng cho group lab_simulation (Ubuntu VMs)
+# Mô phỏng Nokia SR OS bằng Linux + snmpd + custom scripts
+# ============================================================
+
+ansible_connection: ssh
+ansible_user: "vatm"
+ansible_ssh_pass: "Vatm@2025"
+ansible_become: true
+ansible_become_method: sudo
+ansible_become_password: "Vatm@2025"
+
+# --- Mode: lab (dùng Linux commands thay Nokia CLI) ---
+collection_mode: "linux_simulation"
+
+# --- Các commands dùng trong lab (thay thế Nokia SR OS CLI) ---
+lab_commands:
+  # Simulate port status qua /proc/net/dev
+  port_status:     "cat /proc/net/dev"
+  # Simulate latency bằng ping
+  latency_test:    "ping -c 10 -i 0.2 {target_ip} | tail -2"
+  # Simulate jitter
+  jitter_test:     "ping -c 100 -i 0.01 {target_ip} | grep rtt"
+  # Interface stats
+  iface_stats:     "ip -s link show {iface}"
+  # BER simulation (luôn = 0 trong lab)
+  ber_sim:         "echo 'BER: 0 errors (simulation mode)'"
+  # System info
+  sys_info:        "uname -a; uptime; free -h"
+  # SNMP OID queries (thay thế Nokia SNMP)
+  snmp_iface_in:   "snmpget -v2c -c public localhost IF-MIB::ifInOctets.{ifindex}"
+  snmp_iface_out:  "snmpget -v2c -c public localhost IF-MIB::ifOutOctets.{ifindex}"
+  snmp_iface_err:  "snmpget -v2c -c public localhost IF-MIB::ifInErrors.{ifindex}"
+
+# SNMP community cho lab
+snmp_community: "public"
+snmp_version: "2c"

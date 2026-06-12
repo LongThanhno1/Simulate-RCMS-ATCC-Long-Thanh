@@ -1,0 +1,169 @@
+# ============================================================
+# VATM ATCC Long Thành — Monitor Stack (VM1: 192.168.100.10)
+# Docker Compose v2 | Nokia SR OS Monitoring | ED-137 Compliant
+# ============================================================
+# Chạy: docker compose up -d
+# Dừng: docker compose down
+# Log:  docker compose logs -f <service>
+# ============================================================
+
+services:
+
+  # ─────────────────────────────────────────────────────────
+  # 1. PROMETHEUS — Thu thập & lưu trữ metrics
+  # ─────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: vatm_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'      # Giữ 30 ngày dữ liệu
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.enable-lifecycle'                  # Cho phép reload config live
+      - '--web.enable-admin-api'
+      - '--web.external-url=http://192.168.100.10:9090'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    networks:
+      - vatm_monitor
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────
+  # 2. GRAFANA — Dashboard real-time (embed vào Web Portal)
+  # ─────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.3
+    container_name: vatm_grafana
+    restart: unless-stopped
+    environment:
+      # Admin credentials
+      - GF_SECURITY_ADMIN_USER=vatm_admin
+      - GF_SECURITY_ADMIN_PASSWORD=VatmGrafana@2025
+      # Cho phép embed iframe vào Web Portal (quan trọng!)
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      # CORS — cho phép Web Portal (VM2) truy cập
+      - GF_SERVER_ROOT_URL=http://192.168.100.10:3000
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
+      # Tắt analytics
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - vatm_monitor
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────
+  # 3. ALERTMANAGER — Cảnh báo Telegram + Email
+  # ─────────────────────────────────────────────────────────
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: vatm_alertmanager
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://192.168.100.10:9093'
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/config.yml:/etc/alertmanager/config.yml:ro
+      - alertmanager_data:/alertmanager
+    networks:
+      - vatm_monitor
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────
+  # 4. SNMP EXPORTER — Poll Nokia SR OS qua SNMP v2c
+  # ─────────────────────────────────────────────────────────
+  snmp-exporter:
+    image: prom/snmp-exporter:v0.26.0
+    container_name: vatm_snmp_exporter
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/snmp-exporter/snmp.yml'
+    ports:
+      - "9116:9116"
+    volumes:
+      - ./snmp/snmp.yml:/etc/snmp-exporter/snmp.yml:ro
+    networks:
+      - vatm_monitor
+    # SNMP cần có khả năng reach các dải 10.x.x.x
+    # Đảm bảo VM1 có route đến các dải management Nokia
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9116/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────
+  # 5. NODE EXPORTER — Monitor chính VM1 (CPU/RAM/Disk)
+  # ─────────────────────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.8.0
+    container_name: vatm_node_exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - vatm_monitor
+
+# ─────────────────────────────────────────────────────────
+# VOLUMES — Persistent storage
+# ─────────────────────────────────────────────────────────
+volumes:
+  prometheus_data:
+    name: vatm_prometheus_data
+  grafana_data:
+    name: vatm_grafana_data
+  alertmanager_data:
+    name: vatm_alertmanager_data
+
+# ─────────────────────────────────────────────────────────
+# NETWORKS
+# ─────────────────────────────────────────────────────────
+networks:
+  vatm_monitor:
+    name: vatm_monitor_net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
