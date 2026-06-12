@@ -475,6 +475,68 @@ select {
   transition:background .3s, color .3s;
 }
 
+/* ================================================================
+   PANEL TABS (bên trong Node Detail Panel)
+   ================================================================ */
+.panel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+.panel-tab {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: .75em;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text2);
+  border-bottom: 2px solid transparent;
+  transition: color .15s, background .15s;
+  user-select: none;
+}
+.panel-tab:hover  { color: var(--text); background: var(--bg4); }
+.panel-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 700; }
+
+.panel-tab-content          { display: none; }
+.panel-tab-content.active   { display: block; }
+
+/* Form tham số */
+.param-section {
+  font-size: .68em; color: var(--blue);
+  text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 700; margin: 10px 0 4px;
+  padding-bottom: 3px; border-bottom: 1px solid var(--border);
+}
+.param-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 0; border-bottom: 1px solid var(--border);
+  font-size: .77em;
+}
+.param-row:last-child { border-bottom: none; }
+.param-label { color: var(--text2); flex: 1; min-width: 0; }
+.param-input {
+  background: var(--bg4); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 6px; font-size: .9em;
+  width: 88px; text-align: right;
+  font-family: 'Consolas', monospace;
+  transition: border-color .15s;
+}
+.param-input:focus {
+  outline: none; border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(56,189,248,.15);
+}
+.param-unit {
+  color: var(--text3); width: 28px; font-size: .82em;
+  text-align: left; flex-shrink: 0;
+}
+.param-save-msg {
+  font-size: .72em; color: var(--green);
+  text-align: center; padding: 4px;
+  display: none;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width:5px; height:5px; }
 ::-webkit-scrollbar-track { background:var(--bg); }
@@ -577,6 +639,8 @@ html[data-theme="light"] .a-warn { background:#fef3c7; border-left:3px solid var
 
       <!-- Node Detail Panel -->
       <div id="node-panel" class="node-panel" style="display:none">
+
+        <!-- ── Panel Header ── -->
         <div class="panel-header">
           <div>
             <div class="panel-title" id="panel-title">—</div>
@@ -584,42 +648,66 @@ html[data-theme="light"] .a-warn { background:#fef3c7; border-left:3px solid var
           </div>
           <button class="panel-close" onclick="closePanel()">✕</button>
         </div>
-        <div class="panel-body">
-          <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
-            <span id="panel-badge" class="badge bg-blue">● UNKNOWN</span>
-            <span style="font-size:.68em;color:var(--text2)" id="panel-ts"></span>
+
+        <!-- ── Tab Bar ── -->
+        <div class="panel-tabs">
+          <div class="panel-tab active" onclick="switchPanelTab('thongtin')">ℹ️ Thông tin</div>
+          <div class="panel-tab"        onclick="switchPanelTab('thongso')">⚙️ Thông số</div>
+        </div>
+
+        <!-- ── Tab 1: THÔNG TIN (KPI + info) ── -->
+        <div class="panel-tab-content active" id="ptab-thongtin">
+          <div class="panel-body">
+            <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
+              <span id="panel-badge" class="badge bg-blue">● UNKNOWN</span>
+              <span style="font-size:.68em;color:var(--text2)" id="panel-ts"></span>
+            </div>
+            <div id="panel-info"></div>
+            <div class="panel-kpis">
+              <div class="kpi-row-title">⚡ KPI — EUROCAE ED-137</div>
+              <div class="kpi-mini">
+                <div class="kpi-mini-lbl">
+                  <span>One-way Delay</span>
+                  <span id="pv-delay">N/A</span>
+                </div>
+                <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="pb-delay" style="width:20%;background:var(--green)"></div></div>
+              </div>
+              <div class="kpi-mini">
+                <div class="kpi-mini-lbl">
+                  <span>Jitter</span>
+                  <span id="pv-jitter">N/A</span>
+                </div>
+                <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="pb-jitter" style="width:20%;background:var(--green)"></div></div>
+              </div>
+              <div class="kpi-mini">
+                <div class="kpi-mini-lbl">
+                  <span>Packet Loss</span>
+                  <span id="pv-loss">N/A</span>
+                </div>
+                <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="pb-loss" style="width:5%;background:var(--green)"></div></div>
+              </div>
+            </div>
           </div>
-          <div id="panel-info"></div>
-          <div class="panel-kpis">
-            <div class="kpi-row-title">⚡ KPI — EUROCAE ED-137</div>
-            <div class="kpi-mini">
-              <div class="kpi-mini-lbl">
-                <span>One-way Delay</span>
-                <span id="pv-delay">N/A</span>
-              </div>
-              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="pb-delay" style="width:20%;background:var(--green)"></div></div>
-            </div>
-            <div class="kpi-mini">
-              <div class="kpi-mini-lbl">
-                <span>Jitter</span>
-                <span id="pv-jitter">N/A</span>
-              </div>
-              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="pb-jitter" style="width:20%;background:var(--green)"></div></div>
-            </div>
-            <div class="kpi-mini">
-              <div class="kpi-mini-lbl">
-                <span>Packet Loss</span>
-                <span id="pv-loss">N/A</span>
-              </div>
-              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="pb-loss" style="width:5%;background:var(--green)"></div></div>
-            </div>
+          <div class="panel-actions">
+            <button class="btn btn-green" onclick="runNodeMeasure()" style="width:100%;justify-content:center">▶ Đo kiểm riêng trạm này</button>
+            <button class="btn btn-blue"  onclick="openNodeGrafana()" style="width:100%;justify-content:center">📊 Xem Grafana Dashboard</button>
+            <button class="btn btn-grey btn-sm" onclick="closePanel()" style="width:100%;justify-content:center">✕ Đóng</button>
           </div>
         </div>
-        <div class="panel-actions">
-          <button class="btn btn-green" onclick="runNodeMeasure()" style="width:100%;justify-content:center">▶ Đo kiểm riêng trạm này</button>
-          <button class="btn btn-blue"  onclick="openNodeGrafana()" style="width:100%;justify-content:center">📊 Xem Grafana Dashboard</button>
-          <button class="btn btn-grey btn-sm"  onclick="closePanel()" style="width:100%;justify-content:center">✕ Đóng</button>
+
+        <!-- ── Tab 2: THÔNG SỐ (form cấu hình) ── -->
+        <div class="panel-tab-content" id="ptab-thongso">
+          <div class="panel-body" id="panel-params-body"
+               style="max-height:310px;overflow-y:auto;padding:10px 14px">
+            <!-- Rendered by JS: renderParamForm() -->
+          </div>
+          <div class="param-save-msg" id="param-save-msg">✅ Đã lưu thông số!</div>
+          <div class="panel-actions">
+            <button class="btn btn-green" onclick="saveNodeParams()" style="width:100%;justify-content:center">💾 Lưu thông số</button>
+            <button class="btn btn-orange btn-sm" onclick="resetNodeParams()" style="width:100%;justify-content:center">↺ Đặt lại mặc định</button>
+          </div>
         </div>
+
       </div>
 
     </div><!-- /topo-wrap -->
@@ -781,6 +869,143 @@ const GF_DASH = {
   ubvhf: '/d/vatm-vm-health/vm-network-health?orgId=1&kiosk',
   kpi:   '/d/vatm-ed137-overview/ed137-overview-vatm-atcc-long-thanh?orgId=1&kiosk',
 };
+
+/* ================================================================
+   NODE PARAMS — Định nghĩa thông số cấu hình từng trạm
+   Mỗi mục: { key, label, type, val, unit, step?, min?, max? }
+   Mục { section } là tiêu đề nhóm (không có input)
+   ================================================================ */
+const NODE_PARAMS_DEF = {
+  tx: [
+    { section: '📡 Kết nối IP (LAN3 — RCMS subnet)' },
+    { key:'ip_main_base', label:'IP MAIN (bắt đầu)',  type:'text',   val:'10.60.7.71', unit:'' },
+    { key:'ip_stby_base', label:'IP STBY (bắt đầu)',  type:'text',   val:'10.60.7.81', unit:'' },
+    { key:'channel_count',label:'Số kênh VHF',        type:'number', val:9,            unit:'ch' },
+    { section: '🔌 SNMP Polling' },
+    { key:'snmp_community',label:'Community string',  type:'text',   val:'vatm_ro',    unit:'' },
+    { key:'snmp_version',  label:'SNMP version',      type:'text',   val:'v2c',        unit:'' },
+    { key:'poll_interval', label:'Poll interval',     type:'number', val:15,           unit:'s',  min:5,  max:300 },
+    { section: '📻 Tần số & Công suất' },
+    { key:'freq_start',   label:'Tần số đầu tiên',    type:'text',   val:'118.425',    unit:'MHz' },
+    { key:'tx_power',     label:'Công suất phát',     type:'number', val:50,           unit:'W',  min:1,  max:100 },
+    { key:'vswr_max',     label:'VSWR tối đa',        type:'number', val:1.5,          unit:'',   step:0.1, min:1, max:3 },
+    { section: '⚡ Ngưỡng ED-137 (override)' },
+    { key:'jitter_warn',  label:'Jitter WARN',        type:'number', val:10,           unit:'ms', min:1,  max:19 },
+    { key:'jitter_crit',  label:'Jitter CRIT',        type:'number', val:20,           unit:'ms', min:2,  max:100 },
+    { key:'loss_warn',    label:'Loss WARN',           type:'number', val:0.1,          unit:'%',  step:0.01, min:0, max:0.99 },
+    { key:'loss_crit',    label:'Loss CRIT',           type:'number', val:1.0,          unit:'%',  step:0.01, min:0.1, max:10 },
+    { key:'delay_warn',   label:'Delay WARN',          type:'number', val:50,           unit:'ms', min:5,  max:99 },
+    { key:'delay_crit',   label:'Delay CRIT',          type:'number', val:100,          unit:'ms', min:10, max:500 },
+  ],
+  atcc: [
+    { section: '🗼 ALE Switch (OS6860E)' },
+    { key:'switch_ip',    label:'Switch IP',           type:'text',   val:'10.60.10.1', unit:'' },
+    { key:'switch_comm',  label:'SNMP Community',      type:'text',   val:'vatm_ro',    unit:'' },
+    { key:'switch_vlan',  label:'VLAN LAN3 (RCMS)',    type:'number', val:30,           unit:'',   min:1, max:4094 },
+    { key:'poll_interval',label:'Poll interval',       type:'number', val:15,           unit:'s',  min:5, max:300 },
+    { section: '🎛️ S4-IP Controller (Park Air)' },
+    { key:'s4ip_ip',      label:'S4-IP IP',            type:'text',   val:'10.60.11.16',unit:'' },
+    { key:'s4ip_port',    label:'TCP Port (RCMS)',      type:'number', val:5001,         unit:'',   min:1, max:65535 },
+    { key:'s4ip_timeout', label:'Probe timeout',       type:'number', val:5,            unit:'s',  min:1, max:30 },
+    { section: '⚡ Ngưỡng ED-137 (toàn tuyến)' },
+    { key:'jitter_warn',  label:'Jitter WARN',         type:'number', val:10,           unit:'ms' },
+    { key:'jitter_crit',  label:'Jitter CRIT',         type:'number', val:20,           unit:'ms' },
+    { key:'loss_warn',    label:'Loss WARN',            type:'number', val:0.1,          unit:'%',  step:0.01 },
+    { key:'loss_crit',    label:'Loss CRIT',            type:'number', val:1.0,          unit:'%',  step:0.01 },
+    { key:'delay_warn',   label:'Delay WARN',           type:'number', val:50,           unit:'ms' },
+    { key:'delay_crit',   label:'Delay CRIT',           type:'number', val:100,          unit:'ms' },
+    { section: '📡 Giám sát SNMP Target' },
+    { key:'snmp_target_count', label:'Tổng số SNMP targets', type:'number', val:52,     unit:'target' },
+    { key:'alert_threshold_pct', label:'Cảnh báo khi DOWN >', type:'number', val:10,    unit:'%',  min:1, max:100 },
+  ],
+  rx: [
+    { section: '📡 Kết nối IP (LAN3 — RCMS subnet)' },
+    { key:'ip_main_base', label:'IP MAIN (bắt đầu)',   type:'text',   val:'10.60.6.71', unit:'' },
+    { key:'ip_stby_base', label:'IP STBY (bắt đầu)',   type:'text',   val:'10.60.6.81', unit:'' },
+    { key:'channel_count',label:'Số kênh VHF',         type:'number', val:9,            unit:'ch' },
+    { section: '🔌 SNMP Polling' },
+    { key:'snmp_community',label:'Community string',   type:'text',   val:'vatm_ro',    unit:'' },
+    { key:'snmp_version',  label:'SNMP version',       type:'text',   val:'v2c',        unit:'' },
+    { key:'poll_interval', label:'Poll interval',      type:'number', val:15,           unit:'s',  min:5, max:300 },
+    { section: '📻 Thu sóng & Nhạy cảm' },
+    { key:'freq_start',   label:'Tần số đầu tiên',     type:'text',   val:'118.425',    unit:'MHz' },
+    { key:'rx_sensitivity',label:'Độ nhạy RX',         type:'number', val:-107,         unit:'dBm', min:-130, max:-50 },
+    { key:'squelch',      label:'Squelch level',       type:'number', val:-95,          unit:'dBm', min:-120, max:-50 },
+    { section: '⚡ Ngưỡng ED-137 (override)' },
+    { key:'jitter_warn',  label:'Jitter WARN',         type:'number', val:10,           unit:'ms' },
+    { key:'jitter_crit',  label:'Jitter CRIT',         type:'number', val:20,           unit:'ms' },
+    { key:'loss_warn',    label:'Loss WARN',            type:'number', val:0.1,          unit:'%',  step:0.01 },
+    { key:'loss_crit',    label:'Loss CRIT',            type:'number', val:1.0,          unit:'%',  step:0.01 },
+    { key:'delay_warn',   label:'Delay WARN',           type:'number', val:50,           unit:'ms' },
+    { key:'delay_crit',   label:'Delay CRIT',           type:'number', val:100,          unit:'ms' },
+  ],
+};
+
+/* Lưu trữ thông số in-memory + localStorage */
+let nodeSettings = {};
+try { nodeSettings = JSON.parse(localStorage.getItem('vatm_node_settings') || '{}'); } catch(e) {}
+
+/* ── Chuyển tab trong Node Panel ── */
+function switchPanelTab(tab) {
+  document.querySelectorAll('.panel-tab').forEach((t,i) => {
+    t.classList.toggle('active', (tab==='thongtin'&&i===0)||(tab==='thongso'&&i===1));
+  });
+  document.querySelectorAll('.panel-tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('ptab-'+tab).classList.add('active');
+  if (tab === 'thongso' && curPanel) renderParamForm(curPanel.id);
+}
+
+/* ── Render form thông số cho node ── */
+function renderParamForm(nodeId) {
+  const defs  = NODE_PARAMS_DEF[nodeId] || [];
+  const saved = nodeSettings[nodeId]    || {};
+  let html = '';
+  defs.forEach(p => {
+    if (p.section) {
+      html += `<div class="param-section">${p.section}</div>`;
+      return;
+    }
+    const curVal = saved[p.key] !== undefined ? saved[p.key] : p.val;
+    const step   = p.step  ? `step="${p.step}"` : (p.type==='number' ? 'step="1"' : '');
+    const minmax = [p.min!=null?`min="${p.min}"`:'', p.max!=null?`max="${p.max}"`:''].filter(Boolean).join(' ');
+    html += `<div class="param-row">
+      <span class="param-label">${p.label}</span>
+      <input class="param-input" id="pi-${nodeId}-${p.key}"
+             type="${p.type||'text'}" value="${curVal}" ${step} ${minmax} />
+      <span class="param-unit">${p.unit||''}</span>
+    </div>`;
+  });
+  document.getElementById('panel-params-body').innerHTML = html;
+}
+
+/* ── Lưu thông số ── */
+function saveNodeParams() {
+  if (!curPanel) return;
+  const nodeId = curPanel.id;
+  const defs   = NODE_PARAMS_DEF[nodeId] || [];
+  const vals   = {};
+  defs.forEach(p => {
+    if (p.section) return;
+    const el = document.getElementById(`pi-${nodeId}-${p.key}`);
+    if (!el) return;
+    vals[p.key] = p.type==='number' ? parseFloat(el.value)||p.val : el.value;
+  });
+  nodeSettings[nodeId] = vals;
+  try { localStorage.setItem('vatm_node_settings', JSON.stringify(nodeSettings)); } catch(e) {}
+  /* Flash message */
+  const msg = document.getElementById('param-save-msg');
+  msg.style.display = 'block';
+  setTimeout(() => { msg.style.display = 'none'; }, 2000);
+}
+
+/* ── Reset về mặc định ── */
+function resetNodeParams() {
+  if (!curPanel) return;
+  if (!confirm('Đặt lại tất cả thông số về giá trị mặc định?')) return;
+  delete nodeSettings[curPanel.id];
+  try { localStorage.setItem('vatm_node_settings', JSON.stringify(nodeSettings)); } catch(e) {}
+  renderParamForm(curPanel.id);
+}
 
 /* ================================================================
    THEME — Quản lý Dark / Light Mode
@@ -1504,6 +1729,9 @@ animId = requestAnimationFrame(animLoop);
    ================================================================ */
 function openPanel(node) {
   curPanel = node;
+  /* Reset về tab Thông tin mỗi lần mở node mới */
+  switchPanelTab('thongtin');
+  document.getElementById('param-save-msg').style.display = 'none';
   document.getElementById('panel-title').textContent = node.label.join(' ');
   document.getElementById('panel-sub').textContent   = node.icon + ' ' + node.sub;
   const stMap = {tx:topo.tx_status,atcc:topo.atcc_status,rx:topo.rx_status};
