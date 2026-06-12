@@ -13,6 +13,22 @@
 # Tác giả: Đỗ Thanh Long — ATSEP VATM ATCC Long Thành
 # ============================================================
 
+# ============================================================
+# AUTHS — Tách khỏi modules từ snmp_exporter v0.26
+# Ref: https://github.com/prometheus/snmp_exporter/blob/main/auth-split-migration.md
+# ============================================================
+auths:
+
+  vatm_ro_v2:
+    community: vatm_ro
+    security_level: noAuthNoPriv
+    version: 2
+
+  public_v2:
+    community: public
+    security_level: noAuthNoPriv
+    version: 2
+
 modules:
 
   # ══════════════════════════════════════════════════════
@@ -22,9 +38,6 @@ modules:
   # Community: vatm_ro (thay bằng community thực tế khi deploy)
   # ══════════════════════════════════════════════════════
   park_air_t6:
-    version: 2
-    auth:
-      community: vatm_ro
 
     walk:
       # ── Standard IF-MIB ──
@@ -180,9 +193,6 @@ modules:
   # (Alcatel-Lucent Enterprise dùng OID 1.3.6.1.4.1.6486)
   # ══════════════════════════════════════════════════════
   ale_switch:
-    version: 2
-    auth:
-      community: vatm_ro
 
     walk:
       - 1.3.6.1.2.1.2.2          # ifTable
@@ -272,9 +282,6 @@ modules:
   # Giả lập T6 radio khi chưa có thiết bị thật
   # ══════════════════════════════════════════════════════
   linux_snmp:
-    version: 2
-    auth:
-      community: public
 
     walk:
       - 1.3.6.1.2.1.2.2          # ifTable

@@ -4,6 +4,8 @@
 # Hệ thống: Park Air T6-TV / T6-RV / T6-TRV + ALE OS6860/OS6360
 # IP Source: TMTK-VHF&BackupVHF.pdf (HĐ 8225/HĐ-QLB 06/12/2024)
 # Tác giả: Đỗ Thanh Long — ATSEP VATM ATCC Long Thành
+# NOTE: Prometheus YAML parser không hỗ trợ anchors — relabel_configs
+#       được expand inline cho từng job.
 # ============================================================
 
 global:
@@ -26,25 +28,6 @@ rule_files:
   - "rules/switch_alerts.yml"
 
 # ============================================================
-# ANCHOR — tái sử dụng relabel_configs cho SNMP Exporter
-# ============================================================
-x-snmp-relabel: &snmp_relabel
-  - source_labels: [__address__]
-    target_label:  __param_target
-  - source_labels: [__param_target]
-    target_label:  instance
-  - target_label:  __address__
-    replacement:   snmp-exporter:9116
-
-x-blackbox-relabel: &blackbox_relabel
-  - source_labels: [__address__]
-    target_label:  __param_target
-  - source_labels: [__param_target]
-    target_label:  instance
-  - target_label:  __address__
-    replacement:   blackbox-exporter:9115
-
-# ============================================================
 scrape_configs:
 
   # ── Self-monitoring ──────────────────────────────────────
@@ -59,6 +42,13 @@ scrape_configs:
           instance: 'VM-Monitor-Server'
           role:     'monitoring_host'
 
+  - job_name: 'pushgateway'
+    honor_labels: true
+    static_configs:
+      - targets: ['pushgateway:9091']
+        labels:
+          instance: 'pushgateway'
+
   # ════════════════════════════════════════════════════════
   # TRẠM PHÁT TX — Park Air T6-TV
   # Poll LAN3 (RCMS subnet 10.60.7.64/27) — không ảnh hưởng VoIP
@@ -69,6 +59,7 @@ scrape_configs:
     metrics_path: /snmp
     params:
       module: [park_air_t6]
+      auth: [vatm_ro_v2]
     static_configs:
       - targets:
           - 10.60.7.71   # MAIN-118.425 MHz — Clearance Delivery chính
@@ -79,20 +70,27 @@ scrape_configs:
           - 10.60.7.76   # MAIN-124.325 MHz — NW-GND dự phòng
           - 10.60.7.77   # MAIN-124.625 MHz — NE-GND chính
           - 10.60.7.78   # MAIN-125.275 MHz — NE-GND dự phòng
-          - 10.60.7.79   # MAIN-121.500 MHz — EMERGENCY ⚠️
+          - 10.60.7.79   # MAIN-121.500 MHz — EMERGENCY
         labels:
           site:       'TX_Station'
           device:     'Park_Air_T6-TV'
           role:       'transmitter'
           redundancy: 'main'
           lan_poll:   'LAN3_RCMS'
-    relabel_configs: *snmp_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
 
   - job_name: 'snmp_tx_t6tv_standby'
     scrape_interval: 15s
     metrics_path: /snmp
     params:
       module: [park_air_t6]
+      auth: [vatm_ro_v2]
     static_configs:
       - targets:
           - 10.60.7.81   # STANDBY-118.425
@@ -110,7 +108,13 @@ scrape_configs:
           role:       'transmitter'
           redundancy: 'standby'
           lan_poll:   'LAN3_RCMS'
-    relabel_configs: *snmp_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
 
   # ════════════════════════════════════════════════════════
   # TRẠM THU RX — Park Air T6-RV
@@ -122,6 +126,7 @@ scrape_configs:
     metrics_path: /snmp
     params:
       module: [park_air_t6]
+      auth: [vatm_ro_v2]
     static_configs:
       - targets:
           - 10.60.6.71   # MAIN-118.425
@@ -139,13 +144,20 @@ scrape_configs:
           role:       'receiver'
           redundancy: 'main'
           lan_poll:   'LAN3_RCMS'
-    relabel_configs: *snmp_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
 
   - job_name: 'snmp_rx_t6rv_standby'
     scrape_interval: 15s
     metrics_path: /snmp
     params:
       module: [park_air_t6]
+      auth: [vatm_ro_v2]
     static_configs:
       - targets:
           - 10.60.6.81   # STANDBY-118.425
@@ -163,7 +175,13 @@ scrape_configs:
           role:       'receiver'
           redundancy: 'standby'
           lan_poll:   'LAN3_RCMS'
-    relabel_configs: *snmp_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
 
   # ════════════════════════════════════════════════════════
   # ULTIMATE BACKUP VHF — Park Air T6-TRV (Tầng 20 TWR)
@@ -174,9 +192,10 @@ scrape_configs:
     metrics_path: /snmp
     params:
       module: [park_air_t6]
+      auth: [vatm_ro_v2]
     static_configs:
       - targets:
-          - 10.60.11.1   # TWR-UBVHF-T6TRV-01 — tần số tùy chỉnh
+          - 10.60.11.1   # TWR-UBVHF-T6TRV-01
           - 10.60.11.2   # TWR-UBVHF-T6TRV-02
           - 10.60.11.3   # TWR-UBVHF-T6TRV-03
           - 10.60.11.4   # TWR-UBVHF-T6TRV-04
@@ -187,18 +206,25 @@ scrape_configs:
           device: 'Park_Air_T6-TRV'
           role:   'transceiver_ultimate_backup'
           subnet: '10.60.11.0/27'
-    relabel_configs: *snmp_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
 
   # ════════════════════════════════════════════════════════
   # SWITCH VoIP — ALE OS6860E-24
   # TX MAIN: 10.60.7.30 | TX STBY: 10.60.7.62
-  # RX MAIN: 10.60.99.9 (MGMT) — xác nhận từ switch config
+  # RX MAIN: 10.60.99.9 (MGMT)
   # ════════════════════════════════════════════════════════
   - job_name: 'snmp_sw6860_tx'
     scrape_interval: 30s
     metrics_path: /snmp
     params:
       module: [ale_switch]
+      auth: [vatm_ro_v2]
     static_configs:
       - targets:
           - 10.60.7.30   # TX-VHF-SW6860-MAIN-01
@@ -207,21 +233,34 @@ scrape_configs:
           site:   'TX_Station'
           device: 'ALE_OS6860E-24'
           role:   'voip_switch'
-    relabel_configs: *snmp_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
 
   - job_name: 'snmp_sw6860_rx'
     scrape_interval: 30s
     metrics_path: /snmp
     params:
       module: [ale_switch]
+      auth: [vatm_ro_v2]
     static_configs:
       - targets:
-          - 10.60.99.9   # RX-VHF-SW6860-MAIN-01 (MGMT IP confirmed)
+          - 10.60.99.9   # RX-VHF-SW6860-MAIN-01 (MGMT IP)
         labels:
           site:   'RX_Station'
           device: 'ALE_OS6860E-24'
           role:   'voip_switch'
-    relabel_configs: *snmp_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
 
   # ════════════════════════════════════════════════════════
   # SWITCH RCMS — ALE OS6360-24
@@ -232,6 +271,7 @@ scrape_configs:
     metrics_path: /snmp
     params:
       module: [ale_switch]
+      auth: [vatm_ro_v2]
     static_configs:
       - targets:
           - 10.60.7.94   # TX-VHF-SW6360
@@ -239,7 +279,13 @@ scrape_configs:
         labels:
           device: 'ALE_OS6360-24'
           role:   'rcms_switch'
-    relabel_configs: *snmp_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
 
   # ════════════════════════════════════════════════════════
   # BLACKBOX — TCP Health Check S4-IP port 5001
@@ -264,7 +310,13 @@ scrape_configs:
           device:   'Park_Air_S4-IP'
           role:     'operator_controller'
           protocol: 'RCMS_TCP_5001'
-    relabel_configs: *blackbox_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   blackbox-exporter:9115
 
   # ════════════════════════════════════════════════════════
   # BLACKBOX — ICMP Ping: RCMS / LCMS workstations
@@ -276,19 +328,24 @@ scrape_configs:
       module: [icmp]
     static_configs:
       - targets:
-          - 10.60.7.98    # TX-VHF-RCMS  (HP Z1 G9 — giám sát TX)
-          - 10.60.7.97    # RX-VHF-RCMS  (HP Z1 G9 — giám sát RX)
-          - 10.60.11.30   # UBVHF-RCMS   (HP Z1 G9 — giám sát UBVHF)
-          - 10.60.7.65    # TX-VHF-LCMS  (HP Z1 G9 — cục bộ tại TX)
-          - 10.60.6.65    # RX-VHF-LCMS  (HP Z1 G9 — cục bộ tại RX)
-          - 10.60.11.29   # UBVHF-LCMS   (HP Z1 G9 — cục bộ UBVHF)
+          - 10.60.7.98    # TX-VHF-RCMS  (HP Z1 G9)
+          - 10.60.7.97    # RX-VHF-RCMS  (HP Z1 G9)
+          - 10.60.11.30   # UBVHF-RCMS   (HP Z1 G9)
+          - 10.60.7.65    # TX-VHF-LCMS  (HP Z1 G9)
+          - 10.60.6.65    # RX-VHF-LCMS  (HP Z1 G9)
+          - 10.60.11.29   # UBVHF-LCMS   (HP Z1 G9)
         labels:
           device: 'HP_Z1_G9'
-    relabel_configs: *blackbox_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   blackbox-exporter:9115
 
   # ════════════════════════════════════════════════════════
   # LAB SIMULATION — Ubuntu VMs chạy snmpd giả lập T6 radio
-  # Chỉ dùng khi test trên VMware Workstation (không thiết bị thật)
   # Comment block này khi deploy production
   # ════════════════════════════════════════════════════════
   - job_name: 'snmp_lab_tx'
@@ -296,6 +353,7 @@ scrape_configs:
     metrics_path: /snmp
     params:
       module: [linux_snmp]
+      auth: [public_v2]
     static_configs:
       - targets:
           - 192.168.100.21   # lab-tx-main   (giả lập T6-TV MAIN)
@@ -304,13 +362,20 @@ scrape_configs:
           env:  'lab'
           site: 'TX_Station'
           mode: 'simulation'
-    relabel_configs: *snmp_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
 
   - job_name: 'snmp_lab_rx'
     scrape_interval: 15s
     metrics_path: /snmp
     params:
       module: [linux_snmp]
+      auth: [public_v2]
     static_configs:
       - targets:
           - 192.168.100.23   # lab-rx-main    (giả lập T6-RV MAIN)
@@ -320,4 +385,10 @@ scrape_configs:
           env:  'lab'
           site: 'RX_Station'
           mode: 'simulation'
-    relabel_configs: *snmp_relabel
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116

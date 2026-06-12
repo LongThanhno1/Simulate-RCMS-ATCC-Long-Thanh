@@ -1,304 +1,567 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VATM — ED-137 Monitoring Portal</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg:       #0d1117;
-    --bg2:      #161b22;
-    --bg3:      #21262d;
-    --border:   #30363d;
-    --text:     #c9d1d9;
-    --text2:    #8b949e;
-    --blue:     #58a6ff;
-    --green:    #3fb950;
-    --yellow:   #d29922;
-    --red:      #f85149;
-    --orange:   #f0883e;
-    --cyan:     #39d353;
-  }
-  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+/* ================================================================
+   VATM ATCC Long Thành — ED-137 Monitoring Portal
+   CSS Variables: hỗ trợ chuyển đổi Dark Mode / Light Mode
+   Tác giả: Đỗ Thanh Long — ATSEP VATM
+   ================================================================ */
 
-  /* ── Header ── */
-  header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
-  .logo { display: flex; align-items: center; gap: 10px; }
-  .logo h1 { font-size: 1.1em; color: var(--blue); font-weight: 600; }
-  .logo span { font-size: 0.75em; color: var(--text2); }
-  .header-right { display: flex; align-items: center; gap: 12px; font-size: 0.8em; color: var(--text2); }
-  #clock { color: var(--green); font-family: monospace; font-size: 0.95em; }
+/* --- Chế độ Tối (Dark Mode) — Mặc định --- */
+:root,
+html[data-theme="dark"] {
+  --bg:        #0f172a;   /* slate-900: nền toàn trang */
+  --bg2:       #1e293b;   /* slate-800: nền card/panel */
+  --bg3:       #334155;   /* slate-700: nền input/hover */
+  --border:    #334155;   /* đường viền */
+  --text:      #e2e8f0;   /* chữ chính */
+  --text2:     #94a3b8;   /* chữ phụ */
+  --blue:      #60a5fa;
+  --green:     #4ade80;
+  --yellow:    #fbbf24;
+  --red:       #f87171;
+  --orange:    #fb923c;
+  --cyan:      #22d3ee;
+  --canvas-bg: #0f172a;
+}
 
-  /* ── Layout ── */
-  .container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  @media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+/* --- Chế độ Sáng (Light Mode) --- */
+html[data-theme="light"] {
+  --bg:        #f8fafc;   /* slate-50 */
+  --bg2:       #ffffff;
+  --bg3:       #f1f5f9;   /* slate-100 */
+  --border:    #e2e8f0;   /* slate-200 */
+  --text:      #1e293b;   /* slate-800 */
+  --text2:     #64748b;   /* slate-500 */
+  --blue:      #2563eb;
+  --green:     #16a34a;
+  --yellow:    #d97706;
+  --red:       #dc2626;
+  --orange:    #ea580c;
+  --cyan:      #0891b2;
+  --canvas-bg: #f1f5f9;
+}
 
-  /* ── Cards ── */
-  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
-  .card-title { font-size: 0.75em; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
-  .section-title { font-size: 0.9em; color: var(--blue); margin: 20px 0 10px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+/* === RESET & BASE === */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
 
-  /* ── Status Badges ── */
-  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 0.72em; font-weight: 600; }
-  .badge-green  { background: #1a3a1a; color: var(--green); }
-  .badge-yellow { background: #3a2a00; color: var(--yellow); }
-  .badge-red    { background: #3a1010; color: var(--red); }
-  .badge-blue   { background: #0d2040; color: var(--blue); }
-  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-  .dot-green  { background: var(--green); box-shadow: 0 0 4px var(--green); }
-  .dot-yellow { background: var(--yellow); }
-  .dot-red    { background: var(--red); box-shadow: 0 0 4px var(--red); }
-  .dot-grey   { background: #555; }
+/* === HEADER === */
+header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: background 0.3s, border-color 0.3s;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo h1 { font-size: 1.05em; color: var(--blue); font-weight: 600; }
+.logo span { font-size: 0.72em; color: var(--text2); }
+.header-right { display: flex; align-items: center; gap: 10px; font-size: 0.8em; color: var(--text2); }
+#clock { color: var(--green); font-family: monospace; font-size: 0.95em; min-width: 75px; text-align: right; }
 
-  /* ── KPI stat boxes ── */
-  .kpi-box { text-align: center; padding: 12px; background: var(--bg3); border-radius: 6px; border: 1px solid var(--border); }
-  .kpi-val { font-size: 1.8em; font-weight: 700; line-height: 1; }
-  .kpi-label { font-size: 0.68em; color: var(--text2); margin-top: 4px; }
+/*
+  Nút chuyển đổi Dark/Light Mode
+  Hiển thị ☀️ khi đang ở Dark Mode (để nhắc chuyển sang Sáng)
+  Hiển thị 🌙 khi đang ở Light Mode (để nhắc chuyển sang Tối)
+*/
+#theme-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 1.1em;
+  line-height: 1;
+  transition: background 0.2s;
+  color: var(--text);
+}
+#theme-btn:hover { opacity: 0.8; }
 
-  /* ── Buttons ── */
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.82em; font-weight: 500; transition: opacity .15s; }
-  .btn:hover { opacity: .8; }
-  .btn:disabled { opacity: .4; cursor: not-allowed; }
-  .btn-blue   { background: #1f4a7a; color: var(--blue); border: 1px solid #2a6ab0; }
-  .btn-green  { background: #1a3a1a; color: var(--green); border: 1px solid #2a5a2a; }
-  .btn-orange { background: #3a2010; color: var(--orange); border: 1px solid #5a3a20; }
-  .btn-red    { background: #3a1010; color: var(--red); border: 1px solid #5a2020; }
-  .btn-group  { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+/* === LAYOUT === */
+.container { max-width: 1400px; margin: 0 auto; padding: 16px 24px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 900px) { .grid-2,.grid-3,.grid-4 { grid-template-columns: 1fr; } }
 
-  /* ── Device table ── */
-  .dev-table { width: 100%; border-collapse: collapse; font-size: 0.78em; }
-  .dev-table th { background: var(--bg3); color: var(--text2); padding: 6px 8px; text-align: left; font-weight: 500; border-bottom: 1px solid var(--border); }
-  .dev-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  .dev-table tr:hover td { background: var(--bg3); }
-  .mono { font-family: monospace; color: var(--cyan); }
+/* === CARDS === */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  transition: background 0.3s, border-color 0.3s;
+}
+.card-title { font-size: 0.75em; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+.section-title { font-size: 0.9em; color: var(--blue); margin: 20px 0 10px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
 
-  /* ── Grafana iframe ── */
-  .iframe-wrap { width: 100%; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); background: var(--bg3); }
-  .iframe-wrap iframe { width: 100%; border: none; display: block; }
-  .iframe-placeholder { padding: 40px; text-align: center; color: var(--text2); font-size: 0.85em; }
+/* === BADGES === */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 0.72em; font-weight: 600; }
+html[data-theme="dark"]  .badge-green  { background:#14532d44; color:var(--green);  border:1px solid #16a34a44; }
+html[data-theme="dark"]  .badge-yellow { background:#78350f44; color:var(--yellow); border:1px solid #d9770644; }
+html[data-theme="dark"]  .badge-red    { background:#7f1d1d44; color:var(--red);    border:1px solid #dc262644; }
+html[data-theme="dark"]  .badge-blue   { background:#1e3a5f44; color:var(--blue);   border:1px solid #2563eb44; }
+html[data-theme="light"] .badge-green  { background:#dcfce7; color:#15803d; border:1px solid #86efac; }
+html[data-theme="light"] .badge-yellow { background:#fef3c7; color:#b45309; border:1px solid #fcd34d; }
+html[data-theme="light"] .badge-red    { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+html[data-theme="light"] .badge-blue   { background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; }
 
-  /* ── Job output ── */
-  .job-output { background: #000; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-family: monospace; font-size: 0.73em; max-height: 250px; overflow-y: auto; white-space: pre-wrap; color: #a8ff78; margin-top: 10px; display: none; }
+.dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+.dot-green  { background:var(--green); box-shadow:0 0 5px var(--green); }
+.dot-yellow { background:var(--yellow); }
+.dot-red    { background:var(--red); box-shadow:0 0 5px var(--red); animation:blink 1s infinite; }
+.dot-grey   { background:#64748b; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  /* ── Alert list ── */
-  .alert-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 0.8em; }
-  .alert-critical { background: #2a0d0d; border-left: 3px solid var(--red); }
-  .alert-warning  { background: #2a1a00; border-left: 3px solid var(--yellow); }
-  .alert-info     { background: #0d1a2a; border-left: 3px solid var(--blue); }
+/* === KPI BOXES === */
+.kpi-box { text-align:center; padding:12px; background:var(--bg2); border-radius:8px; border:1px solid var(--border); transition:background 0.3s,border-color 0.3s; }
+.kpi-val { font-size:1.9em; font-weight:700; line-height:1; }
+.kpi-label { font-size:0.68em; color:var(--text2); margin-top:4px; }
 
-  /* ── Spinner ── */
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* === BUTTONS === */
+.btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border:1px solid transparent; border-radius:6px; cursor:pointer; font-size:0.82em; font-weight:500; transition:opacity .15s, transform .1s; }
+.btn:hover { opacity:.85; transform:translateY(-1px); }
+.btn:active { transform:translateY(0); }
+.btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+html[data-theme="dark"]  .btn-blue   { background:#1e3a5f; color:var(--blue);   border-color:#2563eb55; }
+html[data-theme="dark"]  .btn-green  { background:#14532d33; color:var(--green);  border-color:#16a34a55; }
+html[data-theme="dark"]  .btn-orange { background:#7c2d1233; color:var(--orange); border-color:#ea580c55; }
+html[data-theme="dark"]  .btn-red    { background:#7f1d1d33; color:var(--red);    border-color:#dc262655; }
+html[data-theme="dark"]  .btn-grey   { background:var(--bg3); color:var(--text2); border-color:var(--border); }
+html[data-theme="light"] .btn-blue   { background:#dbeafe; color:#1d4ed8; border-color:#93c5fd; }
+html[data-theme="light"] .btn-green  { background:#dcfce7; color:#15803d; border-color:#86efac; }
+html[data-theme="light"] .btn-orange { background:#ffedd5; color:#c2410c; border-color:#fdba74; }
+html[data-theme="light"] .btn-red    { background:#fee2e2; color:#b91c1c; border-color:#fca5a5; }
+html[data-theme="light"] .btn-grey   { background:var(--bg3); color:var(--text2); border-color:var(--border); }
+.btn-group { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
 
-  /* ── Tabs ── */
-  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
-  .tab { padding: 8px 16px; font-size: 0.82em; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; transition: all .15s; }
-  .tab:hover { color: var(--text); }
-  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
+/* === TABLES === */
+.dev-table { width:100%; border-collapse:collapse; font-size:0.78em; }
+.dev-table th { background:var(--bg3); color:var(--text2); padding:7px 8px; text-align:left; font-weight:500; border-bottom:1px solid var(--border); }
+.dev-table td { padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.dev-table tr:hover td { background:var(--bg3); }
+.mono { font-family:'Consolas','Courier New',monospace; color:var(--cyan); font-size:0.95em; }
 
-  /* ── ED-137 thresholds ── */
-  .threshold-table { width: 100%; border-collapse: collapse; font-size: 0.77em; }
-  .threshold-table th { background: #1a3a6b; color: #7eb8f7; padding: 6px 10px; text-align: left; }
-  .threshold-table td { padding: 5px 10px; border-bottom: 1px solid var(--border); }
-  .ok   { color: var(--green); font-weight: 600; }
-  .warn { color: var(--yellow); font-weight: 600; }
-  .crit { color: var(--red); font-weight: 600; }
+/* === GRAFANA IFRAMES === */
+.iframe-wrap { width:100%; border-radius:6px; overflow:hidden; border:1px solid var(--border); background:var(--bg3); }
+.iframe-wrap iframe { width:100%; border:none; display:block; }
+.iframe-placeholder { padding:40px; text-align:center; color:var(--text2); font-size:0.85em; }
+
+/* === JOB OUTPUT === */
+.job-output { background:#000; border:1px solid var(--border); border-radius:6px; padding:12px; font-family:'Consolas',monospace; font-size:0.72em; max-height:250px; overflow-y:auto; white-space:pre-wrap; color:#a8ff78; margin-top:10px; display:none; }
+
+/* === ALERTS === */
+.alert-item { display:flex; align-items:flex-start; gap:10px; padding:8px 12px; border-radius:6px; margin-bottom:6px; font-size:0.8em; }
+html[data-theme="dark"]  .alert-critical { background:#7f1d1d22; border-left:3px solid var(--red); }
+html[data-theme="dark"]  .alert-warning  { background:#78350f22; border-left:3px solid var(--yellow); }
+html[data-theme="dark"]  .alert-info     { background:#1e3a5f22; border-left:3px solid var(--blue); }
+html[data-theme="light"] .alert-critical { background:#fee2e2; border-left:3px solid var(--red); }
+html[data-theme="light"] .alert-warning  { background:#fef3c7; border-left:3px solid var(--yellow); }
+html[data-theme="light"] .alert-info     { background:#dbeafe; border-left:3px solid var(--blue); }
+
+/* === SPINNER === */
+.spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--blue); border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* === TABS === */
+.tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; overflow-x:auto; }
+.tab { padding:8px 16px; font-size:0.82em; cursor:pointer; color:var(--text2); border-bottom:2px solid transparent; margin-bottom:-2px; white-space:nowrap; transition:color .15s; user-select:none; }
+.tab:hover { color:var(--text); }
+.tab.active { color:var(--blue); border-bottom-color:var(--blue); font-weight:600; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* ================================================================
+   CANVAS TOPOLOGY — Sơ đồ mạng tương tác
+   ================================================================ */
+.topology-wrapper {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* Container bao bọc canvas — thay đổi cursor khi hover node */
+.canvas-container {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  cursor: default;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+#topology-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Nhãn trạng thái WebSocket (góc trên phải canvas) */
+.ws-status {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 0.7em;
+  color: var(--text2);
+  background: var(--bg2);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  pointer-events: none;
+  transition: background 0.3s;
+}
+
+/* Chú giải màu sắc phía dưới canvas */
+.canvas-legend {
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  font-size: 0.72em;
+  color: var(--text2);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  background: var(--bg2);
+  transition: background 0.3s, border-color 0.3s;
+}
+.legend-item { display:flex; align-items:center; gap:5px; }
+.legend-dot  { width:10px; height:10px; border-radius:50%; }
+
+/* ================================================================
+   NODE DETAIL PANEL — Hiển thị khi click vào node trên canvas
+   ================================================================ */
+.node-panel {
+  width: 300px;
+  min-width: 280px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: background 0.3s, border-color 0.3s;
+  animation: slideIn 0.2s ease-out;
+}
+@keyframes slideIn {
+  from { opacity:0; transform:translateX(20px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+
+.node-panel-header {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.node-panel-title { font-weight:600; font-size:0.9em; color:var(--blue); }
+.node-panel-close { background:none; border:none; color:var(--text2); cursor:pointer; font-size:1.2em; padding:0 4px; line-height:1; }
+.node-panel-close:hover { color:var(--red); }
+
+.node-panel-body { padding:12px 16px; }
+
+.info-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid var(--border); font-size:0.78em; }
+.info-row:last-child { border-bottom:none; }
+.info-key   { color:var(--text2); flex-shrink:0; margin-right:8px; }
+.info-value { color:var(--text); font-weight:500; text-align:right; word-break:break-all; }
+
+.node-panel-actions { padding:10px 16px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px; }
+
+/* KPI mini bars trong panel */
+.kpi-mini { margin:6px 0 2px; }
+.kpi-mini-label { font-size:0.7em; color:var(--text2); margin-bottom:3px; }
+.kpi-mini-bar   { height:6px; border-radius:3px; background:var(--bg3); overflow:hidden; }
+.kpi-mini-fill  { height:100%; border-radius:3px; transition:width 0.5s, background 0.5s; }
+
+/* ED-137 threshold table */
+.threshold-table { width:100%; border-collapse:collapse; font-size:0.77em; }
+.threshold-table th { background:var(--bg3); color:var(--blue); padding:6px 10px; text-align:left; border-bottom:1px solid var(--border); }
+.threshold-table td { padding:5px 10px; border-bottom:1px solid var(--border); }
+.ok   { color:var(--green); font-weight:600; }
+.warn { color:var(--yellow); font-weight:600; }
+.crit { color:var(--red); font-weight:600; }
+
+/* Select dropdown */
+select { background:var(--bg3); color:var(--text); border:1px solid var(--border); padding:4px 8px; border-radius:4px; font-size:0.8em; width:100%; transition:background 0.3s,color 0.3s; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--text2); }
 </style>
 </head>
 <body>
 
-<!-- ════════════════════════════════════════════════════ -->
-<!-- HEADER                                               -->
-<!-- ════════════════════════════════════════════════════ -->
+<!-- ================================================================ -->
+<!-- HEADER                                                            -->
+<!-- ================================================================ -->
 <header>
   <div class="logo">
-    <span style="font-size:1.5em">🗼</span>
+    <span style="font-size:1.4em">🗼</span>
     <div>
       <h1>VATM ATCC Long Thành — ED-137 Monitoring Portal</h1>
-      <span>Hệ thống giám sát đường truyền VHF · EUROCAE ED-137 · Quy trình 2999</span>
+      <span>Giám sát đường truyền VHF · EUROCAE ED-137 · Quy trình 2999</span>
     </div>
   </div>
   <div class="header-right">
     <span id="clock">--:--:--</span>
-    <span id="status-badge" class="badge badge-blue"><span class="spinner"></span> Đang kết nối…</span>
-    <button class="btn btn-blue" onclick="refreshAll()">⟳ Làm mới</button>
+    <span id="status-badge" class="badge badge-blue">
+      <span class="spinner"></span> Kết nối...
+    </span>
+    <button class="btn btn-grey" onclick="refreshAll()">⟳ Làm mới</button>
+    <!--
+      NÚT CHUYỂN ĐỔI SÁNG/TỐI (Theme Toggle Button)
+      - Trạng thái được lưu vào localStorage
+      - Icon ☀️ = đang ở Dark (nhấn để chuyển sang Light)
+      - Icon 🌙 = đang ở Light (nhấn để chuyển sang Dark)
+    -->
+    <button id="theme-btn" onclick="toggleTheme()" title="Chuyển chế độ Sáng/Tối">☀️</button>
   </div>
 </header>
 
-<!-- ════════════════════════════════════════════════════ -->
-<!-- MAIN CONTENT                                         -->
-<!-- ════════════════════════════════════════════════════ -->
+<!-- ================================================================ -->
+<!-- MAIN CONTENT                                                      -->
+<!-- ================================================================ -->
 <div class="container">
 
-  <!-- KPI Summary row -->
-  <div id="kpi-row" class="grid-4" style="margin: 16px 0;">
-    <div class="kpi-box"><div class="kpi-val" id="kpi-tx" style="color:var(--green)">—</div><div class="kpi-label">T6-TV MAIN (TX) Online</div></div>
-    <div class="kpi-box"><div class="kpi-val" id="kpi-rx" style="color:var(--green)">—</div><div class="kpi-label">T6-RV MAIN (RX) Online</div></div>
-    <div class="kpi-box"><div class="kpi-val" id="kpi-ubvhf" style="color:var(--cyan)">—</div><div class="kpi-label">T6-TRV UBVHF Online</div></div>
+  <!-- ── 4 KPI Boxes ── -->
+  <div class="grid-4" style="margin:14px 0;">
+    <div class="kpi-box"><div class="kpi-val" id="kpi-tx"    style="color:var(--green)">—</div><div class="kpi-label">T6-TV MAIN (TX) Online</div></div>
+    <div class="kpi-box"><div class="kpi-val" id="kpi-rx"    style="color:var(--green)">—</div><div class="kpi-label">T6-RV MAIN (RX) Online</div></div>
+    <div class="kpi-box"><div class="kpi-val" id="kpi-ubvhf" style="color:var(--cyan)">—</div><div  class="kpi-label">T6-TRV UBVHF Online</div></div>
     <div class="kpi-box"><div class="kpi-val" id="kpi-alerts" style="color:var(--yellow)">—</div><div class="kpi-label">Cảnh báo đang kích hoạt</div></div>
   </div>
 
-  <!-- Tabs -->
+  <!-- ── Tabs ── -->
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</div>
+    <div class="tab active" onclick="switchTab('topology')">🗺 Sơ đồ Mạng</div>
+    <div class="tab" onclick="switchTab('dashboard')">📊 Dashboard</div>
     <div class="tab" onclick="switchTab('devices')">📡 Thiết bị</div>
-    <div class="tab" onclick="switchTab('ansible')">⚡ Đo kiểm Ansible</div>
+    <div class="tab" onclick="switchTab('ansible')">⚡ Đo kiểm</div>
     <div class="tab" onclick="switchTab('alerts')">🔔 Cảnh báo</div>
-    <div class="tab" onclick="switchTab('standards')">📋 Chuẩn ED-137</div>
+    <div class="tab" onclick="switchTab('standards')">📋 ED-137</div>
   </div>
 
-  <!-- TAB: Dashboard (Grafana embeds) -->
-  <div id="tab-dashboard" class="tab-content active">
-    <p class="section-title">📈 Grafana — Giám sát trực quan (nhúng Iframe)</p>
-    <p style="font-size:0.8em; color:var(--text2); margin-bottom:12px;">
-      Grafana chạy tại <a href="http://localhost:3000" target="_blank" style="color:var(--blue)">http://localhost:3000</a> · 
-      Default login: admin / vatm2025
-    </p>
+  <!-- ================================================================ -->
+  <!-- TAB: SƠ ĐỒ MẠNG — Canvas tương tác                              -->
+  <!-- ================================================================ -->
+  <div id="tab-topology" class="tab-content active">
+    <div class="topology-wrapper" id="topology-wrapper">
 
-    <!-- Grafana dashboard iframes -->
+      <!-- Canvas chính -->
+      <div class="canvas-container" id="canvas-container">
+        <canvas id="topology-canvas"></canvas>
+        <div class="ws-status" id="ws-status">○ Đang kết nối WS...</div>
+        <!-- Chú giải màu sắc -->
+        <div class="canvas-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div> Bình thường (ED-137 ✓)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div> Suy hao / Trễ cao</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div> Mất kết nối (CRIT)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div> Xung tín hiệu IP</div>
+          <div class="legend-item" style="margin-left:auto;font-style:italic">💡 Click node để xem chi tiết & đo kiểm</div>
+        </div>
+      </div>
+
+      <!--
+        NODE DETAIL PANEL
+        Hiện khi click vào node trên canvas.
+        Cấu trúc: Header | Body (thông tin + KPI bars) | Actions (nút đo kiểm)
+      -->
+      <div id="node-panel" class="node-panel" style="display:none">
+        <div class="node-panel-header">
+          <div>
+            <div class="node-panel-title" id="panel-title">—</div>
+            <div style="font-size:0.72em;color:var(--text2);margin-top:2px" id="panel-subtitle">—</div>
+          </div>
+          <button class="node-panel-close" onclick="closeNodePanel()" title="Đóng">✕</button>
+        </div>
+
+        <div class="node-panel-body">
+          <div style="margin-bottom:10px">
+            <span id="panel-status-badge" class="badge badge-blue">● UNKNOWN</span>
+            <span style="font-size:0.7em;color:var(--text2);margin-left:8px" id="panel-ts">—</span>
+          </div>
+          <!-- Bảng thông tin chi tiết (điền động bằng JS) -->
+          <div id="panel-info-rows"></div>
+          <!-- KPI Mini Bars ED-137 -->
+          <div style="margin-top:12px">
+            <div style="font-size:0.7em;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">⚡ KPI — EUROCAE ED-137</div>
+            <div class="kpi-mini">
+              <div class="kpi-mini-label">One-way Delay (ngưỡng: &lt;100ms)</div>
+              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="panel-bar-delay" style="width:30%;background:var(--green)"></div></div>
+              <div style="font-size:0.7em;color:var(--text2);margin-top:2px" id="panel-val-delay">N/A</div>
+            </div>
+            <div class="kpi-mini">
+              <div class="kpi-mini-label">Jitter (ngưỡng: &lt;20ms)</div>
+              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="panel-bar-jitter" style="width:25%;background:var(--green)"></div></div>
+              <div style="font-size:0.7em;color:var(--text2);margin-top:2px" id="panel-val-jitter">N/A</div>
+            </div>
+            <div class="kpi-mini">
+              <div class="kpi-mini-label">Packet Loss (ngưỡng: &lt;1%)</div>
+              <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="panel-bar-loss" style="width:5%;background:var(--green)"></div></div>
+              <div style="font-size:0.7em;color:var(--text2);margin-top:2px" id="panel-val-loss">N/A</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="node-panel-actions">
+          <!--
+            NÚT ĐO KIỂM RIÊNG TRẠM NÀY
+            Khi click: chuyển sang tab Ansible và chạy playbook 01_collect_metrics
+            với target group tương ứng của trạm đang được chọn
+          -->
+          <button class="btn btn-green" onclick="runNodeMeasure()" style="width:100%;justify-content:center">
+            ▶ Đo kiểm riêng trạm này
+          </button>
+          <button class="btn btn-blue" onclick="openNodeGrafana()" style="width:100%;justify-content:center">
+            📊 Xem Grafana Dashboard
+          </button>
+          <button class="btn btn-grey" onclick="closeNodePanel()" style="width:100%;justify-content:center;font-size:0.75em">
+            ✕ Đóng
+          </button>
+        </div>
+      </div>
+    </div><!-- /topology-wrapper -->
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- TAB: DASHBOARD — Grafana Iframes                                 -->
+  <!-- ================================================================ -->
+  <div id="tab-dashboard" class="tab-content">
+    <p class="section-title">📈 Grafana — Giám sát trực quan (nhúng Iframe)</p>
+    <p style="font-size:0.8em;color:var(--text2);margin-bottom:12px">
+      Grafana tại <a href="http://localhost:3000" target="_blank" style="color:var(--blue)">http://localhost:3000</a> ·
+      Login mặc định: admin / vatm2025
+    </p>
     <div class="grid-2">
       <div>
         <div class="card-title">🏭 Trạm TX — T6-TV Status</div>
         <div class="iframe-wrap">
-          <iframe id="grafana-tx" src="about:blank" height="280" title="TX Dashboard">
-          </iframe>
-          <div class="iframe-placeholder" id="grafana-tx-placeholder">
-            ⬆ Nhấn nút bên dưới để tải Grafana Dashboard<br>
-            <small style="color:var(--text2)">Grafana phải chạy và cấu hình allow_embedding=true</small>
-          </div>
+          <iframe id="grafana-tx" src="about:blank" height="280" title="TX Dashboard"></iframe>
+          <div class="iframe-placeholder" id="grafana-tx-placeholder">⬆ Nhấn nút bên dưới để tải<br><small>Yêu cầu: Grafana chạy &amp; allow_embedding=true</small></div>
         </div>
       </div>
       <div>
         <div class="card-title">📡 Trạm RX — T6-RV Status</div>
         <div class="iframe-wrap">
           <iframe id="grafana-rx" src="about:blank" height="280" title="RX Dashboard"></iframe>
-          <div class="iframe-placeholder" id="grafana-rx-placeholder">
-            ⬆ Nhấn nút bên dưới để tải Grafana Dashboard
-          </div>
+          <div class="iframe-placeholder" id="grafana-rx-placeholder">⬆ Nhấn nút bên dưới để tải</div>
         </div>
       </div>
       <div>
         <div class="card-title">⚡ UBVHF TWR T20 — T6-TRV + S4-IP</div>
         <div class="iframe-wrap">
           <iframe id="grafana-ubvhf" src="about:blank" height="280" title="UBVHF Dashboard"></iframe>
-          <div class="iframe-placeholder" id="grafana-ubvhf-placeholder">
-            ⬆ Nhấn nút bên dưới để tải Grafana Dashboard
-          </div>
+          <div class="iframe-placeholder" id="grafana-ubvhf-placeholder">⬆ Nhấn nút bên dưới để tải</div>
         </div>
       </div>
       <div>
         <div class="card-title">📊 ED-137 KPI — Toàn tuyến</div>
         <div class="iframe-wrap">
           <iframe id="grafana-kpi" src="about:blank" height="280" title="ED-137 KPI"></iframe>
-          <div class="iframe-placeholder" id="grafana-kpi-placeholder">
-            ⬆ Nhấn nút bên dưới để tải Grafana Dashboard
-          </div>
+          <div class="iframe-placeholder" id="grafana-kpi-placeholder">⬆ Nhấn nút bên dưới để tải</div>
         </div>
       </div>
     </div>
-
-    <div class="btn-group" style="margin-top:12px;">
+    <div class="btn-group" style="margin-top:12px">
       <button class="btn btn-blue" onclick="loadGrafana()">📊 Tải Grafana Dashboards</button>
       <button class="btn btn-orange" onclick="openGrafana()">↗ Mở Grafana (tab mới)</button>
     </div>
   </div>
 
-  <!-- TAB: Devices -->
+  <!-- ================================================================ -->
+  <!-- TAB: THIẾT BỊ                                                    -->
+  <!-- ================================================================ -->
   <div id="tab-devices" class="tab-content">
-    <p class="section-title">📡 Trạng thái thiết bị — T6 Radios</p>
-    <div id="device-loading" style="color:var(--text2); font-size:0.85em;"><span class="spinner"></span> Đang tải…</div>
+    <p class="section-title">📡 Trạng thái thiết bị — T6 Radios (Park Air)</p>
+    <div id="device-loading" style="color:var(--text2);font-size:0.85em"><span class="spinner"></span> Đang tải…</div>
     <div style="overflow-x:auto">
       <table class="dev-table" id="device-table" style="display:none">
         <thead>
-          <tr>
-            <th>Trạng thái</th>
-            <th>IP (LAN3)</th>
-            <th>Thiết bị</th>
-            <th>Trạm</th>
-            <th>Dự phòng</th>
-            <th>Job</th>
-          </tr>
+          <tr><th>Trạng thái</th><th>IP (LAN3 RCMS)</th><th>Thiết bị</th><th>Trạm</th><th>Dự phòng</th><th>Job Prometheus</th></tr>
         </thead>
         <tbody id="device-tbody"></tbody>
       </table>
     </div>
     <div style="margin-top:12px">
-      <div class="card-title">S4-IP Controller (TCP:5001)</div>
-      <div id="s4ip-status" style="font-size:0.8em; color:var(--text2)">Đang tải…</div>
+      <div class="card-title">S4-IP Controller (TCP:5001 — Blackbox Exporter)</div>
+      <div id="s4ip-status" style="font-size:0.8em;color:var(--text2)">Đang tải…</div>
     </div>
   </div>
 
-  <!-- TAB: Ansible -->
+  <!-- ================================================================ -->
+  <!-- TAB: ĐO KIỂM ANSIBLE                                             -->
+  <!-- ================================================================ -->
   <div id="tab-ansible" class="tab-content">
-    <p class="section-title">⚡ Kịch bản Ansible — Đo kiểm tự động</p>
-
+    <p class="section-title">⚡ Kịch bản Ansible — Đo kiểm tự động theo ED-137</p>
     <div class="grid-3" style="margin-bottom:16px">
       <div class="card">
-        <div class="card-title">Thu thập số liệu</div>
-        <p style="font-size:0.78em; color:var(--text2); margin-bottom:10px">
-          SNMP walk + ping + TCP check toàn bộ tuyến TX→ATCC→RX<br>
-          <small>Playbook: 01_collect_metrics</small>
-        </p>
+        <div class="card-title">📡 Thu thập số liệu</div>
+        <p style="font-size:0.78em;color:var(--text2);margin-bottom:10px">SNMP walk + ping + TCP check toàn tuyến TX→ATCC→RX<br><small>Playbook: 01_collect_metrics</small></p>
         <div style="margin-bottom:8px">
-          <label style="font-size:0.75em; color:var(--text2)">Nhóm thiết bị:</label>
-          <select id="target-metrics" style="background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:4px 8px;border-radius:4px;font-size:0.8em;width:100%">
-            <option value="all_rcms">RCMS Workstations (all)</option>
+          <label style="font-size:0.75em;color:var(--text2)">Nhóm thiết bị:</label>
+          <select id="target-metrics">
+            <option value="all_rcms">RCMS Workstations (Toàn tuyến)</option>
             <option value="rcms_tx">RCMS — Trạm TX</option>
             <option value="rcms_rx">RCMS — Trạm RX</option>
-            <option value="rcms_ubvhf">RCMS — UBVHF</option>
+            <option value="rcms_ubvhf">RCMS — UBVHF TWR</option>
           </select>
         </div>
-        <button class="btn btn-green" onclick="runPlaybook('01_collect_metrics', 'target-metrics')">▶ Chạy đo kiểm</button>
+        <button class="btn btn-green" onclick="runPlaybook('01_collect_metrics','target-metrics')">▶ Chạy đo kiểm</button>
       </div>
-
       <div class="card">
-        <div class="card-title">Xuất báo cáo</div>
-        <p style="font-size:0.78em; color:var(--text2); margin-bottom:10px">
-          Tổng hợp dữ liệu thành báo cáo kỹ thuật Markdown/Excel<br>
-          <small>Playbook: 02_generate_report</small>
-        </p>
-        <button class="btn btn-orange" onclick="runPlaybook('02_generate_report', null, 'all_rcms')">📄 Xuất báo cáo</button>
+        <div class="card-title">📄 Xuất báo cáo</div>
+        <p style="font-size:0.78em;color:var(--text2);margin-bottom:10px">Tổng hợp thành báo cáo kỹ thuật Markdown/Excel<br><small>Playbook: 02_generate_report</small></p>
+        <button class="btn btn-orange" onclick="runPlaybook('02_generate_report',null,'all_rcms')">📄 Xuất báo cáo</button>
       </div>
-
       <div class="card">
-        <div class="card-title">Ping check nhanh</div>
-        <p style="font-size:0.78em; color:var(--text2); margin-bottom:10px">
-          ICMP ping kiểm tra kết nối tất cả thiết bị<br>
-          <small>Playbook: 03_ping_check</small>
-        </p>
-        <button class="btn btn-blue" onclick="runPlaybook('03_ping_check', null, 'all_rcms')">🏓 Ping All</button>
+        <div class="card-title">🏓 Ping check nhanh</div>
+        <p style="font-size:0.78em;color:var(--text2);margin-bottom:10px">ICMP ping kiểm tra kết nối tất cả thiết bị<br><small>Playbook: 03_ping_check</small></p>
+        <button class="btn btn-blue" onclick="runPlaybook('03_ping_check',null,'all_rcms')">🏓 Ping All</button>
       </div>
     </div>
-
-    <!-- Job list -->
     <div class="card-title">📋 Lịch sử Jobs</div>
-    <div id="job-list" style="font-size:0.8em; color:var(--text2)">Chưa có job nào.</div>
+    <div id="job-list" style="font-size:0.8em;color:var(--text2)">Chưa có job nào.</div>
   </div>
 
-  <!-- TAB: Alerts -->
+  <!-- ================================================================ -->
+  <!-- TAB: CẢNH BÁO                                                    -->
+  <!-- ================================================================ -->
   <div id="tab-alerts" class="tab-content">
     <p class="section-title">🔔 Cảnh báo đang kích hoạt</p>
     <div id="alert-list"><span class="spinner"></span> Đang tải…</div>
   </div>
 
-  <!-- TAB: Standards -->
+  <!-- ================================================================ -->
+  <!-- TAB: CHUẨN ED-137                                                -->
+  <!-- ================================================================ -->
   <div id="tab-standards" class="tab-content">
     <p class="section-title">📋 Ngưỡng KPI — EUROCAE ED-137 VoIP ATM Applications</p>
     <table class="threshold-table">
-      <tr><th>Chỉ số KPI</th><th class="ok">🟢 Bình thường</th><th class="warn">🟡 Cảnh báo (WARN)</th><th class="crit">🔴 Sự cố (ED-137 vi phạm)</th></tr>
+      <tr><th>Chỉ số KPI</th><th class="ok">🟢 Bình thường</th><th class="warn">🟡 Cảnh báo</th><th class="crit">🔴 Vi phạm ED-137</th></tr>
       <tr><td>One-way Delay</td><td class="ok">&lt; 50 ms</td><td class="warn">50 – 100 ms</td><td class="crit">&gt; 100 ms</td></tr>
       <tr><td>Jitter</td><td class="ok">&lt; 10 ms</td><td class="warn">10 – 20 ms</td><td class="crit">&gt; 20 ms</td></tr>
       <tr><td>Packet Loss</td><td class="ok">&lt; 0.1 %</td><td class="warn">0.1 – 1 %</td><td class="crit">&gt; 1 %</td></tr>
       <tr><td>VSWR Anten</td><td class="ok">≤ 1.5 : 1</td><td class="warn">1.5 – 2.0 : 1</td><td class="crit">&gt; 2.0 : 1</td></tr>
       <tr><td>BER Đường truyền</td><td class="ok">&lt; 10⁻⁶</td><td class="warn">10⁻⁶ – 10⁻⁴</td><td class="crit">&gt; 10⁻⁴</td></tr>
     </table>
-
     <p class="section-title" style="margin-top:24px">📡 Tần số VHF — Danh sách kênh hệ thống</p>
     <table class="dev-table">
       <thead><tr><th>#</th><th>Tần số (MHz)</th><th>Chức năng</th><th>TX IP MAIN</th><th>TX IP STBY</th><th>RX IP MAIN</th><th>RX IP STBY</th></tr></thead>
@@ -318,14 +581,16 @@
 
 </div><!-- /container -->
 
-<!-- ════════════════════════════════════════════════════ -->
-<!-- JAVASCRIPT                                           -->
-<!-- ════════════════════════════════════════════════════ -->
+<!-- ================================================================ -->
+<!-- JAVASCRIPT                                                        -->
+<!-- Chú thích tiếng Việt phục vụ đào tạo ATSEP nội bộ               -->
+<!-- ================================================================ -->
 <script>
-const API = '/api';
-const GRAFANA = window.location.protocol + '//' + window.location.hostname + ':3000';
+'use strict';
 
-// Grafana Dashboard UIDs — điền sau khi tạo dashboard trong Grafana
+// ── Hằng số cấu hình ──
+const API     = '/api';
+const GRAFANA = window.location.protocol + '//' + window.location.hostname + ':3000';
 const GRAFANA_DASHBOARDS = {
   tx:    '/d/vatm-tx/tx-station?orgId=1&kiosk',
   rx:    '/d/vatm-rx/rx-station?orgId=1&kiosk',
@@ -333,208 +598,878 @@ const GRAFANA_DASHBOARDS = {
   kpi:   '/d/vatm-ed137/ed137-kpi?orgId=1&kiosk',
 };
 
-// ── Clock ──
+/* ================================================================
+   THEME MANAGEMENT — Quản lý chế độ Sáng / Tối
+   ================================================================ */
+
+/**
+ * Áp dụng theme lên toàn bộ giao diện.
+ * Thay đổi data-theme trên <html> → CSS variables tự động cập nhật.
+ * @param {string} theme - 'dark' hoặc 'light'
+ */
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('theme-btn');
+  // ☀️ = đang Dark, nhấn để sang Light
+  // 🌙 = đang Light, nhấn để sang Dark
+  btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  btn.title = theme === 'dark' ? 'Chuyển sang chế độ Sáng' : 'Chuyển sang chế độ Tối';
+}
+
+/**
+ * Toggle giữa Dark và Light Mode.
+ * Lưu lựa chọn vào localStorage để nhớ qua các lần mở trang.
+ */
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const nxt = cur === 'dark' ? 'light' : 'dark';
+  applyTheme(nxt);
+  try { localStorage.setItem('vatm-theme', nxt); } catch(e) {}
+  // Vẽ lại canvas với màu nền mới
+  requestAnimationFrame(drawTopology);
+}
+
+// Khởi tạo theme khi load trang — lấy từ localStorage nếu có
+(function initTheme() {
+  let saved = 'dark';
+  try { saved = localStorage.getItem('vatm-theme') || 'dark'; } catch(e) {}
+  applyTheme(saved);
+})();
+
+/* ================================================================
+   CLOCK — Đồng hồ thời gian thực
+   ================================================================ */
 function updateClock() {
-  const now = new Date();
   document.getElementById('clock').textContent =
-    now.toLocaleTimeString('vi-VN', {hour12:false}) + ' ICT';
+    new Date().toLocaleTimeString('vi-VN', { hour12: false }) + ' ICT';
 }
 setInterval(updateClock, 1000);
 updateClock();
 
-// ── Tab switching ──
+/* ================================================================
+   TAB SWITCHING — Chuyển đổi giữa các tab
+   ================================================================ */
+const TAB_NAMES = ['topology','dashboard','devices','ansible','alerts','standards'];
+
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelector(`#tab-${name}`).classList.add('active');
-  const tabs = Array.from(document.querySelectorAll('.tab'));
-  const names = ['dashboard','devices','ansible','alerts','standards'];
-  tabs[names.indexOf(name)].classList.add('active');
-  if (name === 'devices') loadDevices();
-  if (name === 'alerts') loadAlerts();
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const idx = TAB_NAMES.indexOf(name);
+  if (idx >= 0) document.querySelectorAll('.tab')[idx].classList.add('active');
+  // Lazy load khi chuyển tab
+  if (name === 'devices')  loadDevices();
+  if (name === 'alerts')   loadAlerts();
+  if (name === 'topology') resizeCanvas();
 }
 
-// ── Load KPI summary ──
+/* ================================================================
+   CANVAS TOPOLOGY — Sơ đồ mạng tương tác
+   ================================================================
+
+   Tọa độ logic canvas: 960 x 320 pixels
+   Ba node được đặt theo trục ngang:
+     TX (trái) ←→ ATCC Long Thành (giữa) ←→ RX (phải)
+   Hai đường kết nối với xung tín hiệu chạy từ TX→ATCC→RX
+*/
+
+const canvas = document.getElementById('topology-canvas');
+const ctx    = canvas.getContext('2d');
+
+// Kích thước logic canvas (viewport ảo, độc lập với kích thước màn hình)
+const CANVAS_W = 960;
+const CANVAS_H = 320;
+
+/**
+ * ĐỊNH NGHĨA CÁC NODE MẠNG
+ *
+ * cx, cy: tọa độ tâm trong không gian logic 960×320
+ * hw, hh: nửa chiều rộng / nửa chiều cao (bounding box click)
+ * info:   thông tin hiển thị trong panel chi tiết
+ */
+const NODE_DEFS = {
+  tx: {
+    id: 'tx', icon: '📡',
+    label: ['TRẠM PHÁT', 'TX Station'], sub: 'Park Air T6-TV',
+    cx: 155, cy: 160, hw: 90, hh: 58,
+    playbook_target: 'rcms_tx',
+    grafana_dash: 'vatm-tx',
+    info: {
+      'Thiết bị':       'Park Air T6-TV',
+      'Số kênh':        '9 kênh VHF',
+      'IP MAIN (LAN3)': '10.60.7.71–79',
+      'IP STBY (LAN3)': '10.60.7.81–89',
+      'SNMP Targets':   '18 (v2c)',
+      'Community':      'vatm_ro',
+      'Poll qua':       'LAN3 — RCMS subnet',
+    },
+  },
+  atcc: {
+    id: 'atcc', icon: '🗼',
+    label: ['ĐÀI KSKL', 'Long Thành'], sub: 'ALE OS6860E + S4-IP',
+    cx: 480, cy: 160, hw: 105, hh: 62,
+    playbook_target: 'all_rcms',
+    grafana_dash: 'vatm-ed137',
+    info: {
+      'Vai trò':     'Trung tâm điều phối',
+      'Switch':      'ALE OS6860E-24 (SNMP v2c)',
+      'Controller':  'S4-IP (TCP port 5001)',
+      'Monitoring':  'Blackbox Exporter',
+      'Community':   'vatm_ro',
+    },
+  },
+  rx: {
+    id: 'rx', icon: '📻',
+    label: ['TRẠM THU', 'RX Station'], sub: 'Park Air T6-RV',
+    cx: 805, cy: 160, hw: 90, hh: 58,
+    playbook_target: 'rcms_rx',
+    grafana_dash: 'vatm-rx',
+    info: {
+      'Thiết bị':       'Park Air T6-RV',
+      'Số kênh':        '9 kênh VHF',
+      'IP MAIN (LAN3)': '10.60.6.71–79',
+      'IP STBY (LAN3)': '10.60.6.81–89',
+      'SNMP Targets':   '18 (v2c)',
+      'Community':      'vatm_ro',
+      'Poll qua':       'LAN3 — RCMS subnet',
+    },
+  },
+};
+
+/**
+ * ĐỊNH NGHĨA ĐƯỜNG KẾT NỐI (links)
+ * from/to: id của node nguồn/đích
+ * label:   nhãn hiển thị giữa đường (dùng \n để xuống dòng)
+ */
+const LINK_DEFS = [
+  { id: 'tx_atcc', from: 'tx',   to: 'atcc', label: 'IP/VSAT\nTX → ATCC' },
+  { id: 'atcc_rx', from: 'atcc', to: 'rx',   label: 'IP/VSAT\nATCC → RX' },
+];
+
+/**
+ * TRẠNG THÁI TOPOLOGY — Cập nhật từ WebSocket /ws/topology
+ * Giá trị: 'ok' | 'warn' | 'crit' | 'unknown'
+ */
+let topoState = {
+  tx_status: 'unknown', atcc_status: 'unknown', rx_status: 'unknown',
+  link_tx_atcc: 'unknown', link_atcc_rx: 'unknown',
+  delay_tx_atcc: null, jitter_tx_atcc: null, loss_tx_atcc: null,
+  delay_atcc_rx: null, jitter_atcc_rx: null, loss_atcc_rx: null,
+  ts: null,
+};
+
+/**
+ * Trả về màu theo trạng thái ED-137:
+ * ok → xanh lá | warn → vàng | crit → đỏ | unknown → xám
+ */
+function statusColor(s) {
+  return { ok:'#4ade80', warn:'#fbbf24', crit:'#f87171', unknown:'#64748b' }[s] || '#64748b';
+}
+function statusFill(s) {
+  return { ok:'rgba(74,222,128,0.1)', warn:'rgba(251,191,36,0.1)', crit:'rgba(248,113,113,0.12)', unknown:'rgba(100,116,139,0.08)' }[s] || 'rgba(100,116,139,0.08)';
+}
+
+// ── ANIMATION STATE ──
+let pulses        = [];   // Danh sách xung tín hiệu đang chạy
+let lastFrameTime = 0;
+let animFrameId   = null;
+let selectedNode  = null; // ID node đang được chọn (để highlight)
+let lastPulseTime = { tx_atcc: 0, atcc_rx: 0 }; // Thời điểm tạo xung cuối
+
+const PULSE_SPEED    = 0.22;  // Tốc độ xung: đơn vị/giây trên đoạn 0→1
+const PULSE_INTERVAL = 1.4;   // Giây giữa 2 xung liên tiếp
+
+/* ── RESPONSIVE CANVAS RESIZE ── */
+
+/**
+ * Thiết lập kích thước vật lý của canvas theo container CSS.
+ * Nhân với devicePixelRatio để hiển thị sắc nét trên màn hình HiDPI.
+ */
+function resizeCanvas() {
+  const container = document.getElementById('canvas-container');
+  const dpr  = window.devicePixelRatio || 1;
+  const cssW = container.clientWidth;
+  const cssH = Math.round(cssW * CANVAS_H / CANVAS_W);
+
+  canvas.width        = cssW * dpr;
+  canvas.height       = cssH * dpr;
+  canvas.style.height = cssH + 'px';
+
+  // Scale context: mọi lệnh vẽ dùng tọa độ logic 0–960 × 0–320
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr * cssW / CANVAS_W, dpr * cssH / CANVAS_H);
+}
+
+window.addEventListener('resize', () => { resizeCanvas(); drawTopology(); });
+
+/* ── HIT DETECTION — Phát hiện vùng click ── */
+
+/**
+ * Chuyển tọa độ chuột (viewport) → tọa độ canvas logic (0–960 × 0–320)
+ */
+function mouseToLogic(e) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left)  * (CANVAS_W / r.width),
+    y: (e.clientY - r.top)   * (CANVAS_H / r.height),
+  };
+}
+
+/**
+ * Kiểm tra điểm (px,py) có nằm trong bounding box của node không.
+ * Mở rộng thêm 12px để dễ click hơn.
+ */
+function hitNode(px, py) {
+  const M = 12;
+  for (const key in NODE_DEFS) {
+    const n = NODE_DEFS[key];
+    if (px >= n.cx - n.hw - M && px <= n.cx + n.hw + M &&
+        py >= n.cy - n.hh - M && py <= n.cy + n.hh + M) return n;
+  }
+  return null;
+}
+
+/**
+ * Sự kiện CLICK: mở panel chi tiết hoặc đóng nếu click ra ngoài
+ */
+canvas.addEventListener('click', e => {
+  const { x, y } = mouseToLogic(e);
+  const hit = hitNode(x, y);
+  if (hit) {
+    selectedNode = hit.id;
+    openNodePanel(hit);
+  } else {
+    selectedNode = null;
+    closeNodePanel();
+  }
+  drawTopology();
+});
+
+/**
+ * Sự kiện MOUSEMOVE: đổi cursor thành 'pointer' khi hover trên node
+ */
+canvas.addEventListener('mousemove', e => {
+  const { x, y } = mouseToLogic(e);
+  document.getElementById('canvas-container').style.cursor =
+    hitNode(x, y) ? 'pointer' : 'default';
+});
+
+/* ── DRAWING HELPERS ── */
+
+/** Màu nền canvas theo theme hiện tại */
+function canvasBg()   { return document.documentElement.getAttribute('data-theme') === 'light' ? '#f1f5f9' : '#0f172a'; }
+/** Màu chữ chính canvas */
+function canvasText() { return document.documentElement.getAttribute('data-theme') === 'light' ? '#334155' : '#cbd5e1'; }
+/** Màu chữ phụ canvas */
+function canvasSub()  { return '#64748b'; }
+
+/**
+ * Vẽ hình chữ nhật bo góc (tiện ích dùng chung)
+ */
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+/**
+ * Vẽ một node trạm viễn thông.
+ * Bao gồm: hình nền, viền màu trạng thái, icon, tên, badge nhỏ.
+ */
+function drawNode(node, status, isSelected) {
+  const { cx, cy, hw, hh } = node;
+  const border = statusColor(status);
+  const fill   = statusFill(status);
+
+  ctx.save();
+
+  // Vòng sáng ngoài khi được chọn
+  if (isSelected) {
+    ctx.shadowColor = border;
+    ctx.shadowBlur  = 22;
+    ctx.strokeStyle = border;
+    ctx.lineWidth   = 2.5;
+    roundRect(cx - hw - 5, cy - hh - 5, (hw+5)*2, (hh+5)*2, 13);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Nền node
+  ctx.fillStyle = fill;
+  roundRect(cx - hw, cy - hh, hw*2, hh*2, 10);
+  ctx.fill();
+
+  // Viền node — dày hơn khi được chọn
+  ctx.strokeStyle = border;
+  ctx.lineWidth   = isSelected ? 2.5 : 1.5;
+  roundRect(cx - hw, cy - hh, hw*2, hh*2, 10);
+  ctx.stroke();
+
+  // Icon + tên thiết bị
+  ctx.fillStyle    = canvasText();
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font = '18px Segoe UI, sans-serif';
+  ctx.fillText(node.icon, cx, cy - 20);
+
+  ctx.font = 'bold 13px Segoe UI, sans-serif';
+  ctx.fillText(node.label[0], cx, cy - 4);
+
+  ctx.font = '12px Segoe UI, sans-serif';
+  ctx.fillText(node.label[1], cx, cy + 12);
+
+  ctx.fillStyle = canvasSub();
+  ctx.font      = '10px Consolas, monospace';
+  ctx.fillText(node.sub, cx, cy + 27);
+
+  // Badge trạng thái nhỏ (góc trên node)
+  drawBadge(cx, cy - hh + 10, status);
+
+  ctx.restore();
+}
+
+/**
+ * Vẽ badge trạng thái nhỏ (ok/warn/crit/unknown)
+ */
+function drawBadge(bx, by, status) {
+  const labels = { ok:'OK', warn:'WARN', crit:'CRIT', unknown:'—' };
+  const color  = statusColor(status);
+  ctx.save();
+  ctx.fillStyle = color + '33';
+  roundRect(bx - 20, by - 7, 40, 14, 5);
+  ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 0.8;
+  roundRect(bx - 20, by - 7, 40, 14, 5);
+  ctx.stroke();
+  ctx.fillStyle = color; ctx.font = 'bold 9px Segoe UI,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(labels[status] || '—', bx, by);
+  ctx.restore();
+}
+
+/**
+ * Vẽ đường kết nối giữa 2 node.
+ * Dùng Bezier curve để tạo đường cong nhẹ.
+ * Màu sắc theo trạng thái link: ok=xanh, warn=vàng, crit=đỏ.
+ */
+function drawLink(link, linkStatus) {
+  const fn = NODE_DEFS[link.from];
+  const tn = NODE_DEFS[link.to];
+  const x1 = fn.cx + fn.hw, y1 = fn.cy;
+  const x2 = tn.cx - tn.hw, y2 = tn.cy;
+  const mx  = (x1 + x2) / 2;
+  const color = statusColor(linkStatus);
+
+  ctx.save();
+
+  // Glow effect
+  ctx.shadowColor = color;
+  ctx.shadowBlur  = linkStatus === 'crit' ? 14 : 6;
+
+  // Đường truyền
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = linkStatus === 'crit' ? 3 : 2;
+  ctx.setLineDash(linkStatus === 'unknown' ? [8,5] : []);
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.bezierCurveTo(mx, y1, mx, y2, x2, y2);
+  ctx.stroke();
+
+  ctx.setLineDash([]); ctx.shadowBlur = 0;
+
+  // Nhãn link (giữa đường)
+  const lx = mx, ly = (y1 + y2) / 2 - 20;
+  ctx.fillStyle = canvasBg() + 'dd';
+  roundRect(lx - 46, ly - 10, 92, 22, 4);
+  ctx.fill();
+  ctx.fillStyle = color;
+  ctx.font = '10px Consolas, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const lines = link.label.split('\n');
+  lines.forEach((ln, i) => ctx.fillText(ln, lx, ly - 5 + i * 12));
+
+  ctx.restore();
+}
+
+/**
+ * Nội suy điểm trên đường Bezier bậc 3 tại tham số t (0→1).
+ * Công thức: B(t) = (1-t)³P0 + 3(1-t)²tP1 + 3(1-t)t²P2 + t³P3
+ */
+function bezier(p0, p1, p2, p3, t) {
+  const u = 1 - t;
+  return u*u*u*p0 + 3*u*u*t*p1 + 3*u*t*t*p2 + t*t*t*p3;
+}
+
+/**
+ * Vẽ các xung tín hiệu (chấm tròn di chuyển dọc đường truyền).
+ * Mỗi xung có vệt sáng phía sau tạo cảm giác chuyển động.
+ */
+function drawPulses(link) {
+  const fn = NODE_DEFS[link.from];
+  const tn = NODE_DEFS[link.to];
+  const x1 = fn.cx + fn.hw, y1 = fn.cy;
+  const x2 = tn.cx - tn.hw, y2 = tn.cy;
+  const mx = (x1 + x2) / 2;
+
+  pulses.filter(p => p.linkId === link.id).forEach(p => {
+    const px = bezier(x1, mx, mx, x2, p.t);
+    const py = bezier(y1, y1, y2, y2, p.t);
+
+    ctx.save();
+    // Đầu xung
+    ctx.shadowColor = p.color; ctx.shadowBlur = 9;
+    ctx.fillStyle   = p.color;
+    ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill();
+
+    // Vệt sáng phía sau (alpha thấp)
+    ctx.globalAlpha = 0.35; ctx.shadowBlur = 4;
+    const t2 = Math.max(0, p.t - 0.04);
+    const px2 = bezier(x1, mx, mx, x2, t2);
+    const py2 = bezier(y1, y1, y2, y2, t2);
+    ctx.beginPath(); ctx.arc(px2, py2, 3, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore();
+  });
+}
+
+/**
+ * Vẽ lưới nền nhạt (grid pattern — phong cách SCADA)
+ */
+function drawGrid() {
+  const theme = document.documentElement.getAttribute('data-theme');
+  ctx.strokeStyle = theme === 'light' ? 'rgba(148,163,184,0.18)' : 'rgba(51,65,85,0.45)';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x <= CANVAS_W; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_H); ctx.stroke();
+  }
+  for (let y = 0; y <= CANVAS_H; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_W, y); ctx.stroke();
+  }
+}
+
+/**
+ * HÀM VẼ CHÍNH — Vẽ toàn bộ sơ đồ topology.
+ * Thứ tự: nền → grid → links → pulses → nodes → chú thích
+ */
+function drawTopology() {
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.fillStyle = canvasBg();
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  drawGrid();
+
+  // Vẽ đường kết nối (phía dưới nodes)
+  LINK_DEFS.forEach(lk => {
+    const st = lk.id === 'tx_atcc' ? topoState.link_tx_atcc : topoState.link_atcc_rx;
+    drawLink(lk, st);
+  });
+
+  // Vẽ xung tín hiệu
+  LINK_DEFS.forEach(lk => drawPulses(lk));
+
+  // Vẽ các node (phía trên đường)
+  const stMap = { tx: topoState.tx_status, atcc: topoState.atcc_status, rx: topoState.rx_status };
+  Object.values(NODE_DEFS).forEach(n => drawNode(n, stMap[n.id] || 'unknown', selectedNode === n.id));
+
+  // Tiêu đề + timestamp
+  ctx.save();
+  ctx.fillStyle = canvasSub(); ctx.font = '11px Segoe UI, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText('RCMS Topology — TX ⟶ ATCC Long Thành ⟶ RX', 12, 8);
+  if (topoState.ts) {
+    ctx.textAlign = 'right';
+    ctx.fillText('Cập nhật: ' + new Date(topoState.ts).toLocaleTimeString('vi-VN'), CANVAS_W - 12, 8);
+  }
+  ctx.restore();
+}
+
+/* ── ANIMATION LOOP — Vòng lặp hoạt ảnh ── */
+
+/**
+ * Vòng lặp chính chạy 60fps:
+ * 1. Tính delta-time
+ * 2. Cập nhật vị trí xung
+ * 3. Sinh xung mới
+ * 4. Vẽ lại canvas
+ */
+function animLoop(ts) {
+  const dt = Math.min((ts - lastFrameTime) / 1000, 0.1);
+  lastFrameTime = ts;
+
+  // Di chuyển xung theo thời gian
+  pulses = pulses.map(p => ({ ...p, t: p.t + PULSE_SPEED * dt })).filter(p => p.t < 1.0);
+
+  // Tạo xung mới cho mỗi link
+  const now = ts / 1000;
+  LINK_DEFS.forEach(lk => {
+    const st = lk.id === 'tx_atcc' ? topoState.link_tx_atcc : topoState.link_atcc_rx;
+    if (st === 'crit' || st === 'unknown') return; // Không tạo xung khi mất kết nối
+    if (now - lastPulseTime[lk.id] > PULSE_INTERVAL) {
+      pulses.push({ linkId: lk.id, t: 0, color: st === 'warn' ? '#fbbf24' : '#60a5fa' });
+      lastPulseTime[lk.id] = now;
+    }
+  });
+
+  drawTopology();
+  animFrameId = requestAnimationFrame(animLoop);
+}
+animFrameId = requestAnimationFrame(animLoop);
+
+/* ================================================================
+   NODE DETAIL PANEL — Hàm quản lý panel chi tiết
+   ================================================================ */
+
+let currentPanelNode = null; // Node đang mở panel
+
+/**
+ * Mở panel chi tiết cho node được click.
+ * Điền: tên, badge trạng thái, bảng thông tin, KPI bars.
+ */
+function openNodePanel(node) {
+  currentPanelNode = node;
+  const panel = document.getElementById('node-panel');
+
+  document.getElementById('panel-title').textContent    = node.label.join(' ');
+  document.getElementById('panel-subtitle').textContent = node.icon + ' ' + node.sub;
+
+  // Badge trạng thái
+  const stMap = { tx: topoState.tx_status, atcc: topoState.atcc_status, rx: topoState.rx_status };
+  const st    = stMap[node.id] || 'unknown';
+  const badgeEl = document.getElementById('panel-status-badge');
+  const badgeTxt = { ok:'● NORMAL', warn:'⚠ WARNING', crit:'✕ CRITICAL', unknown:'? UNKNOWN' };
+  const badgeCls = { ok:'badge-green', warn:'badge-yellow', crit:'badge-red', unknown:'badge-blue' };
+  badgeEl.textContent = badgeTxt[st] || '? UNKNOWN';
+  badgeEl.className   = 'badge ' + (badgeCls[st] || 'badge-blue');
+  document.getElementById('panel-ts').textContent =
+    topoState.ts ? new Date(topoState.ts).toLocaleTimeString('vi-VN') : '';
+
+  // Bảng thông tin
+  const infoEl = document.getElementById('panel-info-rows');
+  infoEl.innerHTML = '';
+  Object.entries(node.info).forEach(([k, v]) => {
+    const isMono = /\d{1,3}\.\d/.test(v) || v.includes(':');
+    infoEl.innerHTML += `<div class="info-row">
+      <span class="info-key">${k}</span>
+      <span class="info-value ${isMono ? 'mono' : ''}">${v}</span>
+    </div>`;
+  });
+
+  // KPI bars
+  refreshKpiBars(node.id);
+  panel.style.display = 'block';
+}
+
+/**
+ * Cập nhật 3 thanh KPI (Delay, Jitter, Loss) trong panel.
+ * Dữ liệu lấy từ topoState — được cập nhật qua WebSocket.
+ */
+function refreshKpiBars(nodeId) {
+  // TX/ATCC → dùng dữ liệu link tx_atcc; RX → link atcc_rx
+  const keys = nodeId === 'rx'
+    ? { d: 'delay_atcc_rx',  j: 'jitter_atcc_rx',  l: 'loss_atcc_rx'  }
+    : { d: 'delay_tx_atcc',  j: 'jitter_tx_atcc',  l: 'loss_tx_atcc'  };
+
+  function setBar(barId, valId, val, max) {
+    if (val === null || val === undefined) return;
+    const pct = Math.min((val / max) * 100, 100);
+    const clr = pct < 50 ? 'var(--green)' : pct < 100 ? 'var(--yellow)' : 'var(--red)';
+    document.getElementById(barId).style.width      = pct + '%';
+    document.getElementById(barId).style.background = clr;
+    document.getElementById(valId).textContent      = typeof val === 'number' ? val.toFixed(val < 1 ? 3 : 1) + (valId.includes('loss') ? ' %' : ' ms') : val;
+  }
+
+  setBar('panel-bar-delay',  'panel-val-delay',  topoState[keys.d], 100);
+  setBar('panel-bar-jitter', 'panel-val-jitter', topoState[keys.j], 20);
+  setBar('panel-bar-loss',   'panel-val-loss',   topoState[keys.l], 1);
+}
+
+/** Đóng node detail panel */
+function closeNodePanel() {
+  document.getElementById('node-panel').style.display = 'none';
+  selectedNode = null; currentPanelNode = null;
+  drawTopology();
+}
+
+/**
+ * Kích hoạt đo kiểm Ansible cho trạm được chọn trên canvas.
+ * Chuyển sang tab Ansible, chọn đúng target group, chạy playbook.
+ */
+function runNodeMeasure() {
+  if (!currentPanelNode) return;
+  const target = currentPanelNode.playbook_target;
+  switchTab('ansible');
+  const sel = document.getElementById('target-metrics');
+  for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === target) { sel.selectedIndex = i; break; }
+  }
+  runPlaybook('01_collect_metrics', 'target-metrics');
+  closeNodePanel();
+}
+
+/** Mở Grafana dashboard của node đang chọn */
+function openNodeGrafana() {
+  if (!currentPanelNode) return;
+  window.open(GRAFANA + '/d/' + currentPanelNode.grafana_dash + '?orgId=1', '_blank');
+}
+
+/* ================================================================
+   WEBSOCKET — Nhận dữ liệu topology thời gian thực
+   ================================================================
+
+   Endpoint: ws://{host}/ws/topology
+   Backend gửi JSON có cấu trúc giống topoState.
+
+   Ví dụ payload:
+   {
+     "tx_status": "ok",  "atcc_status": "ok",  "rx_status": "warn",
+     "link_tx_atcc": "ok", "link_atcc_rx": "warn",
+     "delay_tx_atcc": 28.5, "jitter_tx_atcc": 3.2, "loss_tx_atcc": 0.01,
+     "delay_atcc_rx": 74.2, "jitter_atcc_rx": 14.5, "loss_atcc_rx": 0.48,
+     "ts": "2026-06-12T15:30:00Z"
+   }
+*/
+
+let ws = null, wsTimer = null, wsDelay = 2000;
+
+function connectWS() {
+  try { ws = new WebSocket('ws://' + window.location.host + '/ws/topology'); }
+  catch(e) { setWsStatus('error'); scheduleReconnect(); return; }
+
+  ws.onopen = () => {
+    wsDelay = 2000; // Reset backoff khi kết nối thành công
+    setWsStatus('connected');
+  };
+
+  ws.onmessage = e => {
+    try {
+      const d = JSON.parse(e.data);
+      Object.assign(topoState, d);
+      // Nếu panel đang mở: cập nhật KPI bars + badge ngay lập tức
+      if (currentPanelNode) {
+        refreshKpiBars(currentPanelNode.id);
+        const stMap = { tx: topoState.tx_status, atcc: topoState.atcc_status, rx: topoState.rx_status };
+        const st    = stMap[currentPanelNode.id] || 'unknown';
+        const badgeTxt = { ok:'● NORMAL', warn:'⚠ WARNING', crit:'✕ CRITICAL', unknown:'? UNKNOWN' };
+        const badgeCls = { ok:'badge-green', warn:'badge-yellow', crit:'badge-red', unknown:'badge-blue' };
+        const b = document.getElementById('panel-status-badge');
+        b.textContent = badgeTxt[st]; b.className = 'badge ' + (badgeCls[st] || 'badge-blue');
+      }
+    } catch(e) { console.warn('[WS] Lỗi parse JSON:', e); }
+  };
+
+  ws.onerror = () => setWsStatus('error');
+  ws.onclose = () => { setWsStatus('disconnected'); scheduleReconnect(); };
+}
+
+/**
+ * Lên lịch kết nối lại với Exponential Backoff (tránh spam khi server ngắt).
+ * Delay tăng dần: 2s → 3s → 4.5s → ... tối đa 30s
+ */
+function scheduleReconnect() {
+  clearTimeout(wsTimer);
+  wsTimer = setTimeout(() => { wsDelay = Math.min(wsDelay * 1.5, 30000); connectWS(); }, wsDelay);
+}
+
+/** Cập nhật nhãn trạng thái WS trên canvas */
+function setWsStatus(state) {
+  const el = document.getElementById('ws-status');
+  const map = { connected:'⬤ WS Connected', disconnected:'○ WS Disconnected', error:'⬤ WS Error' };
+  const clr = { connected:'var(--green)', disconnected:'var(--text2)', error:'var(--red)' };
+  el.textContent = map[state] || '○ WS...';
+  el.style.color = clr[state] || 'var(--text2)';
+}
+
+connectWS(); // Khởi động kết nối WS khi tải trang
+
+/* ================================================================
+   API CALLS — Giao tiếp với Backend REST
+   ================================================================ */
+
+/** Tải 4 KPI boxes ở đầu trang */
 async function loadSummary() {
   try {
-    const r = await fetch(`${API}/metrics/summary`);
+    const r = await fetch(API + '/metrics/summary');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
     document.getElementById('kpi-tx').textContent    = d.t6_radio_up_tx_main ?? '—';
     document.getElementById('kpi-rx').textContent    = d.t6_radio_up_rx_main ?? '—';
-    document.getElementById('kpi-ubvhf').textContent = d.t6_radio_up_ubvhf ?? '—';
+    document.getElementById('kpi-ubvhf').textContent = d.t6_radio_up_ubvhf   ?? '—';
     const alerts = (d.critical_alerts || 0) + (d.warning_alerts || 0);
     const el = document.getElementById('kpi-alerts');
-    el.textContent = alerts;
-    el.style.color = alerts > 0 ? 'var(--red)' : 'var(--green)';
+    el.textContent = alerts; el.style.color = alerts > 0 ? 'var(--red)' : 'var(--green)';
     document.getElementById('status-badge').innerHTML = '<span class="dot dot-green"></span> Connected';
     document.getElementById('status-badge').className = 'badge badge-green';
+    // Cập nhật topoState từ API (fallback nếu WS chưa kết nối được)
+    if (d.tx_status)   topoState.tx_status   = d.tx_status;
+    if (d.rx_status)   topoState.rx_status   = d.rx_status;
+    if (d.atcc_status) topoState.atcc_status = d.atcc_status;
   } catch(e) {
     document.getElementById('status-badge').innerHTML = '<span class="dot dot-red"></span> Lỗi kết nối';
     document.getElementById('status-badge').className = 'badge badge-red';
   }
 }
 
-// ── Load devices table ──
+/** Tải bảng thiết bị T6 radios */
 async function loadDevices() {
-  document.getElementById('device-loading').style.display = 'block';
-  document.getElementById('device-table').style.display = 'none';
+  const loadEl = document.getElementById('device-loading');
+  const tblEl  = document.getElementById('device-table');
+  loadEl.style.display = 'block'; tblEl.style.display = 'none';
   try {
     const [devR, s4R] = await Promise.all([
-      fetch(`${API}/metrics/t6_status`),
-      fetch(`${API}/metrics/s4ip_status`),
+      fetch(API + '/metrics/t6_status'),
+      fetch(API + '/metrics/s4ip_status'),
     ]);
     const devData = await devR.json();
     const s4Data  = await s4R.json();
-
     const tbody = document.getElementById('device-tbody');
     tbody.innerHTML = '';
     (devData.devices || []).forEach(d => {
       const up = d.status === 'up';
       tbody.innerHTML += `<tr>
-        <td><span class="badge ${up ? 'badge-green' : 'badge-red'}"><span class="dot ${up ? 'dot-green' : 'dot-red'}"></span>${up ? 'UP' : 'DOWN'}</span></td>
+        <td><span class="badge ${up?'badge-green':'badge-red'}"><span class="dot ${up?'dot-green':'dot-red'}"></span>${up?'UP':'DOWN'}</span></td>
         <td class="mono">${d.instance}</td>
-        <td>${d.device || '—'}</td>
-        <td>${d.site || '—'}</td>
-        <td>${d.redundancy || '—'}</td>
-        <td style="color:var(--text2); font-size:0.9em">${d.job}</td>
+        <td>${d.device||'—'}</td>
+        <td>${d.site||'—'}</td>
+        <td>${d.redundancy||'—'}</td>
+        <td style="color:var(--text2);font-size:0.9em">${d.job}</td>
       </tr>`;
     });
-    document.getElementById('device-loading').style.display = 'none';
-    document.getElementById('device-table').style.display = 'table';
-
-    // S4-IP
+    loadEl.style.display = 'none'; tblEl.style.display = 'table';
     const s4html = (s4Data.s4ip_controllers || []).map(s => {
       const up = s.status === 'up';
-      return `<span class="badge ${up ? 'badge-green' : 'badge-red'}" style="margin:2px">
-        <span class="dot ${up ? 'dot-green' : 'dot-red'}"></span>
-        ${s.instance}
-      </span>`;
+      return `<span class="badge ${up?'badge-green':'badge-red'}" style="margin:2px"><span class="dot ${up?'dot-green':'dot-red'}"></span>${s.instance}</span>`;
     }).join('');
     document.getElementById('s4ip-status').innerHTML = s4html || 'Chưa có dữ liệu';
   } catch(e) {
-    document.getElementById('device-loading').innerHTML = `<span style="color:var(--red)">Lỗi: ${e.message}</span>`;
+    loadEl.innerHTML = '<span style="color:var(--red)">⚠ Lỗi: ' + e.message + '</span>';
   }
 }
 
-// ── Load alerts ──
+/** Tải cảnh báo từ Alertmanager */
 async function loadAlerts() {
   try {
-    const r = await fetch(`${API}/metrics/alerts`);
+    const r = await fetch(API + '/metrics/alerts');
     const d = await r.json();
     const el = document.getElementById('alert-list');
-    if (!d.alerts || d.alerts.length === 0) {
+    if (!d.alerts || !d.alerts.length) {
       el.innerHTML = '<div class="badge badge-green" style="padding:8px 12px">✅ Không có cảnh báo nào đang kích hoạt</div>';
       return;
     }
     el.innerHTML = d.alerts.map(a => `
-      <div class="alert-item ${a.severity === 'critical' ? 'alert-critical' : 'alert-warning'}">
-        <div>${a.severity === 'critical' ? '🔴' : '⚠️'}</div>
-        <div>
+      <div class="alert-item ${a.severity==='critical'?'alert-critical':'alert-warning'}">
+        <div style="font-size:1.2em">${a.severity==='critical'?'🔴':'⚠️'}</div>
+        <div style="flex:1">
           <div style="font-weight:600">${a.alertname}</div>
-          <div style="color:var(--text2); font-size:0.9em">
-            ${a.instance || ''} ${a.site ? '· '+a.site : ''} ${a.kpi ? '· KPI: '+a.kpi : ''}
-          </div>
+          <div style="color:var(--text2);font-size:0.9em">${a.instance||''} ${a.site?'· '+a.site:''} ${a.kpi?'· KPI: '+a.kpi:''}</div>
         </div>
-        <div style="margin-left:auto"><span class="badge ${a.severity === 'critical' ? 'badge-red' : 'badge-yellow'}">${a.severity.toUpperCase()}</span></div>
+        <div><span class="badge ${a.severity==='critical'?'badge-red':'badge-yellow'}">${a.severity.toUpperCase()}</span></div>
       </div>`).join('');
   } catch(e) {
-    document.getElementById('alert-list').innerHTML = `<span style="color:var(--red)">Lỗi: ${e.message}</span>`;
+    document.getElementById('alert-list').innerHTML = '<span style="color:var(--red)">⚠ Lỗi: ' + e.message + '</span>';
   }
 }
 
-// ── Ansible: run playbook ──
-let jobIntervals = {};
-async function runPlaybook(playbookId, selectId, defaultTarget) {
-  const target = selectId
-    ? document.getElementById(selectId).value
-    : (defaultTarget || 'all_rcms');
+/* ================================================================
+   ANSIBLE JOB MANAGEMENT
+   ================================================================ */
 
+/**
+ * Kích hoạt Ansible Playbook qua REST API.
+ * @param {string} playbookId  - ID playbook (01_collect_metrics, ...)
+ * @param {string|null} selId  - ID của <select> chứa target group
+ * @param {string} defTarget   - Target mặc định nếu không có select
+ */
+async function runPlaybook(playbookId, selId, defTarget) {
+  const target = selId ? document.getElementById(selId).value : (defTarget || 'all_rcms');
   try {
-    const r = await fetch(`${API}/ansible/run`, {
+    const r = await fetch(API + '/ansible/run', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({playbook: playbookId, target_group: target}),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playbook: playbookId, target_group: target }),
     });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const job = await r.json();
-    addJobToList(job);
+    addJobCard(job);
     pollJob(job.job_id);
-  } catch(e) {
-    alert(`Lỗi khởi chạy playbook: ${e.message}`);
-  }
+  } catch(e) { alert('⚠ Lỗi khởi chạy playbook: ' + e.message); }
 }
 
-function addJobToList(job) {
+/** Thêm card Job mới vào danh sách */
+function addJobCard(job) {
   const el = document.getElementById('job-list');
   if (el.textContent.includes('Chưa có')) el.innerHTML = '';
   const div = document.createElement('div');
-  div.id = `job-${job.job_id}`;
-  div.className = 'card';
-  div.style.marginBottom = '8px';
+  div.id = 'job-' + job.job_id; div.className = 'card'; div.style.marginBottom = '8px';
   div.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center">
-      <div>
-        <strong>${job.playbook}</strong>
-        <span style="color:var(--text2); font-size:0.85em; margin-left:8px">→ ${job.job_id}</span>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><strong>${job.playbook}</strong>
+        <span style="color:var(--text2);font-size:0.82em;margin-left:8px">→ ${job.job_id}</span>
+        <span style="color:var(--text2);font-size:0.78em;margin-left:8px">Target: ${job.target_group||'all'}</span>
       </div>
-      <span class="badge badge-blue" id="status-${job.job_id}"><span class="spinner"></span> Running</span>
+      <span class="badge badge-blue" id="status-${job.job_id}"><span class="spinner"></span> Đang chạy</span>
     </div>
-    <div id="output-${job.job_id}" class="job-output"></div>
-  `;
+    <div id="output-${job.job_id}" class="job-output"></div>`;
   el.prepend(div);
 }
 
+/** Polling trạng thái Job mỗi 3 giây */
 function pollJob(jobId) {
-  const interval = setInterval(async () => {
+  const iv = setInterval(async () => {
     try {
-      const r = await fetch(`${API}/ansible/jobs/${jobId}`);
+      const r = await fetch(API + '/ansible/jobs/' + jobId);
       const job = await r.json();
-      const statusEl = document.getElementById(`status-${jobId}`);
-      const outputEl = document.getElementById(`output-${jobId}`);
-
+      const stEl  = document.getElementById('status-' + jobId);
+      const outEl = document.getElementById('output-' + jobId);
       if (job.status === 'completed') {
-        statusEl.innerHTML = '✅ Hoàn tất';
-        statusEl.className = 'badge badge-green';
-        if (job.output) { outputEl.textContent = job.output; outputEl.style.display = 'block'; }
-        clearInterval(interval);
-        loadSummary();
+        stEl.innerHTML = '✅ Hoàn tất'; stEl.className = 'badge badge-green';
+        if (job.output) { outEl.textContent = job.output; outEl.style.display = 'block'; }
+        clearInterval(iv); loadSummary();
       } else if (job.status === 'failed') {
-        statusEl.innerHTML = '❌ Thất bại';
-        statusEl.className = 'badge badge-red';
-        if (job.output) { outputEl.textContent = job.output; outputEl.style.display = 'block'; }
-        clearInterval(interval);
+        stEl.innerHTML = '❌ Thất bại'; stEl.className = 'badge badge-red';
+        if (job.output) { outEl.textContent = job.output; outEl.style.display = 'block'; }
+        clearInterval(iv);
       }
-    } catch(e) { clearInterval(interval); }
+    } catch(e) { clearInterval(iv); }
   }, 3000);
 }
 
-// ── Grafana iframes ──
+/* ================================================================
+   GRAFANA IFRAMES
+   ================================================================ */
+
 function loadGrafana() {
   Object.entries(GRAFANA_DASHBOARDS).forEach(([key, path]) => {
-    const iframe = document.getElementById(`grafana-${key}`);
-    const ph     = document.getElementById(`grafana-${key}-placeholder`);
-    iframe.src = GRAFANA + path;
-    iframe.style.display = 'block';
+    const iframe = document.getElementById('grafana-' + key);
+    const ph     = document.getElementById('grafana-' + key + '-placeholder');
+    iframe.src = GRAFANA + path; iframe.style.display = 'block';
     if (ph) ph.style.display = 'none';
   });
 }
+function openGrafana() { window.open(GRAFANA, '_blank'); }
 
-function openGrafana() {
-  window.open(GRAFANA, '_blank');
-}
+/* ================================================================
+   REFRESH & INIT
+   ================================================================ */
 
-// ── Refresh all ──
 function refreshAll() {
   loadSummary();
-  const activeTab = document.querySelector('.tab-content.active').id.replace('tab-','');
-  if (activeTab === 'devices') loadDevices();
-  if (activeTab === 'alerts') loadAlerts();
+  const active = (document.querySelector('.tab-content.active') || {}).id || '';
+  if (active === 'tab-devices') loadDevices();
+  if (active === 'tab-alerts')  loadAlerts();
 }
 
-// ── Auto refresh every 30s ──
-setInterval(() => { loadSummary(); }, 30000);
+setInterval(refreshAll, 30000); // Tự động làm mới mỗi 30 giây
 
-// ── Init ──
-loadSummary();
+// Khởi tạo khi DOM sẵn sàng
+window.addEventListener('DOMContentLoaded', () => {
+  resizeCanvas();   // Thiết lập kích thước canvas
+  loadSummary();    // Tải KPI summary ban đầu
+});
 </script>
 </body>
 </html>

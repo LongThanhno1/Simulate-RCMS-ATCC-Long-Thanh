@@ -211,7 +211,10 @@ services:
       retries: 3
 
   # ─────────────────────────────────────────────────────────
-  # 8. NODE EXPORTER — Monitor VM1 host (CPU/RAM/Disk/Network)
+  # 8. NODE EXPORTER — Monitor VM host (CPU/RAM/Disk/Network)
+  # NOTE Production Linux: thêm volumes /proc /sys / và
+  #      network_mode: host để đo chính xác host metrics.
+  #      Lab/Windows Docker Desktop: chạy không cần host mode.
   # ─────────────────────────────────────────────────────────
   node-exporter:
     image: prom/node-exporter:v1.8.0
@@ -228,7 +231,8 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
-    network_mode: host      # Node exporter cần host network để đo chính xác
+    networks:
+      - vatm_monitor
 
 # ─────────────────────────────────────────────────────────
 # VOLUMES — Persistent storage

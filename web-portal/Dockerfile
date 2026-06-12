@@ -11,21 +11,18 @@ LABEL description="VATM ED-137 Monitoring Web Portal"
 LABEL version="1.0"
 
 # ── Cài dependencies hệ thống ──
+# snmp-mibs-downloader bị xóa: cần repo non-free, không có trong python:slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # SSH cho Ansible kết nối Nokia SR OS
+    # SSH cho Ansible kết nối RCMS workstations
     openssh-client \
     sshpass \
-    # Network tools
+    # Network tools (ping đo latency/jitter ED-137)
     iputils-ping \
-    iperf3 \
-    # SNMP tools (debug)
+    # SNMP CLI (debug, không cần MIB downloader)
     snmp \
-    snmp-mibs-downloader \
     # Tiện ích
     curl \
     wget \
-    git \
-    vim-tiny \
     # Ansible dependencies
     python3-netaddr \
     python3-paramiko \
@@ -42,7 +39,7 @@ RUN mkdir -p \
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-# ── SSH config (tắt strict host check khi Ansible SSH vào Nokia) ──
+# ── SSH config (tắt strict host check khi Ansible SSH vào RCMS workstations) ──
 RUN echo "Host 10.*\n\
     StrictHostKeyChecking no\n\
     UserKnownHostsFile /dev/null\n\

@@ -1,0 +1,43 @@
+# ============================================================
+# docker-compose.lab.yml — Override cho môi trường LAB
+# Windows Docker Desktop / VMware Workstation local VM
+# ============================================================
+# Sử dụng:
+#   docker compose -f docker-compose.yml -f docker-compose.lab.yml up -d
+#
+# Khác biệt so với production docker-compose.yml:
+#   - node-exporter: bỏ volume mount /proc /sys / (Linux only)
+#   - web-portal: tắt healthcheck (ansible-core start chậm)
+#   - Tất cả service: restart=no (dễ debug khi chạy thử)
+# ============================================================
+
+services:
+
+  # Override node-exporter: bỏ volume /proc /sys / (không có trên Windows)
+  # Service vẫn chạy và scrape được container metrics cơ bản
+  node-exporter:
+    volumes: []
+    restart: "no"
+
+  prometheus:
+    restart: "no"
+
+  grafana:
+    restart: "no"
+
+  alertmanager:
+    restart: "no"
+
+  snmp-exporter:
+    restart: "no"
+
+  blackbox-exporter:
+    restart: "no"
+
+  pushgateway:
+    restart: "no"
+
+  web-portal:
+    restart: "no"
+    healthcheck:
+      disable: true
