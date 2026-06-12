@@ -1,115 +1,136 @@
-# VATM ATCC Long Thành — Ansible Monitoring
-## Dự án: Giám sát đường truyền từ xa — PHẦN I: Tự động hóa đo kiểm
+# VATM ATCC Long Thành — Ansible Playbooks
+## Tự động hóa đo kiểm đường truyền VHF theo chuẩn ED-137
 
-### Cấu trúc thư mục
+---
+
+## Mục đích
+
+Module Ansible SSH vào các **RCMS Workstation (HP Z1 G9)** tại từng trạm để:
+- Chạy kịch bản đo kiểm Latency / Jitter / Packet Loss / ICMP ping
+- Đẩy kết quả lên **Pushgateway** để Prometheus thu thập và Grafana hiển thị
+- Xuất báo cáo kỹ thuật định kỳ (Markdown/CSV) theo Quy trình 2999
+
+> **Lưu ý kiến trúc:**  
+> Ansible **không SSH trực tiếp vào T6 radio** — các radio chỉ được poll qua SNMP (qua LAN3).  
+> Ansible **không SSH vào S4-IP** — S4-IP được probe qua TCP:5001 (Blackbox Exporter).
+
+---
+
+## Cấu trúc thư mục
 
 ```
 ansible/
-├── ansible.cfg                  # Cấu hình Ansible
-├── hosts.ini                    # Inventory: danh sách thiết bị
-├── README.md                    # Tài liệu này
+├── ansible.cfg                      # Cấu hình Ansible (SSH timeout, pipelining...)
+├── hosts.ini                        # Inventory: RCMS workstations + T6 radio targets
 ├── group_vars/
-│   ├── all.yml                  # Variables dùng chung toàn bộ
-│   ├── nokia_sros.yml           # Variables cho thiết bị Nokia SR OS
-│   └── lab_simulation.yml      # Variables cho môi trường Lab
+│   ├── all.yml                      # Variables chung: IP, ngưỡng ED-137, paths
+│   └── lab_simulation.yml           # Variables cho môi trường Lab (mock targets)
 ├── playbooks/
-│   ├── site.yml                 # ★ Master playbook (chạy cả pipeline)
-│   ├── 00_setup_lab.yml        # Cài đặt lab simulation (chạy 1 lần)
-│   ├── 01_collect_metrics.yml  # Thu thập BER/Latency/Jitter/Port Status
-│   ├── 02_generate_report.yml  # Tổng hợp báo cáo Markdown + CSV
-│   └── 03_schedule_cron.yml    # Cài đặt lịch cron tự động
-└── roles/
-    └── nokia_sros_collector/
-        ├── tasks/main.yml       # Logic thu thập metrics Nokia SR OS
-        └── templates/
-            └── report.md.j2     # Template báo cáo Markdown
+│   ├── site.yml                     # ★ Master playbook (chạy toàn bộ pipeline)
+│   ├── 00_setup_lab.yml            # Cài đặt môi trường lab (chạy 1 lần)
+│   ├── 01_collect_metrics.yml      # ★ Thu thập metrics đo kiểm → Pushgateway
+│   ├── 02_generate_report.yml      # Xuất báo cáo Markdown + CSV
+│   └── 03_ping_check.yml           # ICMP ping check nhanh toàn tuyến
+├── roles/
+│   └── vatm_collector/
+│       ├── tasks/main.yml           # Logic đo kiểm chính
+│       └── templates/report.md.j2  # Template báo cáo Markdown
+└── reports/                         # Thư mục chứa báo cáo xuất ra (auto-created)
 ```
 
 ---
 
-### Hướng dẫn sử dụng
+## Inventory (hosts.ini)
 
-#### 1. Chuẩn bị môi trường Lab (chạy 1 lần)
+### Nhóm thiết bị
+
+| Nhóm | Mô tả | Số lượng |
+|------|-------|---------|
+| `rcms_tx` | RCMS/LCMS workstation tại Trạm TX | 2 host |
+| `rcms_rx` | RCMS/LCMS workstation tại Trạm RX | 2 host |
+| `rcms_ubvhf` | RCMS/LCMS tại UBVHF Tower | 2 host |
+| `t6tv_main` / `t6tv_stby` | T6-TV radio MAIN/STBY (Trạm TX) | 9+9 host |
+| `t6rv_main` / `t6rv_stby` | T6-RV radio MAIN/STBY (Trạm RX) | 9+9 host |
+| `t6trv_*` | T6-TRV radio UBVHF | biến thể |
+| `all_rcms` | Toàn bộ RCMS workstation | parent group |
+
+### Dải IP thực tế (LAN3 — RCMS subnet)
+
+| Vị trí | RCMS Workstation | T6 Radio MAIN | T6 Radio STBY |
+|--------|-----------------|--------------|--------------|
+| Trạm TX | 10.60.7.98 / 10.60.7.65 | 10.60.7.71–79 | 10.60.7.81–89 |
+| Trạm RX | 10.60.7.97 / 10.60.6.65 | 10.60.6.71–79 | 10.60.6.81–89 |
+| UBVHF TWR | 10.60.11.30 / 10.60.11.29 | 10.60.11.x | — |
+
+---
+
+## Hướng dẫn sử dụng
+
+### Chạy thủ công từ command line
 
 ```bash
-# Cài đặt snmpd + simulator trên các Ubuntu VM lab
-ansible-playbook -i hosts.ini playbooks/00_setup_lab.yml --limit lab_simulation
-```
-
-#### 2. Chạy thu thập metrics thủ công
-
-```bash
-# Chạy toàn bộ pipeline (collect + report)
+# Toàn bộ pipeline (collect metrics + generate report)
 ansible-playbook -i hosts.ini playbooks/site.yml
 
-# Chỉ thu thập (không generate report)
-ansible-playbook -i hosts.ini playbooks/site.yml --tags collect
+# Chỉ thu thập metrics (không xuất report)
+ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml
 
-# Chỉ lab simulation
-ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml --limit lab_simulation
+# Chỉ một nhóm trạm
+ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml --limit rcms_tx
+ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml --limit rcms_rx
+ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml --limit rcms_ubvhf
 
-# Chỉ các remote sites thực
-ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml --limit all_remote
+# Ping check nhanh toàn tuyến
+ansible-playbook -i hosts.ini playbooks/03_ping_check.yml
 
-# Một site cụ thể
-ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml --limit remote_bmt
+# Xuất báo cáo
+ansible-playbook -i hosts.ini playbooks/02_generate_report.yml
 ```
 
-#### 3. Cài đặt lịch tự động (production)
+### Kích hoạt từ Web Portal
+
+Truy cập **http://localhost:8080** → Tab "⚡ Đo kiểm" → Chọn nhóm → Nhấn **▶ Chạy đo kiểm**
+
+Web Portal gọi ngầm `ansible-playbook` thông qua FastAPI backend, kết quả trả về real-time.
+
+---
+
+## Ngưỡng cảnh báo ED-137 (mặc định)
+
+| Chỉ số | 🟡 Cảnh báo | 🔴 Vi phạm |
+|--------|------------|----------|
+| One-way Delay | > 50 ms | **> 100 ms** |
+| Jitter | > 10 ms | **> 20 ms** |
+| Packet Loss | > 0.1% | **> 1%** |
+| VSWR Anten | > 1.5:1 | **> 2.0:1** |
+| BER đường truyền | > 10⁻⁶ | **> 10⁻⁴** |
+
+Các ngưỡng này có thể override per-site trong `group_vars/all.yml`.
+
+---
+
+## Môi trường Lab
+
+Khi thiết bị thực (10.60.x.x) không reachable, sử dụng script giả lập metrics:
 
 ```bash
-ansible-playbook -i hosts.ini playbooks/03_schedule_cron.yml
+# Từ thư mục monitoring/
+python simulate_metrics.py --mode cycle --loop --interval 15
 ```
 
----
-
-### Thiết bị được monitor
-
-| Site | Thiết bị | Model | ISP | Băng thông |
-|------|----------|-------|-----|-----------|
-| TWR LTIA | TWR-EDGE-ROUTERS-1/2 | Nokia 7250 IXR-e | Dual | — |
-| TWR LTIA | TWR-DISTRIBUTION-1/2 | Nokia 7250 IXR-e | — | — |
-| TWR LTIA | TWR-VSAT-SAR8 | Nokia 7705 SAR-8 | VSAT | — |
-| ATCC HCM | Rx/Tx-VHF-HCM-SAR8 x4 | Nokia 7705 SAR-8 | Dual | — |
-| Weather Radar | TWR-WEATHER-RADAR-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 3 Mb/s |
-| ADS-B A18 | TWR-ADSB-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 3 Mb/s |
-| PSR/SSR TX | TWR-PSR-MSSR-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 3 Mb/s |
-| APP/TWR DAN | APP-TWR-DAN-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 3 Mb/s |
-| TWR Tuy Hòa | TWR-TUY-HOA-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 3 Mb/s |
-| APP/TWR CRA | APP-TWR-CRA-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 7 Mb/s |
-| TWR BMT | TWR-BMT-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 8 Mb/s |
-| TWR Liên Khương | TWR-LKG-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 3 Mb/s |
-| TWR Cần Thơ | TWR-CTH-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 5 Mb/s |
-| TWR Cà Mau | TWR-CMU-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 3 Mb/s |
-| TWR Rạch Giá | TWR-RGA-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 3 Mb/s |
-| TWR Côn Sơn | TWR-CSN-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 3 Mb/s |
-| TWR Phú Quốc | TWR-PQC-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 6 Mb/s |
-| Radar Quy Nhơn | RADAR-QNH-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 4 Mb/s |
-| Radar Cà Mau | RADAR-CMU-SAR8-1 | Nokia 7705 SAR-8 | VNPT+VIETTEL | 4 Mb/s |
+Script đẩy trực tiếp vào Pushgateway (`localhost:9091`) — không cần Ansible.
 
 ---
 
-### Ngưỡng cảnh báo mặc định
+## Ghi chú kỹ thuật
 
-| Chỉ số | Cảnh báo Vàng | Cảnh báo Đỏ |
-|--------|--------------|------------|
-| Latency | > 50 ms | > 150 ms |
-| Jitter | > 10 ms | > 30 ms |
-| BER | > 1×10⁻⁶ | > 1×10⁻⁴ |
-| Băng thông sử dụng | > 70% | > 90% |
-| Trạng thái Port | — | Down |
+- **SSH target**: Ansible SSH vào RCMS Workstation (HP Z1 G9), không SSH trực tiếp vào T6 radio
+- **SNMP Security**: SNMP exporter poll T6 radio qua LAN3 (10.60.x.x/27) — KHÔNG qua LAN1 (VoIP subnet)
+- **S4-IP**: Không có SNMP — chỉ probe TCP:5001 qua Blackbox Exporter
+- **Ansible Vault**: Thông tin nhạy cảm (SSH password) nên lưu trong `ansible-vault encrypt_string`
+- **Pushgateway URL**: Mặc định `http://localhost:9091` (hoặc container name `vatm_pushgateway:9091`)
 
 ---
 
-### Ghi chú kỹ thuật
-
-- **IP trong hosts.ini**: Sử dụng IP management interface thực tế từ bảng BVTC LTIA ĐT-02 sau khi hệ thống đi vào vận hành.
-- **Nokia SR OS SSH**: Thiết bị sản xuất yêu cầu SSH key hoặc password được lưu trong `ansible-vault`.
-- **Lab simulation**: Dùng Ubuntu 22.04 + `snmpd` + script `/usr/local/bin/simulate_sros.sh`.
-- **BER**: Thu thập từ lệnh `show port <x/x/x> detail` trên Nokia 7705 SAR-8 (các adapter card E1).
-- **Latency/Jitter**: Thu thập qua Nokia SAA (Service Assurance Agent) — cần cấu hình SAA test trước trên thiết bị.
-
----
-
-*Tài liệu tham chiếu: HLD Hệ Thống Đường Truyền VATM LTIA — Hợp đồng 8225/HĐ-QLB*
-*Phiên bản: 1.0 | Tháng 4/2025*
+*Tài liệu tham chiếu: EUROCAE ED-137 | VATM QĐ2999 | HLD Hệ Thống Đường Truyền (HĐ 8225/HĐ-QLB)*  
+*Phiên bản: 2.0 | Tháng 6/2026 | Tác giả: Đỗ Thanh Long — ATSEP VATM ATCC Long Thành*
