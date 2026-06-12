@@ -1,0 +1,453 @@
+---
+# ============================================================
+# Playbook 03: Đo kiểm Jitter / Latency / Loss — chuẩn ED-137
+# ============================================================
+# Mục đích:
+#   Đo ICMP RTT (latency), mdev (jitter), packet loss từ
+#   RCMS Workstation → T6 Radio (LAN3 RCMS subnet) theo mô hình:
+#       [RCMS TX]  → ping → [T6-TV Main/Standby]  (10.60.7.71-89)
+#       [RCMS RX]  → ping → [T6-RV Main/Standby]  (10.60.6.71-89)
+#       [RCMS UBVHF] → ping → [T6-TRV]            (10.60.11.1-6)
+#   Push metrics về Prometheus Pushgateway.
+#
+# Metrics (Prometheus text format):
+#   vatm_ping_latency_ms    — avg RTT ms   (ED-137 ref: < 100ms one-way ≈ < 200ms RTT)
+#   vatm_ping_jitter_ms     — mdev RTT ms  (ED-137 ref: < 20ms)
+#   vatm_ping_loss_percent  — packet loss% (ED-137 ref: < 1%)
+#   vatm_ping_up            — 1=UP, 0=DOWN (ICMP reachable)
+#
+# Labels Prometheus:
+#   site        = TX_Station | RX_Station | UBVHF_TWR | LAB_SIM
+#   device      = T6-TV | T6-RV | T6-TRV | T6_SIM
+#   host        = tên inventory (TX-T6TV-M01 ...)
+#   redundancy  = main | standby
+#   freq        = tần số MHz (118.425 ...)
+#
+# Sử dụng:
+#   Lab:         ansible-playbook -i hosts.ini playbooks/03_ping_check.yml --limit lab_simulation
+#   Prod TX:     ansible-playbook -i hosts.ini playbooks/03_ping_check.yml --limit rcms_tx
+#   Prod RX:     ansible-playbook -i hosts.ini playbooks/03_ping_check.yml --limit rcms_rx
+#   Prod UBVHF:  ansible-playbook -i hosts.ini playbooks/03_ping_check.yml --limit rcms_ubvhf
+#   Tất cả prod: ansible-playbook -i hosts.ini playbooks/03_ping_check.yml --limit all_rcms
+#
+# Lưu ý ED-137:
+#   One-way Delay < 100ms → RTT mục tiêu < 200ms (ping avg)
+#   Jitter       < 20ms   → mdev mục tiêu < 20ms
+#   Packet Loss  < 1%     → loss < 1%
+# ============================================================
+
+
+# ============================================================
+# PLAY 1: LAB SIMULATION
+# Chạy ping từ Control Node (localhost/Docker) → lab VMs
+# ============================================================
+- name: "[LAB] Đo Jitter/Latency/Loss — Lab Simulation"
+  hosts: lab_simulation
+  gather_facts: false
+  serial: 5
+
+  vars:
+    # Pushgateway chạy trong Docker stack (localhost port 9091)
+    pushgateway_url: "http://localhost:9091"
+    # 20 gói × 50ms = ~1 giây — đủ để đo jitter ổn định
+    ping_count: 20
+    ping_interval: "0.05"
+
+  tasks:
+    # ----------------------------------------------------------
+    # BƯỚC 1: Chạy ping từ Control Node → từng lab VM
+    # ----------------------------------------------------------
+    - name: "[LAB] Ping {{ inventory_hostname }} ({{ ansible_host }})"
+      command: >
+        ping -c {{ ping_count }} -i {{ ping_interval }} -W 1 {{ ansible_host }}
+      register: ping_raw
+      ignore_errors: true
+      delegate_to: localhost
+      become: false
+
+    # ----------------------------------------------------------
+    # BƯỚC 2: Parse kết quả
+    # Ví dụ dòng rtt của Linux ping:
+    # rtt min/avg/max/mdev = 0.123/0.456/0.789/0.123 ms
+    # ----------------------------------------------------------
+    - name: "[LAB] Parse latency (avg RTT ms)"
+      set_fact:
+        p_latency: >-
+          {{ ping_raw.stdout
+             | regex_search('rtt min/avg/max/mdev = [0-9.]+/([0-9.]+)/[0-9.]+/[0-9.]+', '\1')
+             | first | default('0') | float | round(3) }}
+      when: ping_raw.rc == 0
+
+    - name: "[LAB] Parse jitter (mdev ms)"
+      set_fact:
+        p_jitter: >-
+          {{ ping_raw.stdout
+             | regex_search('rtt min/avg/max/mdev = [0-9.]+/[0-9.]+/[0-9.]+/([0-9.]+)', '\1')
+             | first | default('0') | float | round(3) }}
+      when: ping_raw.rc == 0
+
+    - name: "[LAB] Parse packet loss (%)"
+      set_fact:
+        p_loss: >-
+          {{ ping_raw.stdout
+             | regex_search('([0-9.]+)% packet loss', '\1')
+             | first | default('100') | float | round(2) }}
+
+    - name: "[LAB] Set defaults khi ping thất bại"
+      set_fact:
+        p_latency: 0.0
+        p_jitter: 0.0
+        p_loss: 100.0
+        p_up: 0
+      when: ping_raw.rc != 0 or ping_raw.failed | default(false)
+
+    - name: "[LAB] Set p_up = 1 khi ping thành công"
+      set_fact:
+        p_up: 1
+      when: ping_raw.rc == 0 and not (ping_raw.failed | default(false))
+
+    # ----------------------------------------------------------
+    # BƯỚC 3: Kiểm tra ngưỡng ED-137
+    # ----------------------------------------------------------
+    - name: "[LAB] ⚠️ WARN: Latency vượt ngưỡng ED-137 (> 200ms RTT)"
+      debug:
+        msg: >-
+          ⚠️ WARN {{ inventory_hostname }}: Latency {{ p_latency }}ms > 200ms
+          (ED-137 one-way < 100ms)
+      when:
+        - p_up | int == 1
+        - p_latency | float > 200.0
+
+    - name: "[LAB] ⚠️ WARN: Jitter vượt ngưỡng ED-137 (> 20ms)"
+      debug:
+        msg: >-
+          ⚠️ WARN {{ inventory_hostname }}: Jitter {{ p_jitter }}ms > 20ms
+          (ED-137 Jitter < 20ms)
+      when:
+        - p_up | int == 1
+        - p_jitter | float > 20.0
+
+    - name: "[LAB] 🔴 CRIT: Packet Loss vượt ngưỡng ED-137 (> 1%)"
+      debug:
+        msg: >-
+          🔴 CRIT {{ inventory_hostname }}: Packet Loss {{ p_loss }}% > 1%
+          (ED-137 Packet Loss < 1%)
+      when:
+        - p_loss | float > 1.0
+
+    # ----------------------------------------------------------
+    # BƯỚC 4: Push metrics → Pushgateway
+    # POST /metrics/job/vatm_ping_check/instance/{hostname}
+    # ----------------------------------------------------------
+    - name: "[LAB] Push metrics → Pushgateway ({{ inventory_hostname }})"
+      uri:
+        url: >-
+          {{ pushgateway_url }}/metrics/job/vatm_ping_check/instance/{{ inventory_hostname }}
+        method: POST
+        body: |
+          # HELP vatm_ping_latency_ms Avg ICMP RTT (ms). ED-137 ref: < 200ms RTT (~100ms one-way)
+          # TYPE vatm_ping_latency_ms gauge
+          vatm_ping_latency_ms{site="LAB_SIM",device="{{ sim | default('T6_SIM') }}",host="{{ inventory_hostname }}",redundancy="sim",freq="0"} {{ p_latency }}
+          # HELP vatm_ping_jitter_ms ICMP RTT mdev (ms). ED-137 ref: < 20ms
+          # TYPE vatm_ping_jitter_ms gauge
+          vatm_ping_jitter_ms{site="LAB_SIM",device="{{ sim | default('T6_SIM') }}",host="{{ inventory_hostname }}",redundancy="sim",freq="0"} {{ p_jitter }}
+          # HELP vatm_ping_loss_percent ICMP packet loss percent. ED-137 ref: < 1%
+          # TYPE vatm_ping_loss_percent gauge
+          vatm_ping_loss_percent{site="LAB_SIM",device="{{ sim | default('T6_SIM') }}",host="{{ inventory_hostname }}",redundancy="sim",freq="0"} {{ p_loss }}
+          # HELP vatm_ping_up ICMP reachability: 1=UP, 0=DOWN
+          # TYPE vatm_ping_up gauge
+          vatm_ping_up{site="LAB_SIM",device="{{ sim | default('T6_SIM') }}",host="{{ inventory_hostname }}",redundancy="sim",freq="0"} {{ p_up }}
+        body_format: raw
+        headers:
+          Content-Type: "text/plain; version=0.0.4; charset=utf-8"
+        status_code: [200, 202]
+      delegate_to: localhost
+      become: false
+      ignore_errors: true  # Không fail toàn bộ playbook nếu Pushgateway chưa chạy
+
+    - name: "[LAB] ✅ Tóm tắt — {{ inventory_hostname }}"
+      debug:
+        msg: >-
+          [{{ 'UP' if p_up | int == 1 else 'DOWN' }}] {{ inventory_hostname }}
+          ({{ ansible_host }}) | Latency: {{ p_latency }}ms
+          | Jitter: {{ p_jitter }}ms | Loss: {{ p_loss }}%
+
+
+# ============================================================
+# PLAY 2: PRODUCTION — RCMS TX → Ping → T6-TV (TX Station)
+# SSH vào rcms_tx, từ đó ping 18 máy T6-TV (main + standby)
+# ============================================================
+- name: "[PROD-TX] Đo Jitter/Latency/Loss từ RCMS TX → T6-TV radios"
+  hosts: rcms_tx
+  gather_facts: false
+  # Dùng TX-VHF-RCMS làm node đo kiểm chính (run_once tránh đo 2 lần)
+  run_once: false
+
+  vars:
+    # TODO: Thay bằng IP thực của monitoring server (Docker host) trong production
+    pushgateway_url: "http://10.60.0.50:9091"
+    ping_count: 20
+    ping_interval: "0.05"
+    t6tv_targets:
+      - { name: "TX-T6TV-M01", ip: "10.60.7.71", freq: "118.425", redundancy: "main" }
+      - { name: "TX-T6TV-M02", ip: "10.60.7.72", freq: "121.725", redundancy: "main" }
+      - { name: "TX-T6TV-M03", ip: "10.60.7.73", freq: "121.775", redundancy: "main" }
+      - { name: "TX-T6TV-M04", ip: "10.60.7.74", freq: "121.850", redundancy: "main" }
+      - { name: "TX-T6TV-M05", ip: "10.60.7.75", freq: "121.925", redundancy: "main" }
+      - { name: "TX-T6TV-M06", ip: "10.60.7.76", freq: "124.325", redundancy: "main" }
+      - { name: "TX-T6TV-M07", ip: "10.60.7.77", freq: "124.625", redundancy: "main" }
+      - { name: "TX-T6TV-M08", ip: "10.60.7.78", freq: "125.275", redundancy: "main" }
+      - { name: "TX-T6TV-M09", ip: "10.60.7.79", freq: "121.500", redundancy: "main"  }
+      - { name: "TX-T6TV-S01", ip: "10.60.7.81", freq: "118.425", redundancy: "standby" }
+      - { name: "TX-T6TV-S02", ip: "10.60.7.82", freq: "121.725", redundancy: "standby" }
+      - { name: "TX-T6TV-S03", ip: "10.60.7.83", freq: "121.775", redundancy: "standby" }
+      - { name: "TX-T6TV-S04", ip: "10.60.7.84", freq: "121.850", redundancy: "standby" }
+      - { name: "TX-T6TV-S05", ip: "10.60.7.85", freq: "121.925", redundancy: "standby" }
+      - { name: "TX-T6TV-S06", ip: "10.60.7.86", freq: "124.325", redundancy: "standby" }
+      - { name: "TX-T6TV-S07", ip: "10.60.7.87", freq: "124.625", redundancy: "standby" }
+      - { name: "TX-T6TV-S08", ip: "10.60.7.88", freq: "125.275", redundancy: "standby" }
+      - { name: "TX-T6TV-S09", ip: "10.60.7.89", freq: "121.500", redundancy: "standby" }
+
+  tasks:
+    - name: "[TX] Ping từ {{ inventory_hostname }} → {{ item.name }} ({{ item.ip }})"
+      shell: >
+        ping -c {{ ping_count }} -i {{ ping_interval }} -W 1 {{ item.ip }} 2>&1
+      register: tx_ping_results
+      loop: "{{ t6tv_targets }}"
+      loop_control:
+        label: "{{ item.name }}"
+      ignore_errors: true
+
+    # Xử lý từng kết quả: parse + push từng target
+    - name: "[TX] Parse + Push metrics → Pushgateway cho {{ item.item.name }}"
+      vars:
+        _latency: >-
+          {{ item.stdout
+             | regex_search('rtt min/avg/max/mdev = [0-9.]+/([0-9.]+)/[0-9.]+/[0-9.]+', '\1')
+             | first | default('0') | float | round(3) }}
+        _jitter: >-
+          {{ item.stdout
+             | regex_search('rtt min/avg/max/mdev = [0-9.]+/[0-9.]+/[0-9.]+/([0-9.]+)', '\1')
+             | first | default('0') | float | round(3) }}
+        _loss: >-
+          {{ item.stdout
+             | regex_search('([0-9.]+)% packet loss', '\1')
+             | first | default('100') | float | round(2) }}
+        _up: "{{ 0 if (item.rc | default(1)) != 0 else 1 }}"
+      uri:
+        url: >-
+          {{ pushgateway_url }}/metrics/job/vatm_ping_check/instance/{{ item.item.name }}
+        method: POST
+        body: |
+          # HELP vatm_ping_latency_ms Avg ICMP RTT (ms). ED-137 ref: < 200ms RTT
+          # TYPE vatm_ping_latency_ms gauge
+          vatm_ping_latency_ms{site="TX_Station",device="T6-TV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _latency }}
+          # HELP vatm_ping_jitter_ms ICMP RTT mdev (ms). ED-137 ref: < 20ms
+          # TYPE vatm_ping_jitter_ms gauge
+          vatm_ping_jitter_ms{site="TX_Station",device="T6-TV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _jitter }}
+          # HELP vatm_ping_loss_percent ICMP packet loss percent. ED-137 ref: < 1%
+          # TYPE vatm_ping_loss_percent gauge
+          vatm_ping_loss_percent{site="TX_Station",device="T6-TV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _loss }}
+          # HELP vatm_ping_up ICMP reachability: 1=UP, 0=DOWN
+          # TYPE vatm_ping_up gauge
+          vatm_ping_up{site="TX_Station",device="T6-TV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _up }}
+        body_format: raw
+        headers:
+          Content-Type: "text/plain; version=0.0.4; charset=utf-8"
+        status_code: [200, 202]
+      loop: "{{ tx_ping_results.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+      delegate_to: localhost
+      become: false
+      ignore_errors: true
+
+    - name: "[TX] 📊 Tóm tắt T6-TV ping results"
+      debug:
+        msg: >-
+          {{ item.item.name }} {{ item.item.ip }} |
+          Loss={{ item.stdout | regex_search('([0-9.]+)% packet loss', '\1') | first | default('?') }}%
+          Avg={{ item.stdout | regex_search('rtt min/avg/max/mdev = [0-9.]+/([0-9.]+)', '\1') | first | default('?') }}ms
+      loop: "{{ tx_ping_results.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+
+# ============================================================
+# PLAY 3: PRODUCTION — RCMS RX → Ping → T6-RV (RX Station)
+# ============================================================
+- name: "[PROD-RX] Đo Jitter/Latency/Loss từ RCMS RX → T6-RV radios"
+  hosts: rcms_rx
+  gather_facts: false
+  run_once: false
+
+  vars:
+    pushgateway_url: "http://10.60.0.50:9091"  # TODO: Thay IP thực monitoring server
+    ping_count: 20
+    ping_interval: "0.05"
+    t6rv_targets:
+      - { name: "RX-T6RV-M01", ip: "10.60.6.71", freq: "118.425", redundancy: "main" }
+      - { name: "RX-T6RV-M02", ip: "10.60.6.72", freq: "121.725", redundancy: "main" }
+      - { name: "RX-T6RV-M03", ip: "10.60.6.73", freq: "121.775", redundancy: "main" }
+      - { name: "RX-T6RV-M04", ip: "10.60.6.74", freq: "121.850", redundancy: "main" }
+      - { name: "RX-T6RV-M05", ip: "10.60.6.75", freq: "121.925", redundancy: "main" }
+      - { name: "RX-T6RV-M06", ip: "10.60.6.76", freq: "124.325", redundancy: "main" }
+      - { name: "RX-T6RV-M07", ip: "10.60.6.77", freq: "124.625", redundancy: "main" }
+      - { name: "RX-T6RV-M08", ip: "10.60.6.78", freq: "125.275", redundancy: "main" }
+      - { name: "RX-T6RV-M09", ip: "10.60.6.79", freq: "121.500", redundancy: "main"  }
+      - { name: "RX-T6RV-S01", ip: "10.60.6.81", freq: "118.425", redundancy: "standby" }
+      - { name: "RX-T6RV-S02", ip: "10.60.6.82", freq: "121.725", redundancy: "standby" }
+      - { name: "RX-T6RV-S03", ip: "10.60.6.83", freq: "121.775", redundancy: "standby" }
+      - { name: "RX-T6RV-S04", ip: "10.60.6.84", freq: "121.850", redundancy: "standby" }
+      - { name: "RX-T6RV-S05", ip: "10.60.6.85", freq: "121.925", redundancy: "standby" }
+      - { name: "RX-T6RV-S06", ip: "10.60.6.86", freq: "124.325", redundancy: "standby" }
+      - { name: "RX-T6RV-S07", ip: "10.60.6.87", freq: "124.625", redundancy: "standby" }
+      - { name: "RX-T6RV-S08", ip: "10.60.6.88", freq: "125.275", redundancy: "standby" }
+      - { name: "RX-T6RV-S09", ip: "10.60.6.89", freq: "121.500", redundancy: "standby" }
+
+  tasks:
+    - name: "[RX] Ping từ {{ inventory_hostname }} → {{ item.name }} ({{ item.ip }})"
+      shell: >
+        ping -c {{ ping_count }} -i {{ ping_interval }} -W 1 {{ item.ip }} 2>&1
+      register: rx_ping_results
+      loop: "{{ t6rv_targets }}"
+      loop_control:
+        label: "{{ item.name }}"
+      ignore_errors: true
+
+    - name: "[RX] Parse + Push metrics → Pushgateway cho {{ item.item.name }}"
+      vars:
+        _latency: >-
+          {{ item.stdout
+             | regex_search('rtt min/avg/max/mdev = [0-9.]+/([0-9.]+)/[0-9.]+/[0-9.]+', '\1')
+             | first | default('0') | float | round(3) }}
+        _jitter: >-
+          {{ item.stdout
+             | regex_search('rtt min/avg/max/mdev = [0-9.]+/[0-9.]+/[0-9.]+/([0-9.]+)', '\1')
+             | first | default('0') | float | round(3) }}
+        _loss: >-
+          {{ item.stdout
+             | regex_search('([0-9.]+)% packet loss', '\1')
+             | first | default('100') | float | round(2) }}
+        _up: "{{ 0 if (item.rc | default(1)) != 0 else 1 }}"
+      uri:
+        url: >-
+          {{ pushgateway_url }}/metrics/job/vatm_ping_check/instance/{{ item.item.name }}
+        method: POST
+        body: |
+          # HELP vatm_ping_latency_ms Avg ICMP RTT (ms). ED-137 ref: < 200ms RTT
+          # TYPE vatm_ping_latency_ms gauge
+          vatm_ping_latency_ms{site="RX_Station",device="T6-RV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _latency }}
+          # HELP vatm_ping_jitter_ms ICMP RTT mdev (ms). ED-137 ref: < 20ms
+          # TYPE vatm_ping_jitter_ms gauge
+          vatm_ping_jitter_ms{site="RX_Station",device="T6-RV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _jitter }}
+          # HELP vatm_ping_loss_percent ICMP packet loss percent. ED-137 ref: < 1%
+          # TYPE vatm_ping_loss_percent gauge
+          vatm_ping_loss_percent{site="RX_Station",device="T6-RV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _loss }}
+          # HELP vatm_ping_up ICMP reachability: 1=UP, 0=DOWN
+          # TYPE vatm_ping_up gauge
+          vatm_ping_up{site="RX_Station",device="T6-RV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _up }}
+        body_format: raw
+        headers:
+          Content-Type: "text/plain; version=0.0.4; charset=utf-8"
+        status_code: [200, 202]
+      loop: "{{ rx_ping_results.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+      delegate_to: localhost
+      become: false
+      ignore_errors: true
+
+    - name: "[RX] 📊 Tóm tắt T6-RV ping results"
+      debug:
+        msg: >-
+          {{ item.item.name }} {{ item.item.ip }} |
+          Loss={{ item.stdout | regex_search('([0-9.]+)% packet loss', '\1') | first | default('?') }}%
+          Avg={{ item.stdout | regex_search('rtt min/avg/max/mdev = [0-9.]+/([0-9.]+)', '\1') | first | default('?') }}ms
+      loop: "{{ rx_ping_results.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+
+# ============================================================
+# PLAY 4: PRODUCTION — RCMS UBVHF → Ping → T6-TRV (TWR)
+# ============================================================
+- name: "[PROD-UBVHF] Đo Jitter/Latency/Loss từ RCMS UBVHF → T6-TRV"
+  hosts: rcms_ubvhf
+  gather_facts: false
+  run_once: false
+
+  vars:
+    pushgateway_url: "http://10.60.0.50:9091"  # TODO: Thay IP thực monitoring server
+    ping_count: 20
+    ping_interval: "0.05"
+    t6trv_targets:
+      - { name: "TWR-T6TRV-01", ip: "10.60.11.1", redundancy: "main",    freq: "N/A", slot: "1" }
+      - { name: "TWR-T6TRV-02", ip: "10.60.11.2", redundancy: "main",    freq: "N/A", slot: "2" }
+      - { name: "TWR-T6TRV-03", ip: "10.60.11.3", redundancy: "main",    freq: "N/A", slot: "3" }
+      - { name: "TWR-T6TRV-04", ip: "10.60.11.4", redundancy: "main",    freq: "N/A", slot: "4" }
+      - { name: "TWR-T6TRV-05", ip: "10.60.11.5", redundancy: "main",    freq: "N/A", slot: "5" }
+      - { name: "TWR-T6TRV-06", ip: "10.60.11.6", redundancy: "main",    freq: "121.500", slot: "6" }
+
+  tasks:
+    - name: "[UBVHF] Ping từ {{ inventory_hostname }} → {{ item.name }} ({{ item.ip }})"
+      shell: >
+        ping -c {{ ping_count }} -i {{ ping_interval }} -W 1 {{ item.ip }} 2>&1
+      register: ubvhf_ping_results
+      loop: "{{ t6trv_targets }}"
+      loop_control:
+        label: "{{ item.name }}"
+      ignore_errors: true
+
+    - name: "[UBVHF] Parse + Push metrics → Pushgateway cho {{ item.item.name }}"
+      vars:
+        _latency: >-
+          {{ item.stdout
+             | regex_search('rtt min/avg/max/mdev = [0-9.]+/([0-9.]+)/[0-9.]+/[0-9.]+', '\1')
+             | first | default('0') | float | round(3) }}
+        _jitter: >-
+          {{ item.stdout
+             | regex_search('rtt min/avg/max/mdev = [0-9.]+/[0-9.]+/[0-9.]+/([0-9.]+)', '\1')
+             | first | default('0') | float | round(3) }}
+        _loss: >-
+          {{ item.stdout
+             | regex_search('([0-9.]+)% packet loss', '\1')
+             | first | default('100') | float | round(2) }}
+        _up: "{{ 0 if (item.rc | default(1)) != 0 else 1 }}"
+      uri:
+        url: >-
+          {{ pushgateway_url }}/metrics/job/vatm_ping_check/instance/{{ item.item.name }}
+        method: POST
+        body: |
+          # HELP vatm_ping_latency_ms Avg ICMP RTT (ms). ED-137 ref: < 200ms RTT
+          # TYPE vatm_ping_latency_ms gauge
+          vatm_ping_latency_ms{site="UBVHF_TWR",device="T6-TRV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _latency }}
+          # HELP vatm_ping_jitter_ms ICMP RTT mdev (ms). ED-137 ref: < 20ms
+          # TYPE vatm_ping_jitter_ms gauge
+          vatm_ping_jitter_ms{site="UBVHF_TWR",device="T6-TRV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _jitter }}
+          # HELP vatm_ping_loss_percent ICMP packet loss percent. ED-137 ref: < 1%
+          # TYPE vatm_ping_loss_percent gauge
+          vatm_ping_loss_percent{site="UBVHF_TWR",device="T6-TRV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _loss }}
+          # HELP vatm_ping_up ICMP reachability: 1=UP, 0=DOWN
+          # TYPE vatm_ping_up gauge
+          vatm_ping_up{site="UBVHF_TWR",device="T6-TRV",host="{{ item.item.name }}",redundancy="{{ item.item.redundancy }}",freq="{{ item.item.freq }}"} {{ _up }}
+        body_format: raw
+        headers:
+          Content-Type: "text/plain; version=0.0.4; charset=utf-8"
+        status_code: [200, 202]
+      loop: "{{ ubvhf_ping_results.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+      delegate_to: localhost
+      become: false
+      ignore_errors: true
+
+    - name: "[UBVHF] 📊 Tóm tắt T6-TRV ping results"
+      debug:
+        msg: >-
+          {{ item.item.name }} {{ item.item.ip }} (slot {{ item.item.slot }}) |
+          Loss={{ item.stdout | regex_search('([0-9.]+)% packet loss', '\1') | first | default('?') }}%
+          Avg={{ item.stdout | regex_search('rtt min/avg/max/mdev = [0-9.]+/([0-9.]+)', '\1') | first | default('?') }}ms
+      loop: "{{ ubvhf_ping_results.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
