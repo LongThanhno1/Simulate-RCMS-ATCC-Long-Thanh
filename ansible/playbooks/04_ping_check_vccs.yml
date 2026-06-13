@@ -77,8 +77,12 @@
       - { name: "xMG2-QMG10-J1",      ip: "10.60.8.119", group: "xMG#2 Standby",  role: "QMG10 ATIS",           redundancy: "standby" }
       - { name: "xMG2-QMG11-J1",      ip: "10.60.8.121", group: "xMG#2 Standby",  role: "QMG11",                redundancy: "standby" }
       # VCCS Servers
-      - { name: "VCCS-SVR1",           ip: "10.60.8.12",  group: "VCCS Servers",   role: "Application Server 1", redundancy: "main" }
-      - { name: "VCCS-SVR2",           ip: "10.60.8.2",   group: "VCCS Servers",   role: "Application Server 2", redundancy: "standby" }
+      - { name: "VCCS-SVR1",           ip: "10.60.8.12",  group: "VCCS Servers",      role: "Application Server 1",         redundancy: "main" }
+      - { name: "VCCS-SVR2",           ip: "10.60.8.2",   group: "VCCS Servers",      role: "Application Server 2",         redundancy: "standby" }
+      # VCCS Workstations — Tầng 20 TWR
+      # GAP3 RESOLVED: 10.60.8.254 = VCCS Operator WS (BVTC VCCS-08, WSRCMS–ETH)
+      #                ≠ 10.60.11.30 (VHF-RCMS WS, mạng RCMS 10.60.11.x)
+      - { name: "VCCS-WS-20FL",        ip: "10.60.8.254", group: "VCCS Workstations", role: "Operator WS Floor20",          redundancy: "main" }
 
   tasks:
 
@@ -276,12 +280,4 @@
           vatm_vccs_ping_jitter_ms{site="ATCC_CNS_Room",device="{{ item.name }}",group="{{ item.group }}",redundancy="{{ item.redundancy }}",ip="{{ item.ip }}"} {{ item.jitter }}
           # HELP vatm_vccs_ping_loss_percent VCCS device ICMP packet loss %
           # TYPE vatm_vccs_ping_loss_percent gauge
-          vatm_vccs_ping_loss_percent{site="ATCC_CNS_Room",device="{{ item.name }}",group="{{ item.group }}",redundancy="{{ item.redundancy }}",ip="{{ item.ip }}"} {{ item.loss }}
-        body_format: raw
-        headers:
-          Content-Type: "text/plain; version=0.0.4; charset=utf-8"
-        status_code: [200, 202]
-      loop: "{{ vccs_results_parsed }}"
-      loop_control:
-        label: "{{ item.name }}"
-      ignore_errors: true  # Không fail nếu Pushgateway chưa chạy
+          vatm_vccs_ping_loss_percent{site="ATCC_CNS_Room",device="{{ item.name }}",group="{{ item.group }}",redund
