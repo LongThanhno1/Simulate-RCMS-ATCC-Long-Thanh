@@ -94,7 +94,7 @@ function switchTab(name) {
   const idx = TABS.indexOf(name);
   if (idx >= 0) document.querySelectorAll('.nav-item')[idx].classList.add('active');
   if (name === 'thongso')   { loadDevices(); loadAlerts(); }
-  if (name === 'topology')  resizeCanvas();
+  if (name === 'topology')  { resizeCanvas(); }
   if (name === 'dashboard') loadGrafana();
 }
 
@@ -141,21 +141,13 @@ setInterval(refreshAll, 30000);
    INIT — DOMContentLoaded
    ================================================================ */
 window.addEventListener('DOMContentLoaded', () => {
-  /* Khởi tạo canvas */
   canvas = document.getElementById('topo-canvas');
-  ctx    = canvas.getContext('2d');
+  ctx    = canvas ? canvas.getContext('2d') : null;
 
-  /* Hook sự kiện canvas + resize */
-  initTopology();
-  resizeCanvas();
+  /* Khởi tạo 2D topology canvas (Option A: NOC Horizontal Flow) */
+  if (canvas) { initTopology(); }
 
-  /* Khởi động animation loop */
-  animId = requestAnimationFrame(animLoop);
-
-  /* Kết nối WebSocket */
   connectWS();
-
-  /* Load dữ liệu ban đầu */
   tickClock();
   loadSummary();
 });
