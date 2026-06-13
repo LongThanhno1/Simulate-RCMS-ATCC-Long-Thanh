@@ -59,7 +59,7 @@
   background: var(--bg2, #0d1e34);
   border: 1px solid var(--border, #1a3558);
   border-radius: 12px;
-  width: 860px;
+  width: 1120px;
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 48px);
   overflow-y: auto;
@@ -243,6 +243,7 @@
 .st-warn { background: rgba(255,170,0,.1);  color: #ffaa00; border: 1px solid rgba(255,170,0,.35); }
 .st-crit { background: rgba(255,34,68,.1);  color: #ff2244; border: 1px solid rgba(255,34,68,.35); }
 .st-unk  { background: rgba(74,112,144,.1); color: #4a7090; border: 1px solid rgba(74,112,144,.35); }
+.st-pend { background: rgba(56,189,248,.07); color: #7fb8d4; border: 1px solid rgba(56,189,248,.25); font-style: italic; }
 
 .dev-ts  { font-size: .8em; font-weight: 400; opacity: .75; }
 
@@ -333,11 +334,13 @@
 /* Column sizing */
 .eq-stt    { width: 28px;  color: var(--text3); text-align: center; font-variant-numeric: tabular-nums; }
 .eq-name   { min-width: 140px; color: var(--text); font-weight: 500; white-space: normal; }
-.eq-model  { min-width: 130px; color: var(--text); white-space: normal; }
-.eq-vendor { min-width: 140px; color: var(--text2); white-space: normal; }
-.eq-qty    { width: 36px;  color: var(--blue); font-weight: 700; text-align: center; }
-.eq-ip     { min-width: 120px; color: #7fddcc; }
-.eq-note   { min-width: 160px; color: var(--text2); white-space: normal; font-size: .92em; }
+.eq-model  { min-width: 120px; color: var(--text); white-space: normal; }
+.eq-vendor { min-width: 120px; color: var(--text2); white-space: normal; }
+.eq-qty    { width: 32px;  color: var(--blue); font-weight: 700; text-align: center; }
+.eq-ip     { min-width: 110px; color: #7fddcc; }
+.eq-freq   { min-width: 140px; color: #c4a5ff; white-space: normal; font-size: .9em; }
+.eq-note   { min-width: 140px; color: var(--text2); white-space: normal; font-size: .9em; }
+.eq-ping   { min-width: 120px; white-space: nowrap; }
 
 /* PN sub-label */
 .eq-pn {
@@ -345,6 +348,30 @@
   color: var(--text3);
   font-family: 'Consolas', 'Courier New', monospace;
 }
+
+/* Ping button & result */
+.eq-ping-btn {
+  background: rgba(56,189,248,.12);
+  border: 1px solid rgba(56,189,248,.35);
+  color: #38bdf8;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: .75em;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.eq-ping-btn:hover    { background: rgba(56,189,248,.25); }
+.eq-ping-btn:disabled { opacity: .5; cursor: default; }
+
+.ping-result {
+  margin-left: 5px;
+  font-size: .78em;
+  font-weight: 600;
+  font-family: 'Consolas', monospace;
+}
+.ping-ok   { color: #00ff88; }
+.ping-fail { color: #ff4466; }
 
 /* ================================================================
    SCROLLBAR

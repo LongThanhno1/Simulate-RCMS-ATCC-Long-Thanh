@@ -4,11 +4,11 @@ Dự án: Giám sát đường truyền VHF theo chuẩn ED-137
 Tác giả: Đỗ Thanh Long — ATSEP VATM
 """
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import asyncio, httpx, json, logging
+import asyncio, httpx, json, logging, re, sys
 from datetime import datetime, timezone
 from typing import Optional, Set
 
@@ -153,6 +153,54 @@ async def _build_topo_state() -> dict:
         # Timestamp
         "ts": datetime.now(timezone.utc).isoformat(),
     }
+
+
+_IP_RE = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
+
+
+@app.get("/api/ping/{ip}")
+async def ping_ip(ip: str):
+    """
+    Ping một địa chỉ IP (LAN3 RCMS subnet) — 4 gói, timeout 2s/gói.
+    Bảo mật: chỉ chấp nhận địa chỉ IPv4 hợp lệ để tránh command injection.
+    """
+    if not _IP_RE.match(ip):
+        raise HTTPException(status_code=400, detail="IP không hợp lệ")
+
+    # Chọn lệnh ping phù hợp với OS trong container (Linux)
+    cmd = ["ping", "-c", "4", "-W", "2", ip]
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=12)
+        output = stdout.decode(errors="replace")
+
+        # Parse RTT avg từ dòng "rtt min/avg/max/mdev = ..."
+        rtt_avg = None
+        m = re.search(r'rtt min/avg/max/mdev\s*=\s*[\d.]+/([\d.]+)/', output)
+        if m:
+            rtt_avg = round(float(m.group(1)), 2)
+
+        # Parse packet loss
+        loss_m = re.search(r'(\d+)% packet loss', output)
+        loss_pct = int(loss_m.group(1)) if loss_m else 100
+
+        reachable = proc.returncode == 0 and loss_pct < 100
+        return {
+            "ip":        ip,
+            "reachable": reachable,
+            "rtt_ms":    rtt_avg,
+            "loss_pct":  loss_pct,
+            "raw":       output[-500:],   # tail để debug nếu cần
+        }
+    except asyncio.TimeoutError:
+        return {"ip": ip, "reachable": False, "rtt_ms": None, "loss_pct": 100, "raw": "timeout"}
+    except Exception as e:
+        logger.error(f"Ping error {ip}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.websocket("/ws/topology")

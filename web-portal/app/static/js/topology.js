@@ -32,26 +32,42 @@ const TOPO_NODES = [
         label:     'TX MAIN — 9 kênh VHF AM (Park Air T6-TV)',
         statusKey: 'tx_status',
         items: [
-          { name: 'Máy phát VHF AM',    model: 'T6-TV',           pn: 'T6-TV',          vendor: 'Park Air / UK',           qty: 9, ip: '10.60.7.71÷79', note: 'SNMP UDP 161 · LAN3' },
-          { name: 'Switch VoIP MAIN',   model: 'OS6860E-24',      pn: 'OS6860E-24',     vendor: 'ALE / China',             qty: 1, ip: '10.60.7.30',    note: 'GW VLAN VoIP MAIN' },
-          { name: 'Switch RCMS (LAN3)', model: 'OS6360-24',       pn: 'OS6360-24',      vendor: 'ALE / China',             qty: 1, ip: '10.60.7.94',    note: 'GW RCMS subnet' },
-          { name: 'Máy tính LCMS',      model: 'HP Z1 G9',        pn: 'Z1 G9',          vendor: 'HP / China',              qty: 1, ip: '10.60.7.65',    note: 'Giám sát cục bộ' },
-          { name: 'Anten VHF',          model: 'CXL 3-1LW',       pn: '100000075',      vendor: 'Procom / North Macedonia', qty: 9, ip: '—',             note: 'Gắn cột anten TX' },
-          { name: 'Bộ lọc VHF',         model: '68-SYS00101/1',   pn: '68-SYS00101/1',  vendor: 'Park Air / Italia',       qty: 9, ip: '—',             note: 'Lọc sóng hài' },
-          { name: 'Thiết bị chống sét', model: 'GT-NFM-AL',       pn: 'GT-NFM-AL',      vendor: 'PolyPhaser / China',      qty: 9, ip: '—',             note: 'Bảo vệ đường anten' },
+          { name: 'Máy phát VHF AM CH01', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.71', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH02', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.72', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH03', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.73', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH04', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.74', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH05', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.75', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH06', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.76', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH07', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.77', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH08', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.78', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH09', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.79', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Switch VoIP MAIN',     model: 'OS6860E-24',    pn: 'OS6860E-24',    vendor: 'ALE / China',             qty: 1, ip: '10.60.7.30', freq: '—', note: 'GW VLAN VoIP MAIN' },
+          { name: 'Switch RCMS (LAN3)',   model: 'OS6360-24',     pn: 'OS6360-24',     vendor: 'ALE / China',             qty: 1, ip: '10.60.7.94', freq: '—', note: 'GW RCMS subnet' },
+          { name: 'Máy tính LCMS',        model: 'HP Z1 G9',      pn: 'Z1 G9',         vendor: 'HP / China',              qty: 1, ip: '10.60.7.65', freq: '—', note: 'Giám sát cục bộ' },
+          { name: 'Anten VHF (×9)',        model: 'CXL 3-1LW',     pn: '100000075',     vendor: 'Procom / North Macedonia', qty: 9, ip: '—',         freq: 'VHF 118–137 MHz', note: 'Gắn cột anten TX' },
+          { name: 'Bộ lọc VHF (×9)',       model: '68-SYS00101/1', pn: '68-SYS00101/1', vendor: 'Park Air / Italia',       qty: 9, ip: '—',         freq: 'VHF 118–137 MHz', note: 'Lọc sóng hài' },
+          { name: 'Chống sét VHF (×9)',    model: 'GT-NFM-AL',     pn: 'GT-NFM-AL',     vendor: 'PolyPhaser / China',      qty: 9, ip: '—',         freq: '—', note: 'Bảo vệ đường anten' },
         ],
       },
       standby: {
         label:     'TX STANDBY — 9 kênh VHF AM (Park Air T6-TV)',
         statusKey: 'tx_stby_status',
         items: [
-          { name: 'Máy phát VHF AM',      model: 'T6-TV',         pn: 'T6-TV',          vendor: 'Park Air / UK',           qty: 9, ip: '10.60.7.81÷89', note: 'SNMP UDP 161 · LAN3' },
-          { name: 'Switch VoIP STANDBY',  model: 'OS6860E-24',    pn: 'OS6860E-24',     vendor: 'ALE / China',             qty: 1, ip: '10.60.7.62',    note: 'GW VoIP STANDBY' },
-          { name: 'Máy tính RCMS',        model: 'HP Z1 G9',      pn: 'Z1 G9',          vendor: 'HP / China',              qty: 1, ip: '10.60.7.98',    note: 'Giám sát từ xa TX' },
-          { name: 'PM giám sát R4-MARCS', model: 'R4-MARCS',      pn: 'R4-MARCS',       vendor: 'Park Air',                qty: 1, ip: '—',             note: 'SW RCMS poll T6-TV' },
-          { name: 'Anten VHF',            model: 'CXL 3-1LW',     pn: '100000075',      vendor: 'Procom / North Macedonia', qty: 9, ip: '—',             note: 'Gắn cột anten TX' },
-          { name: 'Bộ lọc VHF',           model: '68-SYS00101/1', pn: '68-SYS00101/1',  vendor: 'Park Air / Italia',       qty: 9, ip: '—',             note: '' },
-          { name: 'Thiết bị chống sét',   model: 'GT-NFM-AL',     pn: 'GT-NFM-AL',      vendor: 'PolyPhaser / China',      qty: 9, ip: '—',             note: '' },
+          { name: 'Máy phát VHF AM CH01', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.81', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH02', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.82', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH03', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.83', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH04', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.84', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH05', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.85', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH06', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.86', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH07', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.87', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH08', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.88', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy phát VHF AM CH09', model: 'T6-TV', pn: 'T6-TV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.7.89', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Switch VoIP STANDBY',  model: 'OS6860E-24',    pn: 'OS6860E-24',    vendor: 'ALE / China',  qty: 1, ip: '10.60.7.62', freq: '—', note: 'GW VoIP STANDBY' },
+          { name: 'Máy tính RCMS',        model: 'HP Z1 G9',      pn: 'Z1 G9',         vendor: 'HP / China',   qty: 1, ip: '10.60.7.98', freq: '—', note: 'Giám sát từ xa TX' },
+          { name: 'PM giám sát R4-MARCS', model: 'R4-MARCS',      pn: 'R4-MARCS',      vendor: 'Park Air',     qty: 1, ip: '—',         freq: '—', note: 'SW RCMS poll T6-TV' },
+          { name: 'Anten VHF (×9)',        model: 'CXL 3-1LW',     pn: '100000075',     vendor: 'Procom / North Macedonia', qty: 9, ip: '—', freq: 'VHF 118–137 MHz', note: 'Gắn cột anten TX' },
+          { name: 'Bộ lọc VHF (×9)',       model: '68-SYS00101/1', pn: '68-SYS00101/1', vendor: 'Park Air / Italia', qty: 9, ip: '—', freq: 'VHF 118–137 MHz', note: '' },
+          { name: 'Chống sét VHF (×9)',    model: 'GT-NFM-AL',     pn: 'GT-NFM-AL',     vendor: 'PolyPhaser / China', qty: 9, ip: '—', freq: '—', note: '' },
         ],
       },
     },
@@ -66,26 +82,42 @@ const TOPO_NODES = [
         label:     'RX MAIN — 9 kênh VHF AM (Park Air T6-RV)',
         statusKey: 'rx_status',
         items: [
-          { name: 'Máy thu VHF AM',     model: 'T6-RV',           pn: 'T6-RV',          vendor: 'Park Air / UK',           qty: 9, ip: '10.60.6.71÷79', note: 'SNMP UDP 161 · LAN3' },
-          { name: 'Switch VoIP MAIN',   model: 'OS6860E-24',      pn: 'OS6860E-24',     vendor: 'ALE / China',             qty: 1, ip: '10.60.99.9',    note: 'VLAN VoIP / MGMT' },
-          { name: 'Switch RCMS (LAN3)', model: 'OS6360-24',       pn: 'OS6360-24',      vendor: 'ALE / China',             qty: 1, ip: '10.60.6.94',    note: 'GW RCMS subnet' },
-          { name: 'Máy tính LCMS',      model: 'HP Z1 G9',        pn: 'Z1 G9',          vendor: 'HP / China',              qty: 1, ip: '10.60.6.65',    note: 'Giám sát cục bộ' },
-          { name: 'Anten VHF',          model: 'CXL 3-1LW',       pn: '100000075',      vendor: 'Procom / North Macedonia', qty: 9, ip: '—',             note: 'Yagi gắn cột anten RX' },
-          { name: 'Bộ lọc VHF',         model: '68-SYS00101/1',   pn: '68-SYS00101/1',  vendor: 'Park Air / Italia',       qty: 9, ip: '—',             note: 'Lọc sóng hài' },
-          { name: 'Thiết bị chống sét', model: 'GT-NFM-AL',       pn: 'GT-NFM-AL',      vendor: 'PolyPhaser / China',      qty: 9, ip: '—',             note: 'Bảo vệ đường anten' },
+          { name: 'Máy thu VHF AM CH01', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.71', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH02', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.72', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH03', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.73', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH04', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.74', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH05', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.75', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH06', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.76', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH07', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.77', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH08', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.78', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH09', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.79', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Switch VoIP MAIN',   model: 'OS6860E-24',    pn: 'OS6860E-24',    vendor: 'ALE / China',             qty: 1, ip: '10.60.99.9', freq: '—', note: 'VLAN VoIP / MGMT' },
+          { name: 'Switch RCMS (LAN3)', model: 'OS6360-24',     pn: 'OS6360-24',     vendor: 'ALE / China',             qty: 1, ip: '10.60.6.94', freq: '—', note: 'GW RCMS subnet' },
+          { name: 'Máy tính LCMS',      model: 'HP Z1 G9',      pn: 'Z1 G9',         vendor: 'HP / China',              qty: 1, ip: '10.60.6.65', freq: '—', note: 'Giám sát cục bộ' },
+          { name: 'Anten VHF (×9)',      model: 'CXL 3-1LW',     pn: '100000075',     vendor: 'Procom / North Macedonia', qty: 9, ip: '—',         freq: 'VHF 118–137 MHz', note: 'Yagi gắn cột anten RX' },
+          { name: 'Bộ lọc VHF (×9)',     model: '68-SYS00101/1', pn: '68-SYS00101/1', vendor: 'Park Air / Italia',       qty: 9, ip: '—',         freq: 'VHF 118–137 MHz', note: 'Lọc sóng hài' },
+          { name: 'Chống sét VHF (×9)',  model: 'GT-NFM-AL',     pn: 'GT-NFM-AL',     vendor: 'PolyPhaser / China',      qty: 9, ip: '—',         freq: '—', note: 'Bảo vệ đường anten' },
         ],
       },
       standby: {
         label:     'RX STANDBY — 9 kênh VHF AM (Park Air T6-RV)',
         statusKey: 'rx_stby_status',
         items: [
-          { name: 'Máy thu VHF AM',       model: 'T6-RV',         pn: 'T6-RV',          vendor: 'Park Air / UK',           qty: 9, ip: '10.60.6.81÷89', note: 'SNMP UDP 161 · LAN3' },
-          { name: 'Switch VoIP STANDBY',  model: 'OS6860E-24',    pn: 'OS6860E-24',     vendor: 'ALE / China',             qty: 1, ip: 'TBD',           note: 'GW VoIP dự phòng' },
-          { name: 'Máy tính RCMS',        model: 'HP Z1 G9',      pn: 'Z1 G9',          vendor: 'HP / China',              qty: 1, ip: '10.60.7.97',    note: 'Giám sát từ xa RX' },
-          { name: 'PM giám sát R4-MARCS', model: 'R4-MARCS',      pn: 'R4-MARCS',       vendor: 'Park Air',                qty: 1, ip: '—',             note: 'SW RCMS poll T6-RV' },
-          { name: 'Anten VHF',            model: 'CXL 3-1LW',     pn: '100000075',      vendor: 'Procom / North Macedonia', qty: 9, ip: '—',             note: '' },
-          { name: 'Bộ lọc VHF',           model: '68-SYS00101/1', pn: '68-SYS00101/1',  vendor: 'Park Air / Italia',       qty: 9, ip: '—',             note: '' },
-          { name: 'Thiết bị chống sét',   model: 'GT-NFM-AL',     pn: 'GT-NFM-AL',      vendor: 'PolyPhaser / China',      qty: 9, ip: '—',             note: '' },
+          { name: 'Máy thu VHF AM CH01', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.81', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH02', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.82', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH03', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.83', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH04', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.84', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH05', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.85', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH06', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.86', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH07', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.87', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH08', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.88', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Máy thu VHF AM CH09', model: 'T6-RV', pn: 'T6-RV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.6.89', freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Switch VoIP STANDBY',  model: 'OS6860E-24',    pn: 'OS6860E-24',    vendor: 'ALE / China', qty: 1, ip: 'TBD',        freq: '—', note: 'GW VoIP dự phòng' },
+          { name: 'Máy tính RCMS',        model: 'HP Z1 G9',      pn: 'Z1 G9',         vendor: 'HP / China',  qty: 1, ip: '10.60.7.97', freq: '—', note: 'Giám sát từ xa RX' },
+          { name: 'PM giám sát R4-MARCS', model: 'R4-MARCS',      pn: 'R4-MARCS',      vendor: 'Park Air',    qty: 1, ip: '—',         freq: '—', note: 'SW RCMS poll T6-RV' },
+          { name: 'Anten VHF (×9)',        model: 'CXL 3-1LW',     pn: '100000075',     vendor: 'Procom / North Macedonia', qty: 9, ip: '—', freq: 'VHF 118–137 MHz', note: '' },
+          { name: 'Bộ lọc VHF (×9)',       model: '68-SYS00101/1', pn: '68-SYS00101/1', vendor: 'Park Air / Italia', qty: 9, ip: '—', freq: 'VHF 118–137 MHz', note: '' },
+          { name: 'Chống sét VHF (×9)',    model: 'GT-NFM-AL',     pn: 'GT-NFM-AL',     vendor: 'PolyPhaser / China', qty: 9, ip: '—', freq: '—', note: '' },
         ],
       },
     },
@@ -100,23 +132,23 @@ const TOPO_NODES = [
         label:     'xMG #1 PRIMARY — 11 QMG Modules VoIP (18 tần số A/G)',
         statusKey: 'xmg_status',
         items: [
-          { name: 'xMG Chassis 2.0 #1',      model: 'xMG 2.0',                 pn: 'xMG-2.0',    vendor: 'Frequentis / Canada', qty: 1,  ip: '10.60.8.71÷81', note: 'VoIP A/G gateway VCCS' },
-          { name: 'QMG Module (VHF VoIP)',    model: 'QMG Module for xMG 2.0',  pn: 'QMG-xMG2.0', vendor: 'Frequentis / Canada', qty: 10, ip: '10.60.8.71÷80', note: '18 tần số, 2 tần/card' },
-          { name: 'QMG Module (D-ATIS)',      model: 'QMG Module for xMG 2.0',  pn: 'QMG-xMG2.0', vendor: 'Frequentis / Canada', qty: 1,  ip: '10.60.8.81',    note: 'D-ATIS VoIP interface' },
-          { name: 'LS4 Application Server',   model: 'Dell PowerEdge R250',      pn: 'R250DELL',   vendor: 'Frequentis / Canada', qty: 1,  ip: 'TBD',           note: 'VCCS application server' },
-          { name: 'LS4 Unmanaged Switch',     model: 'LS4 Ethernet Switch',      pn: 'LS4-SW',     vendor: 'Frequentis / Canada', qty: 6,  ip: '—',             note: 'Internal LAN VCCS #1' },
+          { name: 'xMG Chassis 2.0 #1',      model: 'xMG 2.0',                pn: 'xMG-2.0',    vendor: 'Frequentis / Canada', qty: 1,  ip: '10.60.8.71÷81', freq: 'VoIP SIP ED-137',    note: 'VoIP A/G gateway VCCS' },
+          { name: 'QMG Module (VHF VoIP)',    model: 'QMG Module for xMG 2.0', pn: 'QMG-xMG2.0', vendor: 'Frequentis / Canada', qty: 10, ip: '10.60.8.71÷80', freq: 'VHF AM · 18 tần số',  note: '2 tần số/card · ED-137' },
+          { name: 'QMG Module (D-ATIS)',      model: 'QMG Module for xMG 2.0', pn: 'QMG-xMG2.0', vendor: 'Frequentis / Canada', qty: 1,  ip: '10.60.8.81',    freq: 'D-ATIS VoIP',         note: 'D-ATIS VoIP interface' },
+          { name: 'LS4 Application Server',   model: 'Dell PowerEdge R250',     pn: 'R250DELL',   vendor: 'Frequentis / Canada', qty: 1,  ip: 'TBD',           freq: '—',                   note: 'VCCS application server' },
+          { name: 'LS4 Unmanaged Switch',     model: 'LS4 Ethernet Switch',     pn: 'LS4-SW',     vendor: 'Frequentis / Canada', qty: 6,  ip: '—',             freq: '—',                   note: 'Internal LAN VCCS #1' },
         ],
       },
       standby: {
         label:     'xMG #2 STANDBY — 4 QMG Modules + Grandstream FXO GW',
         statusKey: 'xmg_stby_status',
         items: [
-          { name: 'xMG Chassis 2.0 #2',      model: 'xMG 2.0',                  pn: 'xMG-2.0',    vendor: 'Frequentis / Canada', qty: 1, ip: '10.60.8.101÷111', note: 'VoIP failover chassis' },
-          { name: 'QMG Module (dự phòng)',    model: 'QMG Module for xMG 2.0',   pn: 'QMG-xMG2.0', vendor: 'Frequentis / Canada', qty: 4, ip: '10.60.8.101÷104', note: 'Failover VoIP interface' },
-          { name: 'Grandstream FXO Gateway',  model: 'GS 8FXS/8FXO + TMG-3E',   pn: 'TMG-3E',     vendor: 'Frequentis / Canada', qty: 3, ip: 'TBD',             note: 'Thoại analog FXO: 10 line' },
-          { name: 'LS4 Unmanaged Switch',     model: 'LS4 Ethernet Switch',       pn: 'LS4-SW',     vendor: 'Frequentis / Canada', qty: 6, ip: '—',               note: 'Internal LAN VCCS #2' },
-          { name: 'Máy tính LCMS VCCS',       model: 'HP Z1 G9',                  pn: 'Z1 G9',      vendor: 'HP / China',          qty: 1, ip: 'TBD',             note: 'Quản lý VCCS' },
-          { name: 'Máy tính RCMS VCCS',       model: 'HP Z1 G9',                  pn: 'Z1 G9',      vendor: 'HP / China',          qty: 1, ip: 'TBD',             note: 'Giám sát từ xa VCCS' },
+          { name: 'xMG Chassis 2.0 #2',      model: 'xMG 2.0',                pn: 'xMG-2.0',    vendor: 'Frequentis / Canada', qty: 1, ip: '10.60.8.101÷111', freq: 'VoIP SIP ED-137',   note: 'VoIP failover chassis' },
+          { name: 'QMG Module (dự phòng)',    model: 'QMG Module for xMG 2.0', pn: 'QMG-xMG2.0', vendor: 'Frequentis / Canada', qty: 4, ip: '10.60.8.101÷104', freq: 'VHF AM · VoIP',    note: 'Failover VoIP interface' },
+          { name: 'Grandstream FXO Gateway',  model: 'GS 8FXS/8FXO + TMG-3E', pn: 'TMG-3E',     vendor: 'Frequentis / Canada', qty: 3, ip: 'TBD',             freq: 'PSTN analog FXO',   note: 'Thoại analog FXO: 10 line' },
+          { name: 'LS4 Unmanaged Switch',     model: 'LS4 Ethernet Switch',     pn: 'LS4-SW',     vendor: 'Frequentis / Canada', qty: 6, ip: '—',               freq: '—',                 note: 'Internal LAN VCCS #2' },
+          { name: 'Máy tính LCMS VCCS',       model: 'HP Z1 G9',                pn: 'Z1 G9',      vendor: 'HP / China',          qty: 1, ip: 'TBD',             freq: '—',                 note: 'Quản lý VCCS' },
+          { name: 'Máy tính RCMS VCCS',       model: 'HP Z1 G9',                pn: 'Z1 G9',      vendor: 'HP / China',          qty: 1, ip: 'TBD',             freq: '—',                 note: 'Giám sát từ xa VCCS' },
         ],
       },
     },
@@ -131,12 +163,12 @@ const TOPO_NODES = [
         label:     'RED SWITCH CORE — Hệ thống hạ tầng đường truyền chính (J1)',
         statusKey: 'red_sw_status',
         items: [
-          { name: 'Router định tuyến biên',       model: '7250 IXR-eL',     pn: '7250 IXR-eL', vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        note: 'MPLS backbone router J1' },
-          { name: 'Router phân phối',              model: '7250 IXR-eL',     pn: '7250 IXR-eL', vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        note: 'Distribution router J1' },
-          { name: 'Thiết bị tổng hợp dịch vụ',    model: 'Nokia SAR-8',     pn: 'SAR-8',       vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        note: 'Service Aggregation Router' },
-          { name: 'Switch truy cập 24P (RED)',     model: 'OS6860E-24',      pn: 'OS6860E-24',  vendor: 'ALE / China',       qty: 4, ip: '10.60.8.204', note: 'SNMP UDP 161 · RED ring core' },
-          { name: 'Tường lửa vùng biên',           model: 'FortiGate FG-100F', pn: 'FG-100F',   vendor: 'Fortinet / Taiwan', qty: 1, ip: 'TBD',        note: 'Bảo vệ vùng biên RED' },
-          { name: 'Tường lửa DMZ',                model: 'FortiGate FG-400F', pn: 'FG-400F',   vendor: 'Fortinet / Taiwan', qty: 1, ip: 'TBD',        note: 'DMZ firewall' },
+          { name: 'Router định tuyến biên',       model: '7250 IXR-eL',      pn: '7250 IXR-eL', vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        freq: '—', note: 'MPLS backbone router J1' },
+          { name: 'Router phân phối',              model: '7250 IXR-eL',      pn: '7250 IXR-eL', vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        freq: '—', note: 'Distribution router J1' },
+          { name: 'Thiết bị tổng hợp dịch vụ',    model: 'Nokia SAR-8',      pn: 'SAR-8',       vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        freq: '—', note: 'Service Aggregation Router' },
+          { name: 'Switch truy cập 24P (RED)',     model: 'OS6860E-24',       pn: 'OS6860E-24',  vendor: 'ALE / China',       qty: 4, ip: '10.60.8.204', freq: '—', note: 'SNMP UDP 161 · RED ring core' },
+          { name: 'Tường lửa vùng biên',           model: 'FortiGate FG-100F', pn: 'FG-100F',   vendor: 'Fortinet / Taiwan', qty: 1, ip: 'TBD',        freq: '—', note: 'Bảo vệ vùng biên RED' },
+          { name: 'Tường lửa DMZ',                model: 'FortiGate FG-400F', pn: 'FG-400F',   vendor: 'Fortinet / Taiwan', qty: 1, ip: 'TBD',        freq: '—', note: 'DMZ firewall' },
         ],
       },
       standby: null,  /* Dự phòng ở cấp Ring (RED↔BLUE dual-ring) — không có SW vật lý riêng */
@@ -152,11 +184,11 @@ const TOPO_NODES = [
         label:     'BLUE SWITCH CORE — Hệ thống hạ tầng đường truyền dự phòng (J2)',
         statusKey: 'blue_sw_status',
         items: [
-          { name: 'Router định tuyến biên',       model: '7250 IXR-eL',     pn: '7250 IXR-eL', vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        note: 'MPLS backbone router J2' },
-          { name: 'Thiết bị tổng hợp dịch vụ',    model: 'Nokia SAR-8',     pn: 'SAR-8',       vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        note: 'Service Aggregation Router' },
-          { name: 'Switch truy cập 24P (BLUE)',    model: 'OS6860E-24',      pn: 'OS6860E-24',  vendor: 'ALE / China',       qty: 4, ip: '10.60.8.203', note: 'SNMP UDP 161 · BLUE ring core' },
-          { name: 'Tường lửa vùng biên',           model: 'FortiGate FG-100F', pn: 'FG-100F',   vendor: 'Fortinet / Taiwan', qty: 1, ip: 'TBD',        note: 'Bảo vệ vùng biên BLUE' },
-          { name: 'Máy chủ quản trị (FOC)',        model: 'HPE DL360 Gen10+', pn: 'DL360-G10+', vendor: 'HPE / Singapore',   qty: 1, ip: 'TBD',        note: 'Management server FOC' },
+          { name: 'Router định tuyến biên',       model: '7250 IXR-eL',      pn: '7250 IXR-eL', vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        freq: '—', note: 'MPLS backbone router J2' },
+          { name: 'Thiết bị tổng hợp dịch vụ',    model: 'Nokia SAR-8',      pn: 'SAR-8',       vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        freq: '—', note: 'Service Aggregation Router' },
+          { name: 'Switch truy cập 24P (BLUE)',    model: 'OS6860E-24',       pn: 'OS6860E-24',  vendor: 'ALE / China',       qty: 4, ip: '10.60.8.203', freq: '—', note: 'SNMP UDP 161 · BLUE ring core' },
+          { name: 'Tường lửa vùng biên',           model: 'FortiGate FG-100F', pn: 'FG-100F',   vendor: 'Fortinet / Taiwan', qty: 1, ip: 'TBD',        freq: '—', note: 'Bảo vệ vùng biên BLUE' },
+          { name: 'Máy chủ quản trị (FOC)',        model: 'HPE DL360 Gen10+',  pn: 'DL360-G10+', vendor: 'HPE / Singapore',  qty: 1, ip: 'TBD',        freq: '—', note: 'Management server FOC' },
         ],
       },
       standby: null,  /* Dự phòng ở cấp Ring (RED↔BLUE dual-ring) — không có SW vật lý riêng */
@@ -172,25 +204,35 @@ const TOPO_NODES = [
         label:     'UBVHF MAIN — SW_20FL_1 kết nối RED ring (6 kênh VHF dự phòng)',
         statusKey: 'fl20_status',
         items: [
-          { name: 'Bộ thu phát VHF AM (UBVHF)', model: 'T6-TRV',           pn: 'T6-TRV',         vendor: 'Park Air / UK',           qty: 6, ip: '10.60.11.1÷6',   note: 'UBVHF · SNMP UDP 161 · LAN3' },
-          { name: 'S4-IP Controller',             model: 'S4-IP',            pn: 'S4-IP',          vendor: 'Park Air / UK',           qty: 6, ip: '10.60.11.11÷16', note: 'TCP port 5001 · Không SNMP' },
-          { name: 'Switch RCMS UBVHF',            model: 'OS6360-24',        pn: 'OS6360-24',      vendor: 'ALE / China',             qty: 1, ip: 'TBD',             note: 'Monitoring LAN tầng 20' },
-          { name: 'Máy tính LCMS UBVHF',          model: 'HP Z1 G9',         pn: 'Z1 G9',          vendor: 'HP / China',              qty: 1, ip: '10.60.11.29',     note: 'Giám sát cục bộ' },
-          { name: 'Anten VHF (UBVHF)',             model: 'CXL 3-1LW',        pn: '100000075',      vendor: 'Procom / North Macedonia', qty: 6, ip: '—',               note: 'Mái tầng 20 TWR' },
-          { name: 'Bộ lọc VHF',                   model: '68-SYS00101/1',    pn: '68-SYS00101/1',  vendor: 'Park Air / Italia',       qty: 6, ip: '—',               note: '' },
-          { name: 'Thiết bị chống sét',            model: 'GT-NFM-AL',        pn: 'GT-NFM-AL',      vendor: 'PolyPhaser / China',      qty: 6, ip: '—',               note: '' },
+          { name: 'Bộ thu phát VHF CH01 (UBVHF)', model: 'T6-TRV', pn: 'T6-TRV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.1',  freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Bộ thu phát VHF CH02 (UBVHF)', model: 'T6-TRV', pn: 'T6-TRV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.2',  freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Bộ thu phát VHF CH03 (UBVHF)', model: 'T6-TRV', pn: 'T6-TRV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.3',  freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Bộ thu phát VHF CH04 (UBVHF)', model: 'T6-TRV', pn: 'T6-TRV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.4',  freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Bộ thu phát VHF CH05 (UBVHF)', model: 'T6-TRV', pn: 'T6-TRV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.5',  freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Bộ thu phát VHF CH06 (UBVHF)', model: 'T6-TRV', pn: 'T6-TRV', vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.6',  freq: 'VHF AM · TBD MHz', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'S4-IP Controller CH01',         model: 'S4-IP',  pn: 'S4-IP',  vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.11', freq: '—', note: 'TCP port 5001 · Không SNMP' },
+          { name: 'S4-IP Controller CH02',         model: 'S4-IP',  pn: 'S4-IP',  vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.12', freq: '—', note: 'TCP port 5001 · Không SNMP' },
+          { name: 'S4-IP Controller CH03',         model: 'S4-IP',  pn: 'S4-IP',  vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.13', freq: '—', note: 'TCP port 5001 · Không SNMP' },
+          { name: 'S4-IP Controller CH04',         model: 'S4-IP',  pn: 'S4-IP',  vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.14', freq: '—', note: 'TCP port 5001 · Không SNMP' },
+          { name: 'S4-IP Controller CH05',         model: 'S4-IP',  pn: 'S4-IP',  vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.15', freq: '—', note: 'TCP port 5001 · Không SNMP' },
+          { name: 'S4-IP Controller CH06',         model: 'S4-IP',  pn: 'S4-IP',  vendor: 'Park Air / UK', qty: 1, ip: '10.60.11.16', freq: '—', note: 'TCP port 5001 · Không SNMP' },
+          { name: 'Switch RCMS UBVHF',             model: 'OS6360-24',     pn: 'OS6360-24',     vendor: 'ALE / China',             qty: 1, ip: 'TBD',         freq: '—', note: 'Monitoring LAN tầng 20' },
+          { name: 'Máy tính LCMS UBVHF',           model: 'HP Z1 G9',      pn: 'Z1 G9',         vendor: 'HP / China',              qty: 1, ip: '10.60.11.29', freq: '—', note: 'Giám sát cục bộ' },
+          { name: 'Anten VHF UBVHF (×6)',           model: 'CXL 3-1LW',     pn: '100000075',     vendor: 'Procom / North Macedonia', qty: 6, ip: '—',          freq: 'VHF 118–137 MHz', note: 'Mái tầng 20 TWR' },
+          { name: 'Bộ lọc VHF (×6)',                model: '68-SYS00101/1',  pn: '68-SYS00101/1', vendor: 'Park Air / Italia',       qty: 6, ip: '—',          freq: 'VHF 118–137 MHz', note: '' },
+          { name: 'Chống sét VHF (×6)',             model: 'GT-NFM-AL',      pn: 'GT-NFM-AL',     vendor: 'PolyPhaser / China',      qty: 6, ip: '—',          freq: '—', note: '' },
         ],
       },
       standby: {
         label:     'CWP VCCS + RCMS — SW_20FL_2 kết nối BLUE ring',
         statusKey: 'fl20_stby_status',
         items: [
-          { name: 'Vị trí CWP VCCS (Frequentis)', model: 'PCU + TED',             pn: 'CWP-PCU',  vendor: 'Frequentis / Canada', qty: 14, ip: '10.60.8.x',   note: 'PCU + TED + Mic + HS + Headset' },
-          { name: 'Vị trí RCMS VCCS',              model: 'PCU + TED',             pn: 'CWP-PCU',  vendor: 'Frequentis / Canada', qty: 1,  ip: '10.60.8.x',   note: 'Remote monitoring position' },
-          { name: 'Máy tính RCMS UBVHF',           model: 'HP Z1 G9',              pn: 'Z1 G9',    vendor: 'HP / China',          qty: 1,  ip: '10.60.11.30', note: 'Giám sát từ xa UBVHF' },
-          { name: 'Máy thu phát TETRA (cố định)',  model: 'MXM600',               pn: 'MXM600',   vendor: 'Motorola / Malaysia', qty: 4,  ip: '—',           note: 'TETRA UHF gắn rack đài chỉ huy' },
-          { name: 'Máy thu phát TETRA (cầm tay)',  model: 'MXP600',               pn: 'MXP600',   vendor: 'Motorola / Malaysia', qty: 4,  ip: '—',           note: 'TETRA UHF handheld' },
-          { name: 'Anten UHF TETRA',               model: 'BS450XL6-A',            pn: 'BS450XL6', vendor: 'Mobile Mark / USA',   qty: 4,  ip: '—',           note: 'Gắn tại Đài chỉ huy' },
+          { name: 'Vị trí CWP VCCS (Frequentis)', model: 'PCU + TED', pn: 'CWP-PCU', vendor: 'Frequentis / Canada', qty: 14, ip: '10.60.8.x',   freq: 'VoIP SIP ED-137',  note: 'PCU + TED + Mic + HS + Headset' },
+          { name: 'Vị trí RCMS VCCS',              model: 'PCU + TED', pn: 'CWP-PCU', vendor: 'Frequentis / Canada', qty: 1,  ip: '10.60.8.x',   freq: 'VoIP SIP ED-137',  note: 'Remote monitoring position' },
+          { name: 'Máy tính RCMS UBVHF',           model: 'HP Z1 G9',  pn: 'Z1 G9',   vendor: 'HP / China',          qty: 1,  ip: '10.60.11.30', freq: '—',                note: 'Giám sát từ xa UBVHF' },
+          { name: 'Máy thu phát TETRA (cố định)',  model: 'MXM600',    pn: 'MXM600',  vendor: 'Motorola / Malaysia', qty: 4,  ip: '—',           freq: 'TETRA UHF 380–400 MHz', note: 'Gắn rack đài chỉ huy' },
+          { name: 'Máy thu phát TETRA (cầm tay)',  model: 'MXP600',    pn: 'MXP600',  vendor: 'Motorola / Malaysia', qty: 4,  ip: '—',           freq: 'TETRA UHF 380–400 MHz', note: 'Handheld' },
+          { name: 'Anten UHF TETRA (×4)',          model: 'BS450XL6-A', pn: 'BS450XL6', vendor: 'Mobile Mark / USA', qty: 4,  ip: '—',           freq: 'UHF 380–470 MHz',  note: 'Gắn tại Đài chỉ huy' },
         ],
       },
     },
@@ -615,14 +657,18 @@ function _onClick(e) {
  * @returns {{ cls, icon, lbl }} — CSS class + icon + label hiển thị
  */
 function _devStatusInfo(statusKey) {
-  const t  = window.topo || {};
+  const t = window.topo || {};
+  /* Chưa nhận được dữ liệu từ WebSocket/Prometheus → Pending */
+  if (!t.ts) {
+    return { cls: 'st-pend', icon: '⟳', lbl: 'Đang đồng bộ Prometheus...' };
+  }
   const st = statusKey ? (t[statusKey] || 'unknown') : 'unknown';
-  return {
-    ok:      { cls: 'st-ok',   icon: '●', lbl: 'OK' },
-    warn:    { cls: 'st-warn', icon: '⚠', lbl: 'WARNING' },
-    crit:    { cls: 'st-crit', icon: '✕', lbl: 'CRITICAL' },
-    unknown: { cls: 'st-unk',  icon: '?', lbl: 'UNKNOWN' },
-  }[st] || { cls: 'st-unk', icon: '?', lbl: 'UNKNOWN' };
+  return ({
+    ok:      { cls: 'st-ok',   icon: '●', lbl: 'OK — ED-137 ✓' },
+    warn:    { cls: 'st-warn', icon: '⚠', lbl: 'CẢNH BÁO — Suy hao/Trễ cao' },
+    crit:    { cls: 'st-crit', icon: '✕', lbl: 'LỖI — Mất kết nối' },
+    unknown: { cls: 'st-unk',  icon: '?', lbl: 'KHÔNG XÁC ĐỊNH' },
+  }[st] || { cls: 'st-unk', icon: '?', lbl: 'KHÔNG XÁC ĐỊNH' });
 }
 
 /**
@@ -649,7 +695,12 @@ function _renderDevCard(slot, dev) {
     : '—';
 
   /* Render rows cho từng thiết bị trong items[] */
-  const rows = (dev.items || []).map((it, idx) => `
+  const rows = (dev.items || []).map((it, idx) => {
+    const hasIp = it.ip && it.ip !== '—' && !it.ip.includes('÷') && !it.ip.includes('x');
+    const pingCell = hasIp
+      ? `<button class="eq-ping-btn" onclick="pingDevice('${it.ip}',this)" title="Ping ${it.ip}">⚡ Ping</button><span class="ping-result"></span>`
+      : `<span style="color:var(--text3)">—</span>`;
+    return `
     <tr class="eq-row${idx % 2 === 0 ? '' : ' eq-row-alt'}">
       <td class="eq-stt">${idx + 1}</td>
       <td class="eq-name">${it.name}</td>
@@ -657,8 +708,11 @@ function _renderDevCard(slot, dev) {
       <td class="eq-vendor">${it.vendor}</td>
       <td class="eq-qty">${it.qty}</td>
       <td class="eq-ip mono">${it.ip}</td>
+      <td class="eq-freq">${it.freq || '—'}</td>
       <td class="eq-note">${it.note || '—'}</td>
-    </tr>`).join('');
+      <td class="eq-ping">${pingCell}</td>
+    </tr>`;
+  }).join('');
 
   el.innerHTML = `
     <div class="dev-status-bar ${si.cls}">
@@ -675,12 +729,44 @@ function _renderDevCard(slot, dev) {
             <th class="eq-vendor">Hãng / XS</th>
             <th class="eq-qty">SL</th>
             <th class="eq-ip">IP (LAN3)</th>
+            <th class="eq-freq">Tần số / Chuẩn</th>
             <th class="eq-note">Ghi chú</th>
+            <th class="eq-ping">Ping</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+}
+
+/**
+ * pingDevice — gọi /api/ping/{ip}, hiển thị RTT ngay tại hàng thiết bị
+ * @param {string}      ip  — địa chỉ IP cần ping (LAN3 RCMS subnet)
+ * @param {HTMLElement} btn — nút bấm (span.ping-result là nextElementSibling)
+ */
+async function pingDevice(ip, btn) {
+  const resultEl = btn.nextElementSibling; // span.ping-result
+  btn.disabled   = true;
+  btn.textContent = '⟳';
+  resultEl.textContent = '';
+  resultEl.className   = 'ping-result';
+  try {
+    const res  = await fetch(`/api/ping/${encodeURIComponent(ip)}`);
+    const data = await res.json();
+    if (data.reachable) {
+      resultEl.textContent = `✔ ${data.rtt_ms}ms`;
+      resultEl.classList.add('ping-ok');
+    } else {
+      resultEl.textContent = '✘ Timeout';
+      resultEl.classList.add('ping-fail');
+    }
+  } catch (e) {
+    resultEl.textContent = '✘ Lỗi';
+    resultEl.classList.add('ping-fail');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '⚡ Ping';
+  }
 }
 
 /**
