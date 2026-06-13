@@ -87,56 +87,6 @@
       </div>
 
     </div><!-- /topo-wrap -->
-
-    <!-- ══════════════════════════════════════════════════════
-         NODE DETAIL MODAL — hiện giữa màn hình khi click node
-         Click backdrop để đóng
-         ══════════════════════════════════════════════════════ -->
-    <div id="node-modal-overlay" class="modal-overlay" style="display:none"
-         onclick="if(event.target===this) closePanel()">
-
-      <div class="modal-box">
-
-        <!-- Modal Header -->
-        <div class="modal-header">
-          <div class="modal-header-info">
-            <div class="modal-title" id="panel-title">—</div>
-            <div class="modal-sub"   id="panel-sub">—</div>
-          </div>
-          <button class="panel-close" onclick="closePanel()">✕</button>
-        </div>
-
-        <!-- Tab Bar: MAIN / STANDBY -->
-        <div class="panel-tabs">
-          <div class="panel-tab active" onclick="switchPanelTab('main')">🟢 MAIN</div>
-          <div class="panel-tab"        onclick="switchPanelTab('standby')">🔵 STANDBY</div>
-        </div>
-
-        <!-- Tab MAIN -->
-        <div class="panel-tab-content active" id="ptab-main">
-          <div class="modal-body">
-            <div id="ptab-main-card"></div>
-          </div>
-          <div class="modal-actions">
-            <button class="btn btn-green" onclick="runNodeMeasure()">▶ Đo kiểm trạm này</button>
-            <button class="btn btn-blue"  onclick="openNodeGrafana()">📊 Grafana Dashboard</button>
-            <button class="btn btn-grey btn-sm" onclick="closePanel()">✕ Đóng</button>
-          </div>
-        </div>
-
-        <!-- Tab STANDBY -->
-        <div class="panel-tab-content" id="ptab-standby">
-          <div class="modal-body">
-            <div id="ptab-standby-card"></div>
-          </div>
-          <div class="modal-actions">
-            <button class="btn btn-blue"  onclick="openNodeGrafana()">📊 Grafana Dashboard</button>
-            <button class="btn btn-grey btn-sm" onclick="closePanel()">✕ Đóng</button>
-          </div>
-        </div>
-
-      </div><!-- /modal-box -->
-    </div><!-- /node-modal-overlay -->
   </div><!-- /tab-topology -->
 
   <!-- ============================================================ -->
@@ -298,6 +248,57 @@
 <script src="/static/js/panel.js"></script>
 <script src="/static/js/api.js"></script>
 <script src="/static/js/app.js"></script>
+
+<!-- ══════════════════════════════════════════════════════════
+     NODE DETAIL MODAL
+     Đặt trực tiếp trước </body> để position:fixed luôn đúng,
+     không bị ảnh hưởng bởi transform/backdrop-filter của parent.
+     Click backdrop để đóng.
+     ══════════════════════════════════════════════════════════ -->
+<div id="node-modal-overlay" class="modal-overlay" style="display:none"
+     onclick="if(event.target===this) closePanel()">
+  <div class="modal-box">
+
+    <!-- Header -->
+    <div class="modal-header">
+      <div class="modal-header-info">
+        <div class="modal-title" id="panel-title">—</div>
+        <div class="modal-sub"   id="panel-sub">—</div>
+      </div>
+      <button class="panel-close" onclick="closePanel()">✕</button>
+    </div>
+
+    <!-- Tabs: MAIN / STANDBY -->
+    <div class="panel-tabs">
+      <div class="panel-tab active" onclick="switchPanelTab('main')">🟢 MAIN</div>
+      <div class="panel-tab"        onclick="switchPanelTab('standby')">🔵 STANDBY</div>
+    </div>
+
+    <!-- Tab MAIN -->
+    <div class="panel-tab-content active" id="ptab-main">
+      <div class="modal-body">
+        <div id="ptab-main-card"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-green" onclick="runNodeMeasure()">▶ Đo kiểm trạm này</button>
+        <button class="btn btn-blue"  onclick="openNodeGrafana()">📊 Grafana Dashboard</button>
+        <button class="btn btn-grey btn-sm" onclick="closePanel()">✕ Đóng</button>
+      </div>
+    </div>
+
+    <!-- Tab STANDBY -->
+    <div class="panel-tab-content" id="ptab-standby">
+      <div class="modal-body">
+        <div id="ptab-standby-card"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-blue"  onclick="openNodeGrafana()">📊 Grafana Dashboard</button>
+        <button class="btn btn-grey btn-sm" onclick="closePanel()">✕ Đóng</button>
+      </div>
+    </div>
+
+  </div><!-- /modal-box -->
+</div><!-- /node-modal-overlay -->
 
 </body>
 </html>
