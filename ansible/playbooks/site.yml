@@ -1,0 +1,55 @@
+---
+# ============================================================
+# site.yml — Master Playbook (toàn bộ pipeline đo kiểm)
+# Dự án: Giám sát đường truyền VHF — chuẩn EUROCAE ED-137
+# Tác giả: Đỗ Thanh Long — ATSEP VATM ATCC Long Thành
+# ============================================================
+#
+# Pipeline thực thi theo thứ tự:
+#   1. ping_check  — Đo Jitter/Latency/Loss → push Pushgateway
+#   2. collect     — Thu thập SNMP metrics từ T6 radios
+#   3. report      — Tổng hợp + xuất báo cáo Markdown/Excel
+#
+# Sử dụng:
+#   Full pipeline:
+#     ansible-playbook -i ../hosts.ini site.yml
+#
+#   Chỉ đo ping (30 phút/lần):
+#     ansible-playbook -i ../hosts.ini site.yml --tags ping
+#
+#   Chỉ SNMP collect + báo cáo (đầu ca sáng):
+#     ansible-playbook -i ../hosts.ini site.yml --tags collect,report
+#
+#   Chỉ báo cáo:
+#     ansible-playbook -i ../hosts.ini site.yml --tags report
+#
+#   Lab simulation:
+#     ansible-playbook -i ../hosts.ini site.yml --limit lab_simulation
+#
+#   Prod TX + RX:
+#     ansible-playbook -i ../hosts.ini site.yml --limit all_rcms
+# ============================================================
+
+# ----------------------------------------------------------
+# BƯỚC 1: Đo kiểm Jitter / Latency / Loss (ICMP ping)
+# Chạy liên tục mỗi 30 phút — push metrics → Pushgateway
+# ----------------------------------------------------------
+- name: "VATM | [1/3] Ping Check — Jitter/Latency/Loss (ED-137)"
+  import_playbook: 03_ping_check.yml
+  tags: [ping, collect, full]
+
+# ----------------------------------------------------------
+# BƯỚC 2: Thu thập SNMP metrics từ T6 radios + lab VMs
+# Chạy đầu ca sáng (06:00) — trạng thái cổng, uptime, CPU
+# ----------------------------------------------------------
+- name: "VATM | [2/3] SNMP Collect — T6 Radio metrics"
+  import_playbook: 01_collect_metrics.yml
+  tags: [snmp, collect, full]
+
+# ----------------------------------------------------------
+# BƯỚC 3: Tổng hợp + xuất báo cáo kỹ thuật (Markdown/Excel)
+# Chạy sau collect — lưu vào report_base_dir
+# ----------------------------------------------------------
+- name: "VATM | [3/3] Generate Report — Markdown + Excel"
+  import_playbook: 02_generate_report.yml
+  tags: [report, full]

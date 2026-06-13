@@ -1,0 +1,115 @@
+---
+# ============================================================
+# VATM ATCC Long Thành — Global Ansible Variables
+# Áp dụng cho tất cả hosts (override trong group_vars/<group>)
+# Dự án: Giám sát đường truyền VHF theo chuẩn EUROCAE ED-137
+# Tác giả: Đỗ Thanh Long — ATSEP VATM ATCC Long Thành
+# ============================================================
+
+# ============================================================
+# SSH / Ansible Connection Defaults
+# ============================================================
+ansible_user: "vatm"
+ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o ConnectTimeout=10"
+ansible_become: true
+ansible_become_method: sudo
+# ansible_ssh_pass: "{{ vault_rcms_ssh_pass }}"  # Dùng ansible-vault trong production
+
+# ============================================================
+# Đường dẫn báo cáo trên Ansible Control Node
+# ============================================================
+report_base_dir:    "/opt/vatm/monitoring/reports"
+report_archive_dir: "/opt/vatm/monitoring/archive"
+report_date:        "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+report_time:        "{{ lookup('pipe', 'date +%H%M') }}"
+
+# ============================================================
+# Prometheus Pushgateway
+# Lab:        http://localhost:9091  (Docker stack cùng host)
+# Production: http://<monitoring-server-ip>:9091
+# ============================================================
+pushgateway_url: "http://localhost:9091"
+
+# ============================================================
+# SNMP — Park Air T6 radios (LAN3 RCMS subnet)
+# CẢNH BÁO: TUYỆT ĐỐI không poll qua LAN1 (VoIP subnet)
+#            để tránh ảnh hưởng lưu lượng thoại hàng không
+# ============================================================
+snmp_community: "vatm_ro"
+snmp_version:   "2c"
+snmp_timeout:   5      # giây
+snmp_retries:   2
+
+# ============================================================
+# Ngưỡng cảnh báo — chuẩn EUROCAE ED-137
+# Ref: ED-137 VoIP ATM Applications Quality of Service
+# ============================================================
+ed137_thresholds:
+  # One-way Delay: ED-137 < 100ms → RTT (ICMP ping) ref < 200ms
+  latency_warn_ms:  100    # Cảnh báo vàng
+  latency_crit_ms:  200    # Cảnh báo đỏ
+  # Jitter: ED-137 < 20ms
+  jitter_warn_ms:   10     # Cảnh báo vàng
+  jitter_crit_ms:   20     # Cảnh báo đỏ
+  # Packet Loss: ED-137 < 1%
+  loss_warn_pct:    0.5    # Cảnh báo vàng
+  loss_crit_pct:    1.0    # Cảnh báo đỏ
+
+# Alias thresholds (tương thích playbook 01, 02)
+thresholds:
+  latency_warn_ms:         100
+  latency_crit_ms:         200
+  jitter_warn_ms:          10
+  jitter_crit_ms:          20
+  packet_loss_warn_pct:    0.5
+  packet_loss_crit_pct:    1.0
+  bandwidth_util_warn_pct: 70
+  bandwidth_util_crit_pct: 90
+
+# ============================================================
+# Tham số đo kiểm ICMP (ping) — playbook 03_ping_check
+# ============================================================
+ping_count:    20       # Số gói ICMP mỗi lần đo
+ping_interval: "0.05"  # Giây giữa các gói (50ms) — đủ dày để đo jitter
+ping_timeout:  10      # Timeout toàn bộ lệnh ping (giây)
+
+# ============================================================
+# Park Air T6 — SNMP OIDs
+# Standard IETF MIBs: dùng được ngay (không cần MIB file riêng)
+# Proprietary Park Air OIDs: TODO khi có tài liệu MIB từ Park Air
+# ============================================================
+parkair_t6:
+  snmp_port:        161
+  # Standard OIDs
+  oid_sysUpTime:    "1.3.6.1.2.1.1.3.0"     # SNMPv2-MIB::sysUpTime
+  oid_sysDescr:     "1.3.6.1.2.1.1.1.0"     # SNMPv2-MIB::sysDescr
+  oid_ifOperStatus: "1.3.6.1.2.1.2.2.1.8"   # IF-MIB::ifOperStatus
+  oid_ifInErrors:   "1.3.6.1.2.1.2.2.1.14"  # IF-MIB::ifInErrors
+  oid_ifOutErrors:  "1.3.6.1.2.1.2.2.1.20"  # IF-MIB::ifOutErrors
+  oid_ifInOctets:   "1.3.6.1.2.1.2.2.1.10"  # IF-MIB::ifInOctets
+  oid_ifOutOctets:  "1.3.6.1.2.1.2.2.1.16"  # IF-MIB::ifOutOctets
+  # TODO: Proprietary Park Air OIDs (xác nhận từ Park Air T6 MIB documentation)
+  oid_pa_txPower:   "TODO"  # TX Power (dBm)
+  oid_pa_rfStatus:  "TODO"  # RF chain status (TX/RX active)
+  oid_pa_pttState:  "TODO"  # PTT state (keyed/unkeyed)
+  oid_pa_vswr:      "TODO"  # VSWR antenna measurement
+
+# ============================================================
+# Park Air S4-IP Controller
+# KHÔNG có SNMP — chỉ kiểm tra TCP port 5001 (Blackbox Exporter)
+# ============================================================
+s4ip:
+  monitor_port: 5001
+  check_method: "tcp"  # blackbox_exporter tcp_connect probe
+
+# ============================================================
+# Lịch chạy cron tham khảo (Quy trình 2999)
+# ============================================================
+cron_schedule:
+  # Đo Jitter/Loss/Latency tại đầu các ca trực (UTC)
+  # Ca ngày:  01:00 UTC (08:00 ICT) | 09:00 UTC (16:00 ICT)
+  # Ca đêm:   13:00 UTC (20:00 ICT) | 22:00 UTC (05:00 ICT hôm sau)
+  ping_shift_check: "0 1,9,13,22 * * *"
+  # Full pipeline đầu ca sáng ICT
+  morning_full:  "0 6 * * *"    # 06:00 UTC (13:00 ICT) — full: ping + collect + report
+  daily_report:  "0 7 * * *"    # 07:00 UTC (14:00 ICT) — xuất báo cáo tổng hợp

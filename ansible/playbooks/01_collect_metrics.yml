@@ -1,0 +1,106 @@
+---
+# ============================================================
+# Playbook 01: Thu thập SNMP metrics từ Park Air T6 radios
+# Mục đích: Query SNMP từ T6-TV/T6-RV/T6-TRV qua LAN3 RCMS,
+#           lưu trạng thái cổng, uptime, lỗi về Control Node
+# Lịch chạy: Đầu ca sáng 06:00 (Quy trình 2999)
+#
+# Sử dụng:
+#   Lab:  ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml --limit lab_simulation
+#   Prod: ansible-playbook -i hosts.ini playbooks/01_collect_metrics.yml --limit all_rcms
+#
+# CẢNH BÁO: Chỉ poll T6 radios qua LAN3 (RCMS subnet)
+#            KHÔNG poll qua LAN1 (VoIP subnet)
+# ============================================================
+
+# ----------------------------------------------------------
+# PLAY 1: Production SNMP — Park Air T6 radios
+# TODO: Implement SNMP collect khi xác nhận Park Air T6 MIB OIDs
+#       Standard IETF OIDs đã định nghĩa trong group_vars/all.yml
+#       (parkair_t6.oid_ifOperStatus, oid_sysUpTime, ...)
+#       Prometheus SNMP Exporter (Docker) sẽ poll liên tục qua LAN3
+# ----------------------------------------------------------
+# - name: "VATM | SNMP Collect — Park Air T6 (Production)"
+#   hosts: all_t6_radios
+#   gather_facts: false
+#   serial: 10
+#   tasks:
+#     - name: "SNMP poll sysUpTime + ifOperStatus"
+#       community.general.snmp_facts:
+#         host:      "{{ ansible_host }}"
+#         version:   "{{ snmp_version }}"
+#         community: "{{ snmp_community }}"
+#       register: t6_snmp_facts
+#       ignore_errors: true
+
+
+- name: "VATM | Thu thập metrics từ Lab Simulation (Ubuntu VMs)"
+  hosts: lab_simulation
+  gather_facts: true
+  serial: 5
+
+  pre_tasks:
+    - name: "Tạo thư mục báo cáo"
+      file:
+        path: "{{ report_base_dir }}/{{ report_date }}/raw"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      run_once: true
+      become: false
+
+  tasks:
+    - name: "[LAB] Lấy thông tin hệ thống"
+      command: "uname -a"
+      register: lab_sys_info
+      ignore_errors: true
+
+    - name: "[LAB] Lấy thống kê interface"
+      command: "cat /proc/net/dev"
+      register: lab_iface_stats
+      ignore_errors: true
+
+    - name: "[LAB] Test latency đến gateway"
+      command: "ping -c 10 -i 0.2 192.168.100.1"
+      register: lab_latency
+      ignore_errors: true
+
+    - name: "[LAB] Lấy SNMP counters (simulate Park Air T6 via standard IF-MIB)"
+      command: "snmpget -v2c -c {{ snmp_community }} localhost IF-MIB::ifInOctets.1 IF-MIB::ifOutOctets.1 IF-MIB::ifInErrors.1"
+      register: lab_snmp
+      ignore_errors: true
+
+    - name: "[LAB] Tổng hợp kết quả lab"
+      set_fact:
+        device_metrics:
+          hostname:     "{{ inventory_hostname }}"
+          host_ip:      "{{ ansible_host }}"
+          sim_device:   "{{ sim_device | default('UNKNOWN') }}"
+          site:         "LAB_SIMULATION"
+          model:        "Ubuntu_22.04_snmpd"
+          collected_at: "{{ ansible_date_time.iso8601 }}"
+          sys_info:     "{{ lab_sys_info.stdout | default('N/A') }}"
+          iface_stats:  "{{ lab_iface_stats.stdout | default('N/A') }}"
+          ping_result:  "{{ lab_latency.stdout_lines[-2:] | join(' ') | default('N/A') }}"
+          snmp_result:  "{{ lab_snmp.stdout | default('N/A') }}"
+          collection_status: "{{ 'SUCCESS' if not lab_iface_stats.failed else 'FAIL' }}"
+
+    - name: "[LAB] Parse latency từ ping output"
+      set_fact:
+        lab_latency_parsed: "{{ lab_latency.stdout | regex_search('rtt min/avg/max/mdev = ([0-9.]+)/([0-9.]+)/([0-9.]+)/([0-9.]+)', '\\2') | first | default('N/A') }}"
+      ignore_errors: true
+
+    - name: "[LAB] Cảnh báo nếu latency vượt ngưỡng"
+      debug:
+        msg: "⚠️ LAB CẢNH BÁO: {{ inventory_hostname }} latency {{ lab_latency_parsed }}ms > ngưỡng {{ thresholds.latency_warn_ms }}ms"
+      when:
+        - lab_latency_parsed != 'N/A'
+        - lab_latency_parsed | float > thresholds.latency_warn_ms
+
+    - name: "[LAB] Lưu kết quả ra file JSON"
+      copy:
+        content: "{{ device_metrics | to_nice_json }}"
+        dest: "{{ report_base_dir }}/{{ report_date }}/raw/{{ inventory_hostname }}_{{ report_time }}.json"
+      delegate_to: localhost
+      become: false
+      ignore_errors: true

@@ -1,0 +1,17 @@
+# ============================================================
+# Grafana Datasource Provisioning — Auto-connect Prometheus
+# ============================================================
+apiVersion: 1
+
+datasources:
+  - name:      Prometheus_VATM
+    uid:       prometheus_vatm
+    type:      prometheus
+    access:    proxy
+    url:       http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: "15s"
+      queryTimeout: "30s"
+      httpMethod:   "POST"
+    editable: true

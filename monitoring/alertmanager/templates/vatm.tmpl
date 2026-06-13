@@ -1,0 +1,149 @@
+{{/* ============================================================
+     VATM ATCC Long Thành — Alertmanager Telegram Templates
+     Park Air VHF System | ED-137 Compliant
+     ============================================================
+     Templates Go cho các loại cảnh báo:
+       - vatm.telegram.critical   : Sự cố nghiêm trọng
+       - vatm.telegram.warning    : Cảnh báo ngưỡng
+       - vatm.telegram.ed137      : Vi phạm chuẩn ED-137
+       - vatm.telegram.resolved   : Sự cố đã khắc phục
+     ============================================================ */}}
+
+{{/* ─── Helper: Icon theo severity ─── */}}
+{{ define "vatm.icon.severity" -}}
+  {{- if eq .CommonLabels.severity "critical" }}🔴{{ end -}}
+  {{- if eq .CommonLabels.severity "warning" }}🟡{{ end -}}
+  {{- if eq .CommonLabels.severity "info" }}🔵{{ end -}}
+{{- end }}
+
+{{/* ─── Helper: Tên trạm theo site label ─── */}}
+{{ define "vatm.site.name" -}}
+  {{- if eq .CommonLabels.site "tx" }}📡 Trạm TX (Long Thành){{ end -}}
+  {{- if eq .CommonLabels.site "rx" }}📻 Trạm RX (Long Thành){{ end -}}
+  {{- if eq .CommonLabels.site "ubvhf" }}🏢 UBVHF Tầng 20 TWR{{ end -}}
+  {{- if eq .CommonLabels.site "atcc" }}🗼 ATCC Long Thành{{ end -}}
+  {{- if not .CommonLabels.site }}📍 {{ .CommonLabels.instance }}{{ end -}}
+{{- end }}
+
+{{/* ─── Helper: Thời gian định dạng Việt Nam ─── */}}
+{{ define "vatm.time" -}}
+  {{- (.StartsAt.In (now.Location)).Format "02/01/2006 15:04:05 MST" -}}
+{{- end }}
+
+{{/* ============================================================
+     Template 1: CRITICAL — Sự cố nghiêm trọng
+     Dùng cho: thiết bị down, mất kết nối, S4-IP TCP fail
+     ============================================================ */}}
+{{ define "vatm.telegram.critical" -}}
+🔴 *CẢNH BÁO KHẨN | VATM ATCC LONG THÀNH*
+
+{{ template "vatm.site.name" . }}
+⏰ `{{ (index .Alerts 0).StartsAt.Format "02/01/2006 15:04:05" }} UTC`
+
+{{- range .Alerts }}
+━━━━━━━━━━━━━━━━━━━━
+🚨 *{{ .Labels.alertname }}*
+📌 Thiết bị: `{{ .Labels.instance | reReplaceAll ":[0-9]+" "" }}`
+{{- if .Labels.job }}
+🔧 Job: `{{ .Labels.job }}`
+{{- end }}
+{{- if .Annotations.summary }}
+📋 Tóm tắt: {{ .Annotations.summary }}
+{{- end }}
+{{- if .Annotations.description }}
+📝 Chi tiết: {{ .Annotations.description }}
+{{- end }}
+{{- if .Annotations.runbook }}
+📖 Xử lý: {{ .Annotations.runbook }}
+{{- end }}
+{{- end }}
+
+━━━━━━━━━━━━━━━━━━━━
+🔗 [Grafana](http://192.168.100.10:3000) | [Alertmanager](http://192.168.100.10:9093)
+⚠️ _Yêu cầu xử lý ngay — ảnh hưởng an toàn hàng không_
+{{- end }}
+
+
+{{/* ============================================================
+     Template 2: WARNING — Cảnh báo ngưỡng
+     Dùng cho: CPU cao, interface errors, ping latency cao
+     ============================================================ */}}
+{{ define "vatm.telegram.warning" -}}
+🟡 *CẢNH BÁO | VATM ATCC LONG THÀNH*
+
+{{ template "vatm.site.name" . }}
+⏰ `{{ (index .Alerts 0).StartsAt.Format "02/01/2006 15:04:05" }} UTC`
+
+{{- range .Alerts }}
+━━━━━━━━━━━━━━━━━━━━
+⚠️ *{{ .Labels.alertname }}*
+📌 Thiết bị: `{{ .Labels.instance | reReplaceAll ":[0-9]+" "" }}`
+{{- if .Annotations.summary }}
+📋 {{ .Annotations.summary }}
+{{- end }}
+{{- if .Annotations.description }}
+📝 {{ .Annotations.description }}
+{{- end }}
+{{- end }}
+
+━━━━━━━━━━━━━━━━━━━━
+🔗 [Grafana](http://192.168.100.10:3000)
+{{- end }}
+
+
+{{/* ============================================================
+     Template 3: ED-137 VIOLATION — Vi phạm KPI chuẩn ED-137
+     Dùng cho: Jitter > 20ms, Delay > 100ms, Loss > 1%
+     ============================================================ */}}
+{{ define "vatm.telegram.ed137" -}}
+🚨 *VI PHẠM CHUẨN ED-137 | VATM ATCC LONG THÀNH*
+
+{{ template "vatm.site.name" . }}
+⏰ `{{ (index .Alerts 0).StartsAt.Format "02/01/2006 15:04:05" }} UTC`
+
+{{- range .Alerts }}
+━━━━━━━━━━━━━━━━━━━━
+📡 *{{ .Labels.alertname }}*
+📌 Luồng: `{{ .Labels.instance | reReplaceAll ":[0-9]+" "" }}`
+
+{{- if .Annotations.summary }}
+📊 Vi phạm: {{ .Annotations.summary }}
+{{- end }}
+{{- if .Annotations.description }}
+📝 Giá trị: {{ .Annotations.description }}
+{{- end }}
+
+📋 *Ngưỡng chuẩn ED-137:*
+  • One-way Delay: < 100ms
+  • Jitter: < 20ms
+  • Packet Loss: < 1%
+{{- end }}
+
+━━━━━━━━━━━━━━━━━━━━
+⛔ _Vi phạm ED-137 ảnh hưởng chất lượng thoại ATC_
+🔗 [Dashboard ED-137](http://192.168.100.10:3000) | [Alertmanager](http://192.168.100.10:9093)
+{{- end }}
+
+
+{{/* ============================================================
+     Template 4: RESOLVED — Sự cố đã khắc phục
+     ============================================================ */}}
+{{ define "vatm.telegram.resolved" -}}
+✅ *ĐÃ KHẮC PHỤC | VATM ATCC LONG THÀNH*
+
+{{ template "vatm.site.name" . }}
+⏰ Kết thúc: `{{ (index .Alerts 0).EndsAt.Format "02/01/2006 15:04:05" }} UTC`
+
+{{- range .Alerts }}
+━━━━━━━━━━━━━━━━━━━━
+✔️ *{{ .Labels.alertname }}*
+📌 Thiết bị: `{{ .Labels.instance | reReplaceAll ":[0-9]+" "" }}`
+{{- if .Annotations.summary }}
+📋 {{ .Annotations.summary }}
+{{- end }}
+⏱ Thời gian sự cố: {{ duration .StartsAt .EndsAt }}
+{{- end }}
+
+━━━━━━━━━━━━━━━━━━━━
+🔗 [Grafana](http://192.168.100.10:3000)
+{{- end }}

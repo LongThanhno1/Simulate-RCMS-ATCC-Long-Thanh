@@ -1,0 +1,143 @@
+# ============================================================
+# VATM ATCC Long Thành — ED-137 KPI Alert Rules
+# Chuẩn: EUROCAE ED-137 VoIP ATM Applications
+# KPI: One-way Delay < 100ms | Jitter < 20ms | Loss < 1%
+#
+# Nguồn metric:
+#   - probe_duration_seconds: từ blackbox_exporter ICMP/TCP
+#   - Jitter và Packet Loss: đo từ RCMS workstation qua Ansible
+#     (kết quả được push vào Prometheus qua Pushgateway)
+# ============================================================
+
+groups:
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 1: One-way Delay (Latency) — Blackbox ICMP
+  # Probe ICMP từ monitoring server → thiết bị đích
+  # NOTE: ICMP round-trip / 2 ≈ one-way delay
+  # ════════════════════════════════════════════════════════
+  - name: ed137_latency
+    interval: 15s
+    rules:
+
+      # ── Delay WARN (> 50ms one-way = RTT > 100ms) ──
+      - alert: ED137_Delay_WARN
+        expr: (probe_duration_seconds{job=~"blackbox.*"} * 500) > 50
+        for: 2m
+        labels:
+          severity: warning
+          standard: ed137
+          kpi:      one_way_delay
+        annotations:
+          summary:     "⚠️ [WARN] Delay cao — {{ $labels.instance }}"
+          description: |
+            One-way delay ước tính: {{ $value }}ms
+            Ngưỡng WARN: 50ms | Ngưỡng ED-137 CRIT: 100ms
+            Hành động: Theo dõi, kiểm tra tải mạng tuyến Fo.
+
+      # ── Delay CRIT (> 100ms — vi phạm ED-137) ──
+      - alert: ED137_Delay_CRITICAL
+        expr: (probe_duration_seconds{job=~"blackbox.*"} * 500) > 100
+        for: 1m
+        labels:
+          severity: critical
+          standard: ed137
+          kpi:      one_way_delay
+          action:   log_report
+        annotations:
+          summary:     "🔴 [ED-137 VI PHẠM] Delay vượt ngưỡng — {{ $labels.instance }}"
+          description: |
+            One-way delay: {{ $value }}ms > 100ms (ED-137 limit)
+            Site: {{ $labels.site }}
+            Hành động NGAY: Ghi nhật ký sự cố theo QĐ 2999. Báo cáo trưởng ca.
+            Kiểm tra: Tải cáp quang Fo1/Fo2, router Nokia MPLS, switch SW6860.
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 2: Jitter — từ Pushgateway (Ansible đo iperf3/ping)
+  # Ansible playbook đo jitter và push vào Prometheus
+  # metric: vatm_voip_jitter_ms{site, direction, freq}
+  # ════════════════════════════════════════════════════════
+  - name: ed137_jitter
+    interval: 30s
+    rules:
+
+      - alert: ED137_Jitter_WARN
+        expr: vatm_voip_jitter_ms > 10
+        for: 2m
+        labels:
+          severity: warning
+          standard: ed137
+          kpi:      jitter
+        annotations:
+          summary:     "⚠️ [WARN] Jitter cao — {{ $labels.site }} {{ $labels.freq }}"
+          description: |
+            Jitter: {{ $value }}ms (ngưỡng WARN: 10ms | ED-137 CRIT: 20ms)
+            Hành động: Kiểm tra QoS DSCP marking, băng thông khả dụng.
+
+      - alert: ED137_Jitter_CRITICAL
+        expr: vatm_voip_jitter_ms > 20
+        for: 1m
+        labels:
+          severity: critical
+          standard: ed137
+          kpi:      jitter
+          action:   log_report
+        annotations:
+          summary:     "🔴 [ED-137 VI PHẠM] Jitter vượt ngưỡng — {{ $labels.site }}"
+          description: |
+            Jitter: {{ $value }}ms > 20ms (ED-137 limit)
+            Hành động NGAY: Ghi nhật ký, báo trưởng ca, kiểm tra QoS.
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 3: Packet Loss — từ Pushgateway
+  # metric: vatm_voip_loss_percent{site, direction, freq}
+  # ════════════════════════════════════════════════════════
+  - name: ed137_packet_loss
+    interval: 30s
+    rules:
+
+      - alert: ED137_PacketLoss_WARN
+        expr: vatm_voip_loss_percent > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          standard: ed137
+          kpi:      packet_loss
+        annotations:
+          summary:     "⚠️ [WARN] Mất gói — {{ $labels.site }}"
+          description: |
+            Packet Loss: {{ $value }}% (ngưỡng WARN: 0.1% | ED-137 CRIT: 1%)
+
+      - alert: ED137_PacketLoss_CRITICAL
+        expr: vatm_voip_loss_percent > 1
+        for: 1m
+        labels:
+          severity: critical
+          standard: ed137
+          kpi:      packet_loss
+          action:   log_report
+        annotations:
+          summary:     "🔴 [ED-137 VI PHẠM] Mất gói vượt ngưỡng — {{ $labels.site }}"
+          description: |
+            Packet Loss: {{ $value }}% > 1% (ED-137 limit)
+            Hành động NGAY: Ghi nhật ký sự cố QĐ 2999. Báo trưởng ca ngay lập tức.
+
+  # ════════════════════════════════════════════════════════
+  # GROUP 4: Probe success rate — tổng hợp
+  # ════════════════════════════════════════════════════════
+  - name: ed137_probe_health
+    interval: 30s
+    rules:
+
+      - alert: ED137_Probe_Failed
+        expr: probe_success == 0
+        for: 1m
+        labels:
+          severity: critical
+          standard: ed137
+        annotations:
+          summary:     "🔴 [CRIT] Probe thất bại — {{ $labels.instance }}"
+          description: |
+            Blackbox probe tới {{ $labels.instance }} thất bại.
+            Module: {{ $labels.module }}
+            Hành động: Xác nhận kết nối mạng tới thiết bị.

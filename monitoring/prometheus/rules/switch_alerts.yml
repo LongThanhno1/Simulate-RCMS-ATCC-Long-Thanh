@@ -1,0 +1,77 @@
+# ============================================================
+# VATM ATCC Long Thành — ALE Switch Alert Rules
+# Thiết bị: ALE OS6860E-24 (VoIP), ALE OS6360-24 (RCMS)
+# ============================================================
+
+groups:
+
+  - name: ale_switch_alerts
+    interval: 30s
+    rules:
+
+      # ── Switch mất SNMP (down hoàn toàn) ──
+      - alert: Switch_Down
+        expr: up{job=~"snmp_sw.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          system:   network_switch
+          action:   immediate
+        annotations:
+          summary:     "🔴 [CRIT] Switch OFFLINE — {{ $labels.instance }}"
+          description: |
+            Switch {{ $labels.device }} tại {{ $labels.site }} không phản hồi SNMP.
+            Hành động: Kiểm tra nguồn điện switch, kết nối uplink, console port.
+            ⚠️ Nếu SW6860 VoIP down → ảnh hưởng toàn bộ luồng VoIP ED-137!
+
+      # ── Port uplink xuống (port quan trọng) ──
+      - alert: Switch_Uplink_Down
+        expr: ale_port_oper_status{ifDescr=~".*(trunk|uplink|agg|port24|port25|port26|port27|port28).*"} == 2
+        for: 1m
+        labels:
+          severity: critical
+          system:   network_switch
+        annotations:
+          summary:     "🔴 [CRIT] Uplink port down — {{ $labels.instance }}:{{ $labels.ifDescr }}"
+          description: |
+            Port: {{ $labels.ifDescr }}
+            Switch: {{ $labels.instance }} ({{ $labels.device }})
+            Hành động: Kiểm tra cáp quang uplink, SFP module, đầu đối diện.
+
+      # ── Port bình thường xuống ──
+      - alert: Switch_Port_Down
+        expr: ale_port_oper_status{ifDescr!~".*(trunk|uplink|agg).*"} == 2
+          and ale_port_admin_status == 1
+        for: 3m
+        labels:
+          severity: warning
+          system:   network_switch
+        annotations:
+          summary:     "⚠️ [WARN] Port down — {{ $labels.instance }}:{{ $labels.ifDescr }}"
+          description: |
+            Port admin=UP nhưng oper=DOWN trên {{ $labels.instance }}.
+            Hành động: Kiểm tra thiết bị kết nối vào port {{ $labels.ifDescr }}.
+
+      # ── Lỗi port cao ──
+      - alert: Switch_Port_Errors
+        expr: rate(ale_port_in_errors[5m]) > 20
+        for: 3m
+        labels:
+          severity: warning
+          system:   network_switch
+        annotations:
+          summary:     "⚠️ [WARN] Lỗi port cao — {{ $labels.instance }}:{{ $labels.ifDescr }}"
+          description: |
+            Error rate: {{ $value | humanize }} errors/s
+            Kiểm tra duplex mismatch, SFP chất lượng kém.
+
+      # ── Switch uptime reset bất thường ──
+      - alert: Switch_Unexpected_Reboot
+        expr: (ale_uptime_ticks / 100) < 300
+        for: 0m
+        labels:
+          severity: warning
+          system:   network_switch
+        annotations:
+          summary:     "⚠️ [WARN] Switch reboot — {{ $labels.instance }}"
+          description: "Switch vừa khởi động lại (uptime < 5 phút). Kiểm tra nguồn điện UPS."

@@ -1,0 +1,177 @@
+/* ================================================================
+   VATM ATCC Long Thành — ED-137 Portal
+   File: css/topology.css — Canvas container, node panel, param form, threshold table, scrollbar
+   Phụ thuộc: theme.css, layout.css, components.css
+   ================================================================ */
+
+/* ================================================================
+   CANVAS TOPOLOGY
+   ================================================================ */
+.topo-wrap {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.canvas-container {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  cursor: default;
+  background: var(--bg2);
+  transition: border-color .3s;
+  /* Fix 3D: container không còn bị sizing bởi #topo-canvas (display:none) */
+  aspect-ratio: 960 / 440;
+  min-height: 320px;
+}
+#topo-canvas { width:100%; height:auto; display:block; }
+.ws-label {
+  position:absolute; top:8px; right:10px;
+  font-size:0.68em; color:var(--text2);
+  background:var(--bg2); padding:2px 8px;
+  border-radius:10px; border:1px solid var(--border);
+  pointer-events:none; transition:background .3s;
+}
+.canvas-legend {
+  display:flex; gap:14px; flex-wrap:wrap;
+  padding:7px 12px; font-size:0.7em; color:var(--text2);
+  border-top:1px solid var(--border);
+  background:var(--bg2);
+}
+.leg-item { display:flex; align-items:center; gap:5px; }
+.leg-dot  { width:9px; height:9px; border-radius:50%; }
+
+/* ================================================================
+   NODE DETAIL PANEL
+   ================================================================ */
+.node-panel {
+  width: 285px; min-width:270px;
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:8px; overflow:hidden;
+  animation:panelIn .18s ease-out;
+  transition:border-color .3s;
+}
+@keyframes panelIn { from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:translateX(0)} }
+
+.panel-header {
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:flex-start;
+}
+.panel-title { font-weight:700; font-size:0.88em; color:var(--blue); }
+.panel-close {
+  background:none; border:none;
+  color:var(--text2); cursor:pointer;
+  font-size:1.1em; padding:0 2px; line-height:1;
+}
+.panel-close:hover { color:var(--red); }
+.panel-body { padding:12px 14px; }
+.info-row {
+  display:flex; justify-content:space-between; align-items:flex-start;
+  padding:4px 0; border-bottom:1px solid var(--border);
+  font-size:0.77em; gap:8px;
+}
+.info-row:last-child { border-bottom:none; }
+.ik { color:var(--text2); flex-shrink:0; }
+.iv { color:var(--text); font-weight:500; text-align:right; word-break:break-all; }
+.panel-kpis { margin-top:10px; }
+.kpi-row-title {
+  font-size:0.68em; color:var(--text2);
+  text-transform:uppercase; letter-spacing:.06em;
+  font-weight:600; margin-bottom:6px;
+}
+.kpi-mini { margin-bottom:7px; }
+.kpi-mini-lbl { font-size:0.68em; color:var(--text2); margin-bottom:3px; display:flex; justify-content:space-between; }
+.kpi-mini-bar { height:5px; border-radius:3px; background:var(--bg4); overflow:hidden; }
+.kpi-mini-fill { height:100%; border-radius:3px; transition:width .5s, background .5s; }
+.panel-actions {
+  padding:10px 14px;
+  border-top:1px solid var(--border);
+  display:flex; flex-direction:column; gap:5px;
+}
+
+/* ================================================================
+   THRESHOLD TABLE
+   ================================================================ */
+.thr-table { width:100%; border-collapse:collapse; font-size:0.78em; }
+.thr-table th {
+  background:var(--bg4); color:var(--blue);
+  padding:6px 10px; text-align:left;
+  border-bottom:1px solid var(--border);
+  font-weight:600;
+}
+.thr-table td { padding:5px 10px; border-bottom:1px solid var(--border); }
+.ok   { color:var(--green); font-weight:600; }
+.warn { color:var(--yellow); font-weight:600; }
+.crit { color:var(--red); font-weight:600; }
+
+/* ================================================================
+   PANEL TABS (bên trong Node Detail Panel)
+   ================================================================ */
+.panel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+.panel-tab {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: .75em;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text2);
+  border-bottom: 2px solid transparent;
+  transition: color .15s, background .15s;
+  user-select: none;
+}
+.panel-tab:hover  { color:var(--text); background:var(--bg4); }
+.panel-tab.active { color:var(--blue); border-bottom-color:var(--blue); font-weight:700; }
+
+.panel-tab-content        { display:none; }
+.panel-tab-content.active { display:block; }
+
+/* ================================================================
+   PARAM FORM
+   ================================================================ */
+.param-section {
+  font-size: .68em; color: var(--blue);
+  text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 700; margin: 10px 0 4px;
+  padding-bottom: 3px; border-bottom: 1px solid var(--border);
+}
+.param-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 0; border-bottom: 1px solid var(--border);
+  font-size: .77em;
+}
+.param-row:last-child { border-bottom:none; }
+.param-label { color:var(--text2); flex:1; min-width:0; }
+.param-input {
+  background: var(--bg4); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 6px; font-size: .9em;
+  width: 88px; text-align: right;
+  font-family: 'Consolas', monospace;
+  transition: border-color .15s;
+}
+.param-input:focus {
+  outline: none; border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(56,189,248,.15);
+}
+.param-unit { color:var(--text3); width:28px; font-size:.82em; text-align:left; flex-shrink:0; }
+.param-save-msg {
+  font-size: .72em; color: var(--green);
+  text-align: center; padding: 4px;
+  display: none;
+}
+
+/* ================================================================
+   SCROLLBAR
+   ================================================================ */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--border2); }

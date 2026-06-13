@@ -1,0 +1,291 @@
+---
+# ============================================================
+# Playbook 04: Ping-check VCCS — FREQUENTIS xMG + Switch Core
+# ============================================================
+# Mục đích:
+#   Kiểm tra kết nối ICMP từ monitoring server (Docker host) đến
+#   toàn bộ thiết bị VCCS LTIA trên subnet 10.60.8.x:
+#     - Switch Core RED  (10.60.8.204)
+#     - Switch Core BLUE (10.60.8.203)
+#     - Switch 20FL-1    (10.60.8.201)
+#     - Switch 20FL-2    (10.60.8.202)
+#     - xMG#1 QMG-J1    (10.60.8.71,73,75,77,79,81,83,85,87,89,91) — 11 ports
+#     - xMG#2 QMG-J1    (10.60.8.101,103,105,107,109,111,113,115,117,119,121) — 11 ports
+#     - SVR1             (10.60.8.12)
+#     - SVR2             (10.60.8.2)
+#
+# Kết quả:
+#   1. In bảng tóm tắt trạng thái ra console
+#   2. Ghi file báo cáo Markdown tích hợp vào báo cáo ca trực
+#   3. Push metrics vatm_vccs_ping_* → Prometheus Pushgateway
+#
+# Sử dụng:
+#   Từ monitoring server: ansible-playbook -i hosts.ini playbooks/04_ping_check_vccs.yml
+#   Đầu ca sáng (kết hợp): ansible-playbook -i hosts.ini playbooks/03_ping_check.yml playbooks/04_ping_check_vccs.yml
+#
+# Lưu ý:
+#   Playbook chạy hoàn toàn từ localhost (delegate_to: localhost).
+#   Không SSH vào thiết bị FREQUENTIS/VCCS — chỉ ICMP ping.
+#   Đảm bảo monitoring server có route đến subnet 10.60.8.x.
+# ============================================================
+
+# ============================================================
+# PLAY 1: Ping-check tất cả thiết bị VCCS từ monitoring server
+# ============================================================
+- name: "[VCCS] Kiểm tra kết nối ICMP — FREQUENTIS xMG + Switch Core"
+  hosts: localhost
+  gather_facts: true
+  connection: local
+
+  vars:
+    pushgateway_url: "http://localhost:9091"
+    ping_count: 10
+    ping_interval: "0.1"
+    report_dir: "/tmp/vatm_reports"
+    report_file: "{{ report_dir }}/vccs_ping_{{ ansible_date_time.date }}_{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}.md"
+
+    # ── Danh sách thiết bị VCCS (BVTC VCCS-06, VCCS-07, VCCS-08) ──
+    vccs_targets:
+      # Switch Core
+      - { name: "VCCS-RED-CORE",       ip: "10.60.8.204", group: "Switch Core",    role: "RED (Primary)",        redundancy: "primary" }
+      - { name: "VCCS-BLUE-CORE",      ip: "10.60.8.203", group: "Switch Core",    role: "BLUE (Primary)",       redundancy: "primary" }
+      # Switch Tầng 20
+      - { name: "Switch_VCCS_20FL_1",  ip: "10.60.8.201", group: "Switch 20FL",    role: "Floor20 SW-1",         redundancy: "main" }
+      - { name: "Switch_VCCS_20FL_2",  ip: "10.60.8.202", group: "Switch 20FL",    role: "Floor20 SW-2",         redundancy: "standby" }
+      # xMG#1 — chỉ check J1 (representative per channel)
+      - { name: "xMG1-QMG01-J1",      ip: "10.60.8.71",  group: "xMG#1 Primary",  role: "QMG01 118.425MHz",     redundancy: "main" }
+      - { name: "xMG1-QMG02-J1",      ip: "10.60.8.73",  group: "xMG#1 Primary",  role: "QMG02 124.325MHz",     redundancy: "main" }
+      - { name: "xMG1-QMG03-J1",      ip: "10.60.8.75",  group: "xMG#1 Primary",  role: "QMG03 121.425MHz",     redundancy: "main" }
+      - { name: "xMG1-QMG04-J1",      ip: "10.60.8.77",  group: "xMG#1 Primary",  role: "QMG04 121.775MHz",     redundancy: "main" }
+      - { name: "xMG1-QMG05-J1",      ip: "10.60.8.79",  group: "xMG#1 Primary",  role: "QMG05 121.925MHz",     redundancy: "main" }
+      - { name: "xMG1-QMG06-J1",      ip: "10.60.8.81",  group: "xMG#1 Primary",  role: "QMG06 121.725MHz",     redundancy: "main" }
+      - { name: "xMG1-QMG07-J1",      ip: "10.60.8.83",  group: "xMG#1 Primary",  role: "QMG07 124.625MHz",     redundancy: "main" }
+      - { name: "xMG1-QMG08-J1",      ip: "10.60.8.85",  group: "xMG#1 Primary",  role: "QMG08 125.275MHz",     redundancy: "main" }
+      - { name: "xMG1-QMG09-J1",      ip: "10.60.8.87",  group: "xMG#1 Primary",  role: "QMG09 121.500MHz EMG", redundancy: "main" }
+      - { name: "xMG1-QMG10-J1",      ip: "10.60.8.89",  group: "xMG#1 Primary",  role: "QMG10 ATIS",           redundancy: "main" }
+      - { name: "xMG1-QMG11-J1",      ip: "10.60.8.91",  group: "xMG#1 Primary",  role: "QMG11",                redundancy: "main" }
+      # xMG#2 — Standby
+      - { name: "xMG2-QMG01-J1",      ip: "10.60.8.101", group: "xMG#2 Standby",  role: "QMG01 118.425MHz",     redundancy: "standby" }
+      - { name: "xMG2-QMG02-J1",      ip: "10.60.8.103", group: "xMG#2 Standby",  role: "QMG02 124.325MHz",     redundancy: "standby" }
+      - { name: "xMG2-QMG03-J1",      ip: "10.60.8.105", group: "xMG#2 Standby",  role: "QMG03 121.425MHz",     redundancy: "standby" }
+      - { name: "xMG2-QMG04-J1",      ip: "10.60.8.107", group: "xMG#2 Standby",  role: "QMG04 121.775MHz",     redundancy: "standby" }
+      - { name: "xMG2-QMG05-J1",      ip: "10.60.8.109", group: "xMG#2 Standby",  role: "QMG05 121.925MHz",     redundancy: "standby" }
+      - { name: "xMG2-QMG06-J1",      ip: "10.60.8.111", group: "xMG#2 Standby",  role: "QMG06 121.725MHz",     redundancy: "standby" }
+      - { name: "xMG2-QMG07-J1",      ip: "10.60.8.113", group: "xMG#2 Standby",  role: "QMG07 124.625MHz",     redundancy: "standby" }
+      - { name: "xMG2-QMG08-J1",      ip: "10.60.8.115", group: "xMG#2 Standby",  role: "QMG08 125.275MHz",     redundancy: "standby" }
+      - { name: "xMG2-QMG09-J1",      ip: "10.60.8.117", group: "xMG#2 Standby",  role: "QMG09 121.500MHz EMG", redundancy: "standby" }
+      - { name: "xMG2-QMG10-J1",      ip: "10.60.8.119", group: "xMG#2 Standby",  role: "QMG10 ATIS",           redundancy: "standby" }
+      - { name: "xMG2-QMG11-J1",      ip: "10.60.8.121", group: "xMG#2 Standby",  role: "QMG11",                redundancy: "standby" }
+      # VCCS Servers
+      - { name: "VCCS-SVR1",           ip: "10.60.8.12",  group: "VCCS Servers",      role: "Application Server 1",         redundancy: "main" }
+      - { name: "VCCS-SVR2",           ip: "10.60.8.2",   group: "VCCS Servers",      role: "Application Server 2",         redundancy: "standby" }
+      # VCCS Workstations — Tầng 20 TWR
+      # GAP3 RESOLVED: 10.60.8.254 = VCCS Operator WS (BVTC VCCS-08, WSRCMS–ETH)
+      #                ≠ 10.60.11.30 (VHF-RCMS WS, mạng RCMS 10.60.11.x)
+      - { name: "VCCS-WS-20FL",        ip: "10.60.8.254", group: "VCCS Workstations", role: "Operator WS Floor20",          redundancy: "main" }
+
+  tasks:
+
+    # ----------------------------------------------------------
+    # BƯỚC 0: Tạo thư mục báo cáo
+    # ----------------------------------------------------------
+    - name: "Tạo thư mục báo cáo {{ report_dir }}"
+      file:
+        path: "{{ report_dir }}"
+        state: directory
+        mode: '0755'
+
+    # ----------------------------------------------------------
+    # BƯỚC 1: Ping tất cả VCCS targets
+    # ----------------------------------------------------------
+    - name: "Ping {{ item.name }} ({{ item.ip }}) — {{ item.group }}"
+      command: >
+        ping -c {{ ping_count }} -i {{ ping_interval }} -W 1 {{ item.ip }}
+      register: vccs_ping_results
+      loop: "{{ vccs_targets }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.ip }})"
+      ignore_errors: true
+
+    # ----------------------------------------------------------
+    # BƯỚC 2: Tổng hợp kết quả thành danh sách dict
+    # ----------------------------------------------------------
+    - name: "Tổng hợp kết quả ping"
+      set_fact:
+        vccs_results_parsed: >-
+          {{
+            vccs_results_parsed | default([]) + [{
+              'name':        item.item.name,
+              'ip':          item.item.ip,
+              'group':       item.item.group,
+              'role':        item.item.role,
+              'redundancy':  item.item.redundancy,
+              'up':          (0 if (item.rc | default(1)) != 0 else 1),
+              'latency':     (item.stdout | regex_search('rtt min/avg/max/mdev = [0-9.]+/([0-9.]+)/[0-9.]+/[0-9.]+', '\1') | first | default('0') | float | round(2)),
+              'jitter':      (item.stdout | regex_search('rtt min/avg/max/mdev = [0-9.]+/[0-9.]+/[0-9.]+/([0-9.]+)', '\1') | first | default('0') | float | round(2)),
+              'loss':        (item.stdout | regex_search('([0-9.]+)% packet loss', '\1') | first | default('100') | float | round(1)),
+              'status_icon': ('🟢 UP' if (item.rc | default(1)) == 0 else '🔴 DOWN')
+            }]
+          }}
+      loop: "{{ vccs_ping_results.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    # ----------------------------------------------------------
+    # BƯỚC 3: In bảng tóm tắt ra console
+    # ----------------------------------------------------------
+    - name: "📊 [VCCS Ping] {{ item.group }} — {{ item.name }} ({{ item.ip }})"
+      debug:
+        msg: >-
+          {{ item.status_icon }} | {{ item.name }} {{ item.ip }} | {{ item.role }}
+          | Latency: {{ item.latency }}ms | Jitter: {{ item.jitter }}ms | Loss: {{ item.loss }}%
+      loop: "{{ vccs_results_parsed }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    # ----------------------------------------------------------
+    # BƯỚC 4: Cảnh báo ngưỡng ED-137 cho các thiết bị UP
+    # ----------------------------------------------------------
+    - name: "⚠️ WARN — Latency cao (> 50ms): {{ item.name }}"
+      debug:
+        msg: "⚠️ WARN {{ item.name }} ({{ item.ip }}): RTT {{ item.latency }}ms — vượt ngưỡng khuyến cáo 50ms"
+      when:
+        - item.up == 1
+        - item.latency | float > 50.0
+      loop: "{{ vccs_results_parsed }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "🔴 CRIT — Loss vượt ngưỡng (> 1%): {{ item.name }}"
+      debug:
+        msg: "🔴 CRIT {{ item.name }} ({{ item.ip }}): Loss {{ item.loss }}% — vi phạm ngưỡng ED-137 1%"
+      when:
+        - item.loss | float > 1.0
+      loop: "{{ vccs_results_parsed }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    # Cảnh báo đặc biệt: cả 2 switch core down
+    - name: "🚨 P1 CRITICAL — Cả 2 Switch Core RED + BLUE DOWN"
+      debug:
+        msg: |
+          🚨🚨 CRITICAL P1 — RED SWITCH CORE (10.60.8.204) VÀ BLUE SWITCH CORE (10.60.8.203) ĐỀU DOWN!
+          Toàn bộ hệ thống VCCS ED-137 có nguy cơ mất hoàn toàn.
+          HÀNH ĐỘNG NGAY: Kích hoạt Ultimate Backup VHF (Tầng 20 TWR) + Thông báo KTVT trực ca trưởng!
+      when: >-
+        (vccs_results_parsed | selectattr('name', '==', 'VCCS-RED-CORE')  | map(attribute='up') | first | int == 0) and
+        (vccs_results_parsed | selectattr('name', '==', 'VCCS-BLUE-CORE') | map(attribute='up') | first | int == 0)
+
+    # ----------------------------------------------------------
+    # BƯỚC 5: Ghi báo cáo Markdown cho ca trực
+    # ----------------------------------------------------------
+    - name: "Ghi báo cáo Markdown — {{ report_file }}"
+      copy:
+        dest: "{{ report_file }}"
+        content: |
+          # BÁO CÁO KIỂM TRA VCCS — FREQUENTIS xMG + Switch Core
+          **Thời gian:** {{ ansible_date_time.date }} {{ ansible_date_time.time }} (ICT)
+          **Thực hiện bởi:** Playbook 04_ping_check_vccs.yml
+          **Tiêu chuẩn:** EUROCAE ED-137 | BVTC VCCS LTIA
+
+          ---
+
+          ## 1. Switch Core RED / BLUE
+
+          | Thiết bị | IP | Trạng thái | Latency (ms) | Loss (%) |
+          |---|---|---|---|---|
+          {% for item in vccs_results_parsed if item.group == 'Switch Core' %}
+          | {{ item.name }} | {{ item.ip }} | {{ item.status_icon }} | {{ item.latency }} | {{ item.loss }} |
+          {% endfor %}
+
+          ## 2. Switch Tầng 20 (20FL)
+
+          | Thiết bị | IP | Trạng thái | Latency (ms) | Loss (%) |
+          |---|---|---|---|---|
+          {% for item in vccs_results_parsed if item.group == 'Switch 20FL' %}
+          | {{ item.name }} | {{ item.ip }} | {{ item.status_icon }} | {{ item.latency }} | {{ item.loss }} |
+          {% endfor %}
+
+          ## 3. xMG#1 (Primary) — QMG Ports
+
+          | Thiết bị | IP | Kênh / Tần số | Trạng thái | Latency (ms) | Loss (%) |
+          |---|---|---|---|---|---|
+          {% for item in vccs_results_parsed if item.group == 'xMG#1 Primary' %}
+          | {{ item.name }} | {{ item.ip }} | {{ item.role }} | {{ item.status_icon }} | {{ item.latency }} | {{ item.loss }} |
+          {% endfor %}
+
+          ## 4. xMG#2 (Standby) — QMG Ports
+
+          | Thiết bị | IP | Kênh / Tần số | Trạng thái | Latency (ms) | Loss (%) |
+          |---|---|---|---|---|---|
+          {% for item in vccs_results_parsed if item.group == 'xMG#2 Standby' %}
+          | {{ item.name }} | {{ item.ip }} | {{ item.role }} | {{ item.status_icon }} | {{ item.latency }} | {{ item.loss }} |
+          {% endfor %}
+
+          ## 5. VCCS Application Servers
+
+          | Thiết bị | IP | Trạng thái | Latency (ms) | Loss (%) |
+          |---|---|---|---|---|
+          {% for item in vccs_results_parsed if item.group == 'VCCS Servers' %}
+          | {{ item.name }} | {{ item.ip }} | {{ item.status_icon }} | {{ item.latency }} | {{ item.loss }} |
+          {% endfor %}
+
+          ---
+
+          ## Tổng kết
+
+          - **Tổng thiết bị kiểm tra:** {{ vccs_results_parsed | length }}
+          - **Thiết bị UP:** {{ vccs_results_parsed | selectattr('up', '==', 1) | list | length }}
+          - **Thiết bị DOWN:** {{ vccs_results_parsed | selectattr('up', '==', 0) | list | length }}
+          {% if vccs_results_parsed | selectattr('up', '==', 0) | list | length > 0 %}
+
+          ### ⚠️ Thiết bị DOWN cần xử lý:
+          {% for item in vccs_results_parsed if item.up == 0 %}
+          - **{{ item.name }}** ({{ item.ip }}) — {{ item.group }} / {{ item.role }}
+          {% endfor %}
+          {% endif %}
+          {% if vccs_results_parsed | selectattr('loss', 'gt', 1.0) | list | length > 0 %}
+
+          ### 🔴 Vi phạm ngưỡng ED-137 Packet Loss (> 1%):
+          {% for item in vccs_results_parsed if item.loss | float > 1.0 %}
+          - **{{ item.name }}** ({{ item.ip }}): Loss = {{ item.loss }}%
+          {% endfor %}
+          {% endif %}
+
+          ---
+          *Nguồn IP: BVTC VCCS LTIA — VCCS-06, VCCS-07, VCCS-08*
+          *Phương pháp: ICMP ping {{ ping_count }} gói × {{ ping_interval }}s interval*
+
+    - name: "✅ Báo cáo đã lưu tại {{ report_file }}"
+      debug:
+        msg: "Báo cáo VCCS ping-check: {{ report_file }}"
+
+    # ----------------------------------------------------------
+    # BƯỚC 6: Push metrics → Prometheus Pushgateway
+    # Job name: vatm_vccs_ping_check
+    # ----------------------------------------------------------
+    - name: "Push metrics VCCS → Pushgateway ({{ item.name }})"
+      uri:
+        url: "{{ pushgateway_url }}/metrics/job/vatm_vccs_ping_check/instance/{{ item.name }}"
+        method: POST
+        body: |
+          # HELP vatm_vccs_ping_up VCCS device ICMP reachability: 1=UP, 0=DOWN
+          # TYPE vatm_vccs_ping_up gauge
+          vatm_vccs_ping_up{site="ATCC_CNS_Room",device="{{ item.name }}",group="{{ item.group }}",redundancy="{{ item.redundancy }}",ip="{{ item.ip }}"} {{ item.up }}
+          # HELP vatm_vccs_ping_latency_ms VCCS device avg ICMP RTT (ms)
+          # TYPE vatm_vccs_ping_latency_ms gauge
+          vatm_vccs_ping_latency_ms{site="ATCC_CNS_Room",device="{{ item.name }}",group="{{ item.group }}",redundancy="{{ item.redundancy }}",ip="{{ item.ip }}"} {{ item.latency }}
+          # HELP vatm_vccs_ping_jitter_ms VCCS device ICMP RTT mdev (ms)
+          # TYPE vatm_vccs_ping_jitter_ms gauge
+          vatm_vccs_ping_jitter_ms{site="ATCC_CNS_Room",device="{{ item.name }}",group="{{ item.group }}",redundancy="{{ item.redundancy }}",ip="{{ item.ip }}"} {{ item.jitter }}
+          # HELP vatm_vccs_ping_loss_percent VCCS device ICMP packet loss %
+          # TYPE vatm_vccs_ping_loss_percent gauge
+          vatm_vccs_ping_loss_percent{site="ATCC_CNS_Room",device="{{ item.name }}",group="{{ item.group }}",redundancy="{{ item.redundancy }}",ip="{{ item.ip }}"} {{ item.loss }}
+        body_format: raw
+        headers:
+          Content-Type: "text/plain; version=0.0.4; charset=utf-8"
+        status_code: [200, 202]
+      loop: "{{ vccs_results_parsed }}"
+      loop_control:
+        label: "{{ item.name }}"
+      ignore_errors: true  # Không fail nếu Pushgateway chưa chạy

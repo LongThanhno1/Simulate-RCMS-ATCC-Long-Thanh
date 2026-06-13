@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VATM ATCC Long Thành — Mô phỏng Giám sát VHF</title>
+<!-- Load CSS theo thứ tự phụ thuộc -->
+<link rel="stylesheet" href="/static/css/theme.css">
+<link rel="stylesheet" href="/static/css/layout.css">
+<link rel="stylesheet" href="/static/css/components.css">
+<link rel="stylesheet" href="/static/css/topology.css">
+</head>
+<body>
+
+<!-- ================================================================ -->
+<!-- APP HEADER + TOP NAV                                             -->
+<!-- ================================================================ -->
+<div class="app-header">
+  <div class="header-top">
+    <div class="logo-block">
+      <div class="logo-icon">🗼</div>
+      <div class="logo-text">
+        <h1>VATM ATCC Long Thành — Mô phỏng Giám sát đường truyền VHF</h1>
+        <p>Giả lập hệ thống RCMS · TX Station ⟶ ATCC Long Thành ⟶ RX Station · ED-137 / Quy trình 2999</p>
+      </div>
+    </div>
+    <div class="header-controls">
+      <span id="clock">--:--:--</span>
+      <span id="status-badge" class="status-wait"><span class="spinner"></span> Kết nối...</span>
+      <button id="theme-btn" onclick="toggleTheme()" title="Chế độ Sáng/Tối">☀️</button>
+    </div>
+  </div>
+
+  <!-- Navigation Menu Bar -->
+  <nav class="nav-bar">
+    <div class="nav-item active" onclick="switchTab('topology')">
+      <span class="nav-dot"></span> 🗺 Sơ đồ Mạng
+    </div>
+    <div class="nav-item" onclick="switchTab('dashboard')">
+      <span class="nav-dot"></span> 📊 Dashboard
+    </div>
+    <div class="nav-item" onclick="switchTab('ansible')">
+      <span class="nav-dot"></span> ⚡ Đo kiểm
+    </div>
+    <div class="nav-item" onclick="switchTab('thongso')">
+      <span class="nav-dot"></span> 📋 Thông số
+    </div>
+    <button class="btn-refresh" onclick="refreshAll()">⟳ Làm mới</button>
+  </nav>
+</div>
+
+<!-- ================================================================ -->
+<!-- MAIN CONTENT                                                      -->
+<!-- ================================================================ -->
+<div class="container">
+
+  <!-- KPI Summary Boxes -->
+  <div class="kpi-grid">
+    <div class="kpi-box">
+      <div class="kpi-val" id="kpi-tx" style="color:var(--green)">—</div>
+      <div class="kpi-label">T6-TV MAIN (TX) Online</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-val" id="kpi-rx" style="color:var(--green)">—</div>
+      <div class="kpi-label">T6-RV MAIN (RX) Online</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-val" id="kpi-ubvhf" style="color:var(--cyan)">—</div>
+      <div class="kpi-label">T6-TRV UBVHF Online</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-val" id="kpi-alerts" style="color:var(--yellow)">—</div>
+      <div class="kpi-label">Cảnh báo đang kích hoạt</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TAB: SƠ ĐỒ MẠNG — Canvas Topology                          -->
+  <!-- ============================================================ -->
+  <div id="tab-topology" class="tab-content active">
+    <div class="topo-wrap" id="topo-wrapper">
+
+      <!-- Canvas container: 2D NOC Horizontal Flow (Option A) -->
+      <div class="canvas-container" id="canvas-container" style="position:relative;overflow:hidden">
+        <canvas id="topo-canvas"></canvas>
+        <div class="ws-label" id="ws-label">○ Kết nối WS...</div>
+      </div>
+
+      <!-- Node Detail Panel -->
+      <div id="node-panel" class="node-panel" style="display:none">
+
+        <!-- Panel Header -->
+        <div class="panel-header">
+          <div>
+            <div class="panel-title" id="panel-title">—</div>
+            <div style="font-size:.7em;color:var(--text2);margin-top:2px" id="panel-sub">—</div>
+          </div>
+          <button class="panel-close" onclick="closePanel()">✕</button>
+        </div>
+
+        <!-- Tab Bar -->
+        <div class="panel-tabs">
+          <div class="panel-tab active" onclick="switchPanelTab('thongtin')">ℹ️ Thông tin</div>
+          <div class="panel-tab"        onclick="switchPanelTab('thongso')">⚙️ Thông số</div>
+        </div>
+
+        <!-- Tab 1: THÔNG TIN (KPI + info) -->
+        <div class="panel-tab-content active" id="ptab-thongtin">
+          <div class="panel-body">
+            <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
+              <span id="panel-badge" class="badge bg-blue">● UNKNOWN</span>
+              <span style="font-size:.68em;color:var(--text2)" id="panel-ts"></span>
+            </div>
+            <div id="panel-info"></div>
+            <div class="panel-kpis">
+              <div class="kpi-row-title">⚡ KPI — EUROCAE ED-137</div>
+              <div class="kpi-mini">
+                <div class="kpi-mini-lbl">
+                  <span>One-way Delay</span><span id="pv-delay">N/A</span>
+                </div>
+                <div class="kpi-mini-bar">
+                  <div class="kpi-mini-fill" id="pb-delay" style="width:20%;background:var(--green)"></div>
+                </div>
+              </div>
+              <div class="kpi-mini">
+                <div class="kpi-mini-lbl">
+                  <span>Jitter</span><span id="pv-jitter">N/A</span>
+                </div>
+                <div class="kpi-mini-bar">
+                  <div class="kpi-mini-fill" id="pb-jitter" style="width:20%;background:var(--green)"></div>
+                </div>
+              </div>
+              <div class="kpi-mini">
+                <div class="kpi-mini-lbl">
+                  <span>Packet Loss</span><span id="pv-loss">N/A</span>
+                </div>
+                <div class="kpi-mini-bar">
+                  <div class="kpi-mini-fill" id="pb-loss" style="width:5%;background:var(--green)"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn btn-green" onclick="runNodeMeasure()" style="width:100%;justify-content:center">▶ Đo kiểm riêng trạm này</button>
+            <button class="btn btn-blue"  onclick="openNodeGrafana()" style="width:100%;justify-content:center">📊 Xem Grafana Dashboard</button>
+            <button class="btn btn-grey btn-sm" onclick="closePanel()" style="width:100%;justify-content:center">✕ Đóng</button>
+          </div>
+        </div>
+
+        <!-- Tab 2: THÔNG SỐ (form cấu hình) -->
+        <div class="panel-tab-content" id="ptab-thongso">
+          <div class="panel-body" id="panel-params-body"
+               style="max-height:310px;overflow-y:auto;padding:10px 14px">
+            <!-- Rendered by panel.js: renderParamForm() -->
+          </div>
+          <div class="param-save-msg" id="param-save-msg">✅ Đã lưu thông số!</div>
+          <div class="panel-actions">
+            <button class="btn btn-green" onclick="saveNodeParams()" style="width:100%;justify-content:center">💾 Lưu thông số</button>
+            <button class="btn btn-orange btn-sm" onclick="resetNodeParams()" style="width:100%;justify-content:center">↺ Đặt lại mặc định</button>
+          </div>
+        </div>
+
+      </div><!-- /node-panel -->
+
+    </div><!-- /topo-wrap -->
+  </div><!-- /tab-topology -->
+
+  <!-- ============================================================ -->
+  <!-- TAB: DASHBOARD                                               -->
+  <!-- ============================================================ -->
+  <div id="tab-dashboard" class="tab-content">
+    <div class="section-title">📈 Grafana — Giám sát trực quan (Iframe embed)</div>
+    <p style="font-size:.8em;color:var(--text2);margin-bottom:12px">
+      Grafana: <a href="http://localhost:3000" target="_blank" style="color:var(--blue)">http://localhost:3000</a>
+      · Login: <span class="mono">admin / vatm2025</span>
+    </p>
+    <div class="grid-2">
+      <div>
+        <div class="card-title">🏭 Trạm TX — T6-TV Status</div>
+        <div class="iframe-wrap">
+          <iframe id="gf-tx" src="about:blank" height="260"></iframe>
+          <div class="iframe-ph" id="gfph-tx">Nhấn "Tải Grafana" để load dashboard</div>
+        </div>
+      </div>
+      <div>
+        <div class="card-title">📡 Trạm RX — T6-RV Status</div>
+        <div class="iframe-wrap">
+          <iframe id="gf-rx" src="about:blank" height="260"></iframe>
+          <div class="iframe-ph" id="gfph-rx">Nhấn "Tải Grafana" để load dashboard</div>
+        </div>
+      </div>
+      <div>
+        <div class="card-title">⚡ UBVHF TWR — T6-TRV + S4-IP</div>
+        <div class="iframe-wrap">
+          <iframe id="gf-ubvhf" src="about:blank" height="260"></iframe>
+          <div class="iframe-ph" id="gfph-ubvhf">Nhấn "Tải Grafana" để load dashboard</div>
+        </div>
+      </div>
+      <div>
+        <div class="card-title">📊 ED-137 KPI — Toàn tuyến</div>
+        <div class="iframe-wrap">
+          <iframe id="gf-kpi" src="about:blank" height="260"></iframe>
+          <div class="iframe-ph" id="gfph-kpi">Nhấn "Tải Grafana" để load dashboard</div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-group" style="margin-top:12px">
+      <button class="btn btn-blue"   onclick="loadGrafana()">📊 Tải Grafana</button>
+      <button class="btn btn-orange" onclick="window.open('http://localhost:3000','_blank')">↗ Mở Grafana</button>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TAB: ĐO KIỂM ANSIBLE                                        -->
+  <!-- ============================================================ -->
+  <div id="tab-ansible" class="tab-content">
+    <div class="section-title">⚡ Kịch bản Ansible — Đo kiểm tự động theo ED-137</div>
+    <div class="grid-3" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-title">📡 Thu thập số liệu</div>
+        <p style="font-size:.77em;color:var(--text2);margin-bottom:10px">
+          SNMP + ping + TCP toàn tuyến<br>
+          <small style="opacity:.7">Playbook: 01_collect_metrics</small>
+        </p>
+        <div style="margin-bottom:8px">
+          <label style="font-size:.73em;color:var(--text2)">Nhóm thiết bị:</label>
+          <select id="target-metrics">
+            <option value="all_rcms">Toàn tuyến (RCMS)</option>
+            <option value="rcms_tx">Trạm TX</option>
+            <option value="rcms_rx">Trạm RX</option>
+            <option value="rcms_ubvhf">UBVHF TWR</option>
+          </select>
+        </div>
+        <button class="btn btn-green btn-sm" onclick="runPlaybook('01_collect_metrics','target-metrics')">▶ Chạy đo kiểm</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📄 Xuất báo cáo</div>
+        <p style="font-size:.77em;color:var(--text2);margin-bottom:10px">
+          Tổng hợp báo cáo Markdown/Excel<br>
+          <small style="opacity:.7">Playbook: 02_generate_report</small>
+        </p>
+        <button class="btn btn-orange btn-sm" onclick="runPlaybook('02_generate_report',null,'all_rcms')">📄 Xuất báo cáo</button>
+      </div>
+      <div class="card">
+        <div class="card-title">🏓 Ping check nhanh</div>
+        <p style="font-size:.77em;color:var(--text2);margin-bottom:10px">
+          ICMP ping tất cả thiết bị RCMS<br>
+          <small style="opacity:.7">Playbook: 03_ping_check</small>
+        </p>
+        <button class="btn btn-blue btn-sm" onclick="runPlaybook('03_ping_check',null,'all_rcms')">🏓 Ping All</button>
+      </div>
+    </div>
+    <div class="card-title">📋 Lịch sử Jobs</div>
+    <div id="job-list" style="font-size:.8em;color:var(--text2)">Chưa có job nào.</div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TAB: THÔNG SỐ (Thiết bị + Cảnh báo + ED-137 + Tần số)      -->
+  <!-- ============================================================ -->
+  <div id="tab-thongso" class="tab-content">
+
+    <!-- Trạng thái thiết bị -->
+    <div class="section-title">📡 Trạng thái thiết bị — T6 Radios (Park Air)</div>
+    <div id="dev-loading" style="color:var(--text2);font-size:.84em"><span class="spinner"></span> Đang tải…</div>
+    <div style="overflow-x:auto;margin-bottom:16px">
+      <table class="dev-table" id="dev-table" style="display:none">
+        <thead>
+          <tr><th>Trạng thái</th><th>IP (LAN3 RCMS)</th><th>Thiết bị</th><th>Trạm</th><th>Dự phòng</th><th>Job</th></tr>
+        </thead>
+        <tbody id="dev-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-bottom:16px">
+      <div class="card-title">S4-IP Controller (TCP:5001 — Blackbox)</div>
+      <div id="s4ip-status" style="font-size:.8em;color:var(--text2)">Đang tải…</div>
+    </div>
+
+    <!-- Cảnh báo -->
+    <div class="section-title">🔔 Cảnh báo đang kích hoạt</div>
+    <div id="alert-list" style="margin-bottom:16px"><span class="spinner"></span> Đang tải…</div>
+
+    <!-- ED-137 Thresholds -->
+    <div class="section-title">📋 Ngưỡng KPI — EUROCAE ED-137 VoIP ATM</div>
+    <table class="thr-table" style="margin-bottom:16px">
+      <tr><th>Chỉ số KPI</th><th class="ok">🟢 Bình thường</th><th class="warn">🟡 Cảnh báo</th><th class="crit">🔴 Vi phạm ED-137</th></tr>
+      <tr><td>One-way Delay</td><td class="ok">&lt; 50 ms</td><td class="warn">50 – 100 ms</td><td class="crit">&gt; 100 ms</td></tr>
+      <tr><td>Jitter</td><td class="ok">&lt; 10 ms</td><td class="warn">10 – 20 ms</td><td class="crit">&gt; 20 ms</td></tr>
+      <tr><td>Packet Loss</td><td class="ok">&lt; 0.1 %</td><td class="warn">0.1 – 1 %</td><td class="crit">&gt; 1 %</td></tr>
+      <tr><td>VSWR Anten</td><td class="ok">≤ 1.5:1</td><td class="warn">1.5 – 2.0:1</td><td class="crit">&gt; 2.0:1</td></tr>
+      <tr><td>BER Đường truyền</td><td class="ok">&lt; 10⁻⁶</td><td class="warn">10⁻⁶ – 10⁻⁴</td><td class="crit">&gt; 10⁻⁴</td></tr>
+    </table>
+
+    <!-- Bảng tần số -->
+    <div class="section-title">📡 Tần số VHF — Danh sách kênh hệ thống</div>
+    <div style="overflow-x:auto">
+      <table class="dev-table">
+        <thead>
+          <tr><th>#</th><th>Tần số (MHz)</th><th>Chức năng</th><th>TX MAIN</th><th>TX STBY</th><th>RX MAIN</th><th>RX STBY</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td class="mono">118.425</td><td>Clearance Delivery chính</td><td class="mono">10.60.7.71</td><td class="mono">10.60.7.81</td><td class="mono">10.60.6.71</td><td class="mono">10.60.6.81</td></tr>
+          <tr><td>2</td><td class="mono">121.725</td><td>CLD dự phòng</td><td class="mono">10.60.7.72</td><td class="mono">10.60.7.82</td><td class="mono">10.60.6.72</td><td class="mono">10.60.6.82</td></tr>
+          <tr><td>3</td><td class="mono">121.775</td><td>Aerodrome Control chính</td><td class="mono">10.60.7.73</td><td class="mono">10.60.7.83</td><td class="mono">10.60.6.73</td><td class="mono">10.60.6.83</td></tr>
+          <tr><td>4</td><td class="mono">121.850</td><td>AD dự phòng</td><td class="mono">10.60.7.74</td><td class="mono">10.60.7.84</td><td class="mono">10.60.6.74</td><td class="mono">10.60.6.84</td></tr>
+          <tr><td>5</td><td class="mono">121.925</td><td>NW Ground chính</td><td class="mono">10.60.7.75</td><td class="mono">10.60.7.85</td><td class="mono">10.60.6.75</td><td class="mono">10.60.6.85</td></tr>
+          <tr><td>6</td><td class="mono">124.325</td><td>NW Ground dự phòng</td><td class="mono">10.60.7.76</td><td class="mono">10.60.7.86</td><td class="mono">10.60.6.76</td><td class="mono">10.60.6.86</td></tr>
+          <tr><td>7</td><td class="mono">124.625</td><td>NE Ground chính</td><td class="mono">10.60.7.77</td><td class="mono">10.60.7.87</td><td class="mono">10.60.6.77</td><td class="mono">10.60.6.87</td></tr>
+          <tr><td>8</td><td class="mono">125.275</td><td>NE Ground dự phòng</td><td class="mono">10.60.7.78</td><td class="mono">10.60.7.88</td><td class="mono">10.60.6.78</td><td class="mono">10.60.6.88</td></tr>
+          <tr><td>9</td><td class="mono" style="color:var(--red)">121.500</td><td>⚠️ EMERGENCY</td><td class="mono">10.60.7.79</td><td class="mono">10.60.7.89</td><td class="mono">10.60.6.79</td><td class="mono">10.60.6.89</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- /tab-thongso -->
+
+</div><!-- /container -->
+
+<!-- ================================================================ -->
+<!-- JAVASCRIPT — Load theo thứ tự phụ thuộc                          -->
+<!-- config → topology → panel → api → app (app load cuối cùng)       -->
+<!-- ================================================================ -->
+<script src="/static/js/config.js"></script>
+<script src="/static/js/topology.js"></script>
+<script src="/static/js/panel.js"></script>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/app.js"></script>
+
+</body>
+</html>

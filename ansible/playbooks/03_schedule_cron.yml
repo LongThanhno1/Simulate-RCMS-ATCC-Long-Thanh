@@ -1,0 +1,121 @@
+---
+# ============================================================
+# Playbook 03: Cài đặt lịch chạy tự động (Cron) trên Control Node
+# Mục đích: Đặt lịch ansible-playbook chạy tự động
+#           - Đầu ca sáng 06:00 hàng ngày: chạy site.yml
+#           - Mỗi 1 giờ: chạy chỉ collect_metrics
+# Sử dụng: ansible-playbook -i ../hosts.ini 03_schedule_cron.yml
+# ============================================================
+
+- name: "VATM | Cài đặt Cron Scheduler trên Ansible Control Node"
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    ansible_playbook_path: "/usr/bin/ansible-playbook"
+    project_dir: "/opt/vatm/monitoring/ansible"
+    log_dir: "/var/log/ansible"
+    cron_user: "vatmansible"
+
+  tasks:
+    - name: "Tạo thư mục dự án monitoring"
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /opt/vatm/monitoring
+        - /opt/vatm/monitoring/ansible
+        - /opt/vatm/monitoring/reports
+        - /opt/vatm/monitoring/archive
+        - "{{ log_dir }}"
+      become: true
+
+    - name: "Tạo user cron chuyên dụng (không interactive)"
+      user:
+        name: "{{ cron_user }}"
+        system: true
+        shell: /bin/bash
+        home: /opt/vatm/monitoring
+        comment: "VATM Ansible Automation User"
+      become: true
+
+    # --- Cron 1: Đo kiểm đầu ca sáng 06:00 ---
+    - name: "Cài đặt cron: Đo kiểm đầu ca sáng (06:00)"
+      cron:
+        name: "VATM_MORNING_SHIFT_CHECK"
+        minute: "0"
+        hour: "6"
+        job: >-
+          cd {{ project_dir }} &&
+          {{ ansible_playbook_path }} -i hosts.ini playbooks/site.yml
+          --tags full
+          >> {{ log_dir }}/morning_shift_$(date +\%Y\%m\%d).log 2>&1
+        user: "{{ cron_user }}"
+        state: present
+      become: true
+
+    # --- Cron 2: Đo kiểm Jitter/Loss tại đầu các ca trực ---
+    # Ca ngày:  01:00 UTC (08:00 ICT) và 09:00 UTC (16:00 ICT)
+    # Ca đêm:   13:00 UTC (20:00 ICT) và 22:00 UTC (05:00 ICT hôm sau)
+    - name: "Cài đặt cron: Ping check đầu ca trực (01,09,13,22 UTC)"
+      cron:
+        name: "VATM_SHIFT_PING_CHECK"
+        minute: "0"
+        hour:   "1,9,13,22"
+        job: >-
+          cd {{ project_dir }} &&
+          {{ ansible_playbook_path }} -i hosts.ini playbooks/03_ping_check.yml
+          --tags ping
+          >> {{ log_dir }}/ping_check_$(date +\%Y\%m\%d_\%H).log 2>&1
+        user: "{{ cron_user }}"
+        state: present
+      become: true
+
+    # --- Cron 3: Báo cáo cuối ngày 22:00 ---
+    - name: "Cài đặt cron: Tổng hợp báo cáo cuối ngày (22:00)"
+      cron:
+        name: "VATM_DAILY_REPORT"
+        minute: "0"
+        hour: "22"
+        job: >-
+          cd {{ project_dir }} &&
+          {{ ansible_playbook_path }} -i hosts.ini playbooks/02_generate_report.yml
+          >> {{ log_dir }}/daily_report_$(date +\%Y\%m\%d).log 2>&1
+        user: "{{ cron_user }}"
+        state: present
+      become: true
+
+    # --- Cron 4: Dọn dẹp log cũ hơn 90 ngày ---
+    - name: "Cài đặt cron: Dọn dẹp log cũ (mỗi Chủ nhật 23:00)"
+      cron:
+        name: "VATM_CLEANUP_OLD_LOGS"
+        minute: "0"
+        hour: "23"
+        weekday: "0"
+        job: "find {{ log_dir }} -name '*.log' -mtime +90 -delete && find /opt/vatm/monitoring/archive -mtime +365 -delete"
+        user: "{{ cron_user }}"
+        state: present
+      become: true
+
+    - name: "Hiển thị tóm tắt lịch cron đã cài đặt"
+      debug:
+        msg: |
+          ============================================================
+          LỊCH CHẠY TỰ ĐỘNG ĐÃ CÀI ĐẶT:
+          ============================================================
+          1. 06:00 UTC hàng ngày → site.yml (full pipeline: ping + collect + report)
+          2. 01,09,13,22 UTC    → 03_ping_check.yml (Jitter/Loss đầu ca trực)
+             - 01:00 UTC = 08:00 ICT (đầu ca trực ngày)
+             - 09:00 UTC = 16:00 ICT (ca trực ngày)
+             - 13:00 UTC = 20:00 ICT (đầu ca trực đêm)
+             - 22:00 UTC = 05:00 ICT (ca trực đêm)
+          3. 22:00 UTC hàng ngày → 02_generate_report.yml (tổng hợp báo cáo)
+          4. Chủ nhật 23:00 UTC  → Dọn dẹp log cũ > 90 ngày
+
+          User cron: {{ cron_user }}
+          Project dir: {{ project_dir }}
+          Log dir: {{ log_dir }}
+          ============================================================
+          Kiểm tra: crontab -u {{ cron_user }} -l

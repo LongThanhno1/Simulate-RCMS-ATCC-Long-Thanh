@@ -1,0 +1,259 @@
+# ============================================================
+# VATM ATCC Long Thành — Monitor Stack
+# Docker Compose v2 | Park Air T6 VHF Monitoring | ED-137
+# ============================================================
+# Triển khai trên VM1: ${MONITOR_HOST} (Lab: 192.168.100.10)
+#
+# Yêu cầu: cp .env.template .env  →  điền token thực vào .env
+# Khởi động:  docker compose up -d
+# Dừng:       docker compose down
+# Xem log:    docker compose logs -f <service>
+# Reload cfg: curl -X POST http://localhost:9090/-/reload
+# ============================================================
+
+services:
+
+  # ─────────────────────────────────────────────────────────
+  # 1. PROMETHEUS — Thu thập & lưu trữ metrics (TSDB 30 ngày)
+  # ─────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: vatm_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.enable-lifecycle'         # Reload config không restart
+      - '--web.enable-admin-api'
+      - '--web.external-url=http://${MONITOR_HOST}:9090'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    networks:
+      - vatm_monitor
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────
+  # 2. GRAFANA — Dashboard real-time (nhúng iframe vào Portal)
+  # ─────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.3
+    container_name: vatm_grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-vatm_admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      # Quan trọng: cho phép nhúng Grafana vào Web Portal iframe
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SERVER_ROOT_URL=http://${MONITOR_HOST}:3000
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - vatm_monitor
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────
+  # 3. ALERTMANAGER — Cảnh báo Telegram + Email (theo ED-137)
+  # ─────────────────────────────────────────────────────────
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: vatm_alertmanager
+    restart: unless-stopped
+    environment:
+      # Các token nhạy cảm inject từ .env → config.yml đọc qua ${}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://${MONITOR_HOST}:9093'
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/config.yml:/etc/alertmanager/config.yml:ro
+      - ./alertmanager/templates:/etc/alertmanager/templates:ro
+      - alertmanager_data:/alertmanager
+    networks:
+      - vatm_monitor
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────
+  # 4. SNMP EXPORTER — Poll Park Air T6 + ALE switches qua SNMP
+  #    QUAN TRỌNG: chỉ poll LAN3 (RCMS subnet), KHÔNG poll LAN1
+  # ─────────────────────────────────────────────────────────
+  snmp-exporter:
+    image: prom/snmp-exporter:v0.26.0
+    container_name: vatm_snmp_exporter
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/snmp-exporter/snmp.yml'
+    ports:
+      - "9116:9116"
+    volumes:
+      - ./snmp/snmp.yml:/etc/snmp-exporter/snmp.yml:ro
+    networks:
+      - vatm_monitor
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9116/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────
+  # 5. BLACKBOX EXPORTER — TCP probe S4-IP port 5001 + ICMP ping
+  #    Park Air S4-IP KHÔNG có SNMP → chỉ check TCP 5001 (RCMS)
+  # ─────────────────────────────────────────────────────────
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: vatm_blackbox_exporter
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/blackbox/blackbox.yml'
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    cap_add:
+      - NET_RAW                  # Cần cho ICMP ping
+    networks:
+      - vatm_monitor
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9115/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────
+  # 6. PUSHGATEWAY — Nhận metrics đẩy từ Ansible (Jitter/Loss)
+  #    Ansible đo ping từ RCMS workstation → push vatm_voip_* vào đây
+  # ─────────────────────────────────────────────────────────
+  pushgateway:
+    image: prom/pushgateway:v1.9.0
+    container_name: vatm_pushgateway
+    restart: unless-stopped
+    ports:
+      - "9091:9091"
+    networks:
+      - vatm_monitor
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9091/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────
+  # 7. WEB PORTAL — FastAPI Backend
+  #    Giao diện: nút bấm chạy Ansible, nhúng Grafana, xem cảnh báo
+  # ─────────────────────────────────────────────────────────
+  web-portal:
+    build:
+      context: ../web-portal
+      dockerfile: Dockerfile
+    container_name: vatm_web_portal
+    restart: unless-stopped
+    environment:
+      - PROMETHEUS_URL=http://prometheus:9090
+      - ALERTMANAGER_URL=http://alertmanager:9093
+      - GRAFANA_URL=http://${MONITOR_HOST}:3000
+      - ANSIBLE_PLAYBOOKS_DIR=/app/ansible/playbooks
+      - ANSIBLE_INVENTORY=/app/ansible/hosts.ini
+      - LOG_LEVEL=INFO
+    ports:
+      - "8080:8000"          # host:8080 → container:8000 (uvicorn chạy port 8000)
+    volumes:
+      # Mount ansible folder vào container để chạy playbooks
+      - ../ansible:/app/ansible:ro
+      - portal_reports:/app/reports
+    networks:
+      - vatm_monitor
+    depends_on:
+      - prometheus
+      - alertmanager
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────
+  # 8. NODE EXPORTER — Monitor VM host (CPU/RAM/Disk/Network)
+  # NOTE Production Linux: thêm volumes /proc /sys / và
+  #      network_mode: host để đo chính xác host metrics.
+  #      Lab/Windows Docker Desktop: chạy không cần host mode.
+  # ─────────────────────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.8.0
+    container_name: vatm_node_exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - vatm_monitor
+
+# ─────────────────────────────────────────────────────────
+# VOLUMES — Persistent storage
+# ─────────────────────────────────────────────────────────
+volumes:
+  prometheus_data:
+    name: vatm_prometheus_data
+  grafana_data:
+    name: vatm_grafana_data
+  alertmanager_data:
+    name: vatm_alertmanager_data
+  portal_reports:
+    name: vatm_portal_reports
+
+# ─────────────────────────────────────────────────────────
+# NETWORKS
+# ─────────────────────────────────────────────────────────
+networks:
+  vatm_monitor:
+    name: vatm_monitor_net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24

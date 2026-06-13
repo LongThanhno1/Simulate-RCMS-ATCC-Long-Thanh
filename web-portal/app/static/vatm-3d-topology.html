@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VATM ATCC Long Thành — 3D Topology</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; background:#020b18; overflow:hidden;
+  font-family:'Segoe UI',system-ui,sans-serif; color:#e2e8f0; }
+
+#canvas3d { display:block; width:100%; height:100%; outline:none; cursor:grab; }
+#canvas3d:active { cursor:grabbing; }
+
+/* ── Loading overlay ── */
+#loading {
+  position:fixed; inset:0; background:#020b18;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; z-index:100; transition:opacity 0.5s;
+}
+.spin { width:40px; height:40px; border:3px solid #1e3a5f;
+  border-top-color:#38bdf8; border-radius:50%; animation:spin3d 0.8s linear infinite; }
+@keyframes spin3d { to{transform:rotate(360deg);} }
+#loading p { color:#4a6a8a; font-size:0.82em; }
+
+/* ── Info panel ── */
+#info-panel {
+  position:fixed; right:16px; top:16px; width:295px;
+  background:rgba(6,13,26,0.97); border:1px solid #1e3a5f; border-radius:10px;
+  overflow:hidden; transform:translateX(320px);
+  transition:transform 0.32s cubic-bezier(0.34,1.56,0.64,1);
+  z-index:50; box-shadow:0 0 30px rgba(56,189,248,0.1);
+}
+#info-panel.open { transform:translateX(0); }
+.ip-header {
+  background:linear-gradient(135deg,#0d1b2e,#0a1628);
+  padding:14px 16px 12px;
+  display:flex; justify-content:space-between; align-items:flex-start;
+  border-bottom:1px solid #1e3a5f;
+}
+.ip-title { font-size:0.92em; font-weight:700; color:#e2e8f0; line-height:1.35; }
+.ip-sub   { font-size:0.73em; color:#4a6a8a; margin-top:3px; font-family:'Consolas',monospace; }
+.ip-close { background:none; border:none; color:#4a6a8a; cursor:pointer;
+  font-size:1.1em; padding:2px 5px; border-radius:4px; transition:color 0.15s; }
+.ip-close:hover { color:#ef4444; background:#1e3a5f; }
+.ip-body { padding:14px 16px; }
+.ip-row {
+  display:flex; justify-content:space-between; align-items:flex-start;
+  padding:4px 0; border-bottom:1px solid rgba(30,58,95,0.4);
+  font-size:0.77em; gap:8px;
+}
+.ip-row:last-child { border:none; }
+.ik { color:#4a6a8a; flex-shrink:0; }
+.iv { color:#94a3b8; text-align:right; font-family:'Consolas',monospace; font-size:0.92em; word-break:break-all; }
+.kpi-bar-lbl { display:flex; justify-content:space-between; font-size:0.7em;
+  margin-bottom:2px; margin-top:7px; color:#6b8aaa; }
+.kpi-bar-wrap { height:4px; background:#0d1b2e; border-radius:2px; overflow:hidden; margin-bottom:1px; }
+.kpi-bar-fill { height:100%; border-radius:2px; transition:width 0.6s ease; }
+.ip-actions { padding:10px 16px 14px; display:flex; flex-direction:column; gap:6px;
+  border-top:1px solid #1e3a5f; }
+.btn-primary { background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff;
+  border:none; border-radius:6px; padding:7px 12px; font-size:0.79em; cursor:pointer; font-weight:600; }
+.btn-secondary { background:#0d1b2e; border:1px solid #1e3a5f; color:#94a3b8;
+  border-radius:6px; padding:7px 12px; font-size:0.79em; cursor:pointer; }
+.btn-primary:hover  { opacity:0.9; }
+.btn-secondary:hover{ border-color:#38bdf8; color:#e2e8f0; }
+
+/* ── Badges ── */
+.badge { display:inline-block; padding:2px 9px; border-radius:4px;
+  font-size:0.7em; font-weight:700; letter-spacing:0.04em; }
+.badge-ok   { background:#052e16; color:#34d399; border:1px solid #065f46; }
+.badge-warn { background:#451a03; color:#fbbf24; border:1px solid #78350f; }
+.badge-err  { background:#450a0a; color:#f87171; border:1px solid #7f1d1d; }
+.badge-unk  { background:#0d1b2e; color:#6b8aaa; border:1px solid #1e3a5f; }
+
+/* ── IP (node label) classes ── */
+.ip-header-title { font-weight:700; color:#e2e8f0; }
+.ip-host { font-family:'Consolas',monospace; font-size:0.88em; color:#38bdf8; }
+
+/* ── KPI bar classes ── */
+.kpi-bar-ok   { background:#34d399; }
+.kpi-bar-warn { background:#fbbf24; }
+.kpi-bar-err  { background:#f87171; }
+
+/* ── Node HTML Labels ── */
+.node-label {
+  position:absolute; pointer-events:none;
+  transform:translate(-50%, -100%);
+  text-align:center; white-space:nowrap;
+}
+.node-label .lbl-main {
+  font-size:0.67em; font-weight:700; color:#e2e8f0;
+  background:rgba(6,13,26,0.88); padding:2px 7px 1px;
+  border-radius:4px; border:1px solid #1e3a5f;
+  display:block; line-height:1.45;
+}
+.node-label .lbl-sub {
+  font-size:0.59em; color:#4a6a8a; display:block; margin-top:2px;
+  font-family:'Consolas',monospace;
+}
+
+/* ── Legend ── */
+#legend {
+  position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+  background:rgba(6,13,26,0.9); border:1px solid #1e3a5f; border-radius:8px;
+  padding:8px 18px; display:flex; gap:16px; align-items:center;
+  font-size:0.7em; color:#6b8aaa; white-space:nowrap; z-index:50;
+}
+.leg { display:flex; align-items:center; gap:5px; }
+.hdr-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+/* ── Controls hint ── */
+#controls-hint {
+  position:fixed; bottom:16px; right:16px;
+  background:rgba(6,13,26,0.85); border:1px solid #1e3a5f;
+  border-radius:6px; padding:8px 12px;
+  font-size:0.66em; color:#4a6a8a; z-index:50;
+  pointer-events:none; line-height:2;
+}
+#controls-hint kbd {
+  background:#0d1b2e; border:1px solid #1e3a5f; border-radius:3px;
+  padding:1px 5px; font-family:'Consolas',monospace; color:#38bdf8;
+}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spin"></div>
+  <p>Đang khởi tạo mô hình 3D…</p>
+</div>
+
+<canvas id="canvas3d" tabindex="0"></canvas>
+
+<!-- Info panel -->
+<div id="info-panel">
+  <div class="ip-header">
+    <div>
+      <div class="ip-title" id="ip-title">—</div>
+      <div class="ip-sub"   id="ip-sub">—</div>
+    </div>
+    <button class="ip-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="ip-body">
+    <div id="ip-badge-row" style="margin-bottom:8px"></div>
+    <div id="ip-info"></div>
+    <div id="ip-kpi"></div>
+  </div>
+  <div class="ip-actions">
+    <button class="btn-primary">▶ Đo kiểm trạm này</button>
+    <button class="btn-secondary">📊 Xem Grafana Dashboard</button>
+  </div>
+</div>
+
+<!-- Legend -->
+<div id="legend">
+  <div class="leg"><div style="width:18px;height:2.5px;background:#f87171;border-radius:2px"></div>RED ring (J1)</div>
+  <div class="leg"><div style="width:18px;height:2.5px;background:#60a5fa;border-radius:2px"></div>BLUE ring (J2)</div>
+  <div class="leg"><div style="width:18px;height:2.5px;background:#38bdf8;border-radius:2px;opacity:0.6"></div>Cáp quang (both)</div>
+  <div class="leg"><div class="hdr-dot" style="background:#34d399;box-shadow:0 0 5px #34d399"></div>Bình thường</div>
+  <div class="leg"><div class="hdr-dot" style="background:#fbbf24"></div>Cảnh báo</div>
+  <div class="leg"><div class="hdr-dot" style="background:#f87171"></div>Lỗi</div>
+</div>
+
+<!-- Controls hint -->
+<div id="controls-hint">
+  <kbd>Drag</kbd> Xoay &nbsp;
+  <kbd>Scroll</kbd> Zoom &nbsp;
+  <kbd>Click</kbd> Chi tiết
+</div>
+
+<!-- Three.js r128 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/* ================================================================
+   VATM ATCC Long Thành — 3D Topology Standalone
+   Three.js r128 | Dual-Ring (RED/BLUE) | EUROCAE ED-137
+   Tác giả: Đỗ Thanh Long — ATSEP VATM
+   ================================================================ */
+
+/* ───────────────────────────────────────────────────────────
+   PHẦN 1 — DATA DEFINITIONS
+   ─────────────────────────────────────────────────────────── */
+const NODES_DEF = [
+  {
+    id:'tx', label:'TRẠM PHÁT\nTX Station', sub:'Park Air T6-TV ×9 ch',
+    status:'ok',
+    info:{
+      'Thiết bị':'Park Air T6-TV (×9 kênh)',
+      'IP MAIN (LAN3)':'10.60.7.71–79',
+      'IP STBY (LAN3)':'10.60.7.81–89',
+      'SNMP':'LAN3 — vatm_ro',
+      'Kết nối→xMG':'Cáp quang (LAN1)',
+    },
+    kpi:{ delay:12, jitter:3, loss:0.02 },
+  },
+  {
+    id:'rx', label:'TRẠM THU\nRX Station', sub:'Park Air T6-RV ×9 ch',
+    status:'ok',
+    info:{
+      'Thiết bị':'Park Air T6-RV (×9 kênh)',
+      'IP MAIN (LAN3)':'10.60.6.71–79',
+      'IP STBY (LAN3)':'10.60.6.81–89',
+      'SNMP':'LAN3 — vatm_ro',
+      'Kết nối→xMG':'Cáp quang (LAN1)',
+    },
+    kpi:{ delay:14, jitter:4, loss:0.03 },
+  },
+  {
+    id:'xmg', label:'FREQ. xMG\nxMG#1 + xMG#2', sub:'10.60.8.71–122',
+    status:'ok',
+    info:{
+      'xMG#1 (Primary)':'10.60.8.71–92',
+      'xMG#2 (Standby)':'10.60.8.101–122',
+      'J1 → RED ring':'RJ45 (in CNS room)',
+      'J2 → BLUE ring':'RJ45 (in CNS room)',
+      'SNMP':'9116/frequentis_xmg',
+    },
+    kpi:{},
+  },
+  {
+    id:'red_sw', label:'RED SW CORE\nALE OS6860', sub:'10.60.8.204',
+    status:'ok',
+    info:{
+      'Model':'ALE OmniSwitch OS6860',
+      'IP':'10.60.8.204',
+      'Vai trò':'RED Ring — Primary path',
+      'Uplink TX/RX':'Từ xMG J1 (RJ45)',
+      'Uplink→FL20':'Fiber P49/P50 → SW_20FL_1',
+    },
+    kpi:{},
+  },
+  {
+    id:'blue_sw', label:'BLUE SW CORE\nALE OS6860', sub:'10.60.8.203',
+    status:'ok',
+    info:{
+      'Model':'ALE OmniSwitch OS6860',
+      'IP':'10.60.8.203',
+      'Vai trò':'BLUE Ring — Standby path',
+      'Uplink TX/RX':'Từ xMG J2 (RJ45)',
+      'Uplink→FL20':'Fiber P49/P50 → SW_20FL_2',
+    },
+    kpi:{},
+  },
+  {
+    id:'fl20', label:'TWR TẦNG 20\nT6-TRV + CWP', sub:'10.60.8.201–202',
+    status:'ok',
+    info:{
+      'SW_20FL_1':'10.60.8.201 ← RED CORE',
+      'SW_20FL_2':'10.60.8.202 ← BLUE CORE',
+      'T6-TRV (VHF)':'×6 radio (10.60.11.1–6)',
+      'CWPs':'×11 operator workstations',
+      'VCCS WS':'10.60.8.254',
+    },
+    kpi:{},
+  },
+];
+
+/* Tọa độ 3D các node (X=ngang, Y=cao, Z=sâu) */
+const POS = {
+  tx:      new THREE.Vector3(-9,   0.5,  3.8),
+  rx:      new THREE.Vector3(-9,   0.5, -3.8),
+  xmg:     new THREE.Vector3(-1.5, 0.5,  0  ),
+  red_sw:  new THREE.Vector3( 3.5, 0.5,  3.2),
+  blue_sw: new THREE.Vector3( 3.5, 0.5, -3.2),
+  fl20:    new THREE.Vector3( 9.5, 0.5,  0  ),
+};
+
+const LINKS_DEF = [
+  { id:'tx_xmg',    from:'tx',     to:'xmg',     type:'fiber', ring:'both',  status:'ok' },
+  { id:'rx_xmg',    from:'rx',     to:'xmg',     type:'fiber', ring:'both',  status:'ok' },
+  { id:'xmg_red',   from:'xmg',    to:'red_sw',  type:'eth',   ring:'red',   status:'ok' },
+  { id:'xmg_blue',  from:'xmg',    to:'blue_sw', type:'eth',   ring:'blue',  status:'ok' },
+  { id:'red_fl20',  from:'red_sw', to:'fl20',    type:'fiber', ring:'red',   status:'ok' },
+  { id:'blue_fl20', from:'blue_sw',to:'fl20',    type:'fiber', ring:'blue',  status:'ok' },
+];
+
+const PARTICLE_COUNT = { fiber:4, eth:3 };
+
+/* ───────────────────────────────────────────────────────────
+   PHẦN 2 — GLOBAL SHARED VARIABLES
+   ─────────────────────────────────────────────────────────── */
+let scene, camera, renderer, raycaster, mouse;
+let nodeMeshes, labelDivs, linkObjects;
+let particles, particleData;
+let camTheta, camPhi, camRadius;
+let isDragging, prevMouse, selectedNode, THREE_ref;
+
+/* ───────────────────────────────────────────────────────────
+   PHẦN 3 — init3D()
+   ─────────────────────────────────────────────────────────── */
+function init3D() {
+  THREE_ref = THREE;
+
+  const canvas = document.getElementById('canvas3d');
+  const W = canvas.clientWidth  || window.innerWidth;
+  const H = canvas.clientHeight || window.innerHeight;
+
+  /* Scene */
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x020b18);
+  scene.fog = new THREE.FogExp2(0x020b18, 0.022);
+
+  /* Camera */
+  camera = new THREE.PerspectiveCamera(50, W/H, 0.1, 250);
+  camTheta  = Math.PI * 0.22;
+  camPhi    = Math.PI * 0.27;
+  camRadius = 28;
+  updateCamera();
+
+  /* Renderer */
+  renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(W, H);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  /* Raycaster & mouse */
+  raycaster = new THREE.Raycaster();
+  mouse     = new THREE.Vector2(-999, -999);
+
+  /* Build world */
+  buildEnvironment();
+
+  /* Nodes */
+  nodeMeshes = {};
+  NODES_DEF.forEach(nd => { nodeMeshes[nd.id] = buildNode(nd); });
+
+  /* Links */
+  linkObjects = {};
+  LINKS_DEF.forEach(lk => { linkObjects[lk.id] = buildLink(lk); });
+
+  /* Particles */
+  particles    = [];
+  particleData = [];
+  LINKS_DEF.forEach(lk => buildParticles(lk));
+
+  /* HTML Labels */
+  labelDivs = {};
+  NODES_DEF.forEach(nd => { labelDivs[nd.id] = buildLabel(nd); });
+
+  /* Event listeners */
+  isDragging   = false;
+  prevMouse    = { x:0, y:0 };
+  selectedNode = null;
+
+  canvas.addEventListener('mousedown',  onMouseDown);
+  canvas.addEventListener('mouseup',    onMouseUp);
+  canvas.addEventListener('mousemove',  onMouseMove);
+  canvas.addEventListener('wheel',      onWheel, { passive:false });
+  canvas.addEventListener('click',      onClick);
+  window.addEventListener('resize',     onResize);
+
+  /* Hide loading overlay */
+  const ld = document.getElementById('loading');
+  if (ld) { ld.style.opacity = '0'; setTimeout(() => ld.style.display='none', 550); }
+
+  /* Start animation */
+  animate();
+}
+
+/* ───────────────────────────────────────────────────────────
+   PHẦN 4 — BUILDING FUNCTIONS
+   ─────────────────────────────────────────────────────────── */
+
+function buildEnvironment() {
+  /* Lights */
+  scene.add(new THREE.AmbientLight(0x0a1828, 4));
+
+  const sun = new THREE.DirectionalLight(0x7eb8f5, 0.9);
+  sun.position.set(12, 22, 8);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 0.1;
+  sun.shadow.camera.far  = 80;
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -30;
+  sun.shadow.camera.right = sun.shadow.camera.top   =  30;
+  scene.add(sun);
+
+  /* Accent point lights */
+  const pl1 = new THREE.PointLight(0x38bdf8, 0.6, 35);
+  pl1.position.set(0, 10, 0);
+  scene.add(pl1);
+  const pl2 = new THREE.PointLight(0x1e40af, 0.4, 25);
+  pl2.position.set(-5, 4, 0);
+  scene.add(pl2);
+
+  /* Ground */
+  const gnd = new THREE.Mesh(
+    new THREE.PlaneGeometry(80, 60),
+    new THREE.MeshLambertMaterial({ color:0x020f1c })
+  );
+  gnd.rotation.x = -Math.PI/2;
+  gnd.position.y = -0.5;
+  gnd.receiveShadow = true;
+  scene.add(gnd);
+
+  /* Grid */
+  const grid = new THREE.GridHelper(80, 40, 0x0d1f38, 0x091527);
+  grid.position.y = -0.49;
+  scene.add(grid);
+
+  /* Stars */
+  const sVerts = [];
+  for (let i=0; i<1000; i++) {
+    sVerts.push((Math.random()-0.5)*300, Math.random()*80+20, (Math.random()-0.5)*300);
+  }
+  const sGeo = new THREE.BufferGeometry();
+  sGeo.setAttribute('position', new THREE.Float32BufferAttribute(sVerts, 3));
+  scene.add(new THREE.Points(sGeo,
+    new THREE.PointsMaterial({ color:0xffffff, size:0.18, transparent:true, opacity:0.55 })));
+
+  /* Buildings */
+  buildTowerBody();
+  buildTWR20Building(POS.fl20.x, POS.fl20.z);
+  buildStationBuilding(POS.tx.x, POS.tx.z, true,  'TX');
+  buildStationBuilding(POS.rx.x, POS.rx.z, false, 'RX');
+  buildCNSRoomBox();
+}
+
+function buildTowerBody() {
+  /* ATCC Tower at origin (x=0,z=0) — landmark of the scene */
+  const cx = 0, cz = 0;
+
+  const addMesh = (geo, mat, x, y, z, castShadow=true) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    if (castShadow) m.castShadow = true;
+    scene.add(m);
+    return m;
+  };
+
+  /* Base */
+  addMesh(new THREE.BoxGeometry(5, 2.4, 4),
+    new THREE.MeshLambertMaterial({ color:0x0d1b2e }), cx, 0.7, cz);
+
+  /* Shaft */
+  addMesh(new THREE.BoxGeometry(0.9, 11, 0.9),
+    new THREE.MeshLambertMaterial({ color:0x132232 }), cx, 7.5, cz);
+
+  /* Observation deck */
+  addMesh(new THREE.BoxGeometry(3, 0.5, 3),
+    new THREE.MeshLambertMaterial({ color:0x0e2138 }), cx, 13, cz, false);
+
+  /* Antenna mast */
+  addMesh(new THREE.CylinderGeometry(0.05, 0.06, 5, 8),
+    new THREE.MeshLambertMaterial({ color:0x38bdf8 }), cx, 16, cz);
+
+  /* Beacon light */
+  const beacon = addMesh(new THREE.SphereGeometry(0.14, 8, 8),
+    new THREE.MeshBasicMaterial({ color:0xef4444, transparent:true }), cx, 18.5, cz);
+  beacon.userData.blink = true;
+
+  /* Windows on base */
+  const wMat = new THREE.MeshBasicMaterial({ color:0x38bdf8, transparent:true, opacity:0.75 });
+  for (let i=0; i<3; i++) {
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.4), wMat);
+    w.position.set(cx+2.51, 0.4+i*0.65, cz);
+    w.rotation.y = Math.PI/2;
+    scene.add(w);
+  }
+}
+
+function buildStationBuilding(cx, cz, isTransmitter, tag) {
+  const col = isTransmitter ? 0x0f2236 : 0x0d1f2e;
+
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(3.2, 2, 2.8),
+    new THREE.MeshLambertMaterial({ color:col })
+  );
+  base.position.set(cx, 0.5, cz);
+  base.castShadow = true;
+  scene.add(base);
+
+  /* Roof trim */
+  const roof = new THREE.Mesh(
+    new THREE.BoxGeometry(3.4, 0.18, 3),
+    new THREE.MeshLambertMaterial({ color:0x1e3a5f })
+  );
+  roof.position.set(cx, 1.59, cz);
+  scene.add(roof);
+
+  if (isTransmitter) {
+    buildTxAntennaDetail(cx, cz);
+  } else {
+    buildRxAntennaDetail(cx, cz);
+  }
+}
+
+function buildCNSRoomBox() {
+  /* Dashed bounding box around xMG + RED SW + BLUE SW in the CNS room */
+  const minX=-4.5, maxX=6.5, minZ=-5.5, maxZ=5.5;
+  const cy = -0.48;
+
+  const corners = [
+    [minX, cy, minZ], [maxX, cy, minZ],
+    [maxX, cy, maxZ], [minX, cy, maxZ],
+    [minX, cy, minZ],
+  ];
+  const pts = corners.map(c => new THREE.Vector3(...c));
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  scene.add(new THREE.Line(geo,
+    new THREE.LineBasicMaterial({ color:0x1e3a5f, transparent:true, opacity:0.5 })));
+
+  /* Floor fill */
+  const w = maxX-minX, d = maxZ-minZ;
+  const fl = new THREE.Mesh(
+    new THREE.PlaneGeometry(w, d),
+    new THREE.MeshBasicMaterial({
+      color:0x091828, transparent:true, opacity:0.18, side:THREE.DoubleSide
+    })
+  );
+  fl.rotation.x = -Math.PI/2;
+  fl.position.set((minX+maxX)/2, cy+0.002, (minZ+maxZ)/2);
+  scene.add(fl);
+}
+
+function buildNode(nd) {
+  const pos = POS[nd.id];
+  const col = statusColor(nd.status);
+
+  /* Glow ring on ground */
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.52, 0.72, 32),
+    new THREE.MeshBasicMaterial({ color:col, transparent:true, opacity:0.2, side:THREE.DoubleSide })
+  );
+  ring.rotation.x = -Math.PI/2;
+  ring.position.set(pos.x, -0.46, pos.z);
+  scene.add(ring);
+
+  /* Main sphere */
+  const sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.44, 20, 20),
+    new THREE.MeshPhongMaterial({
+      color:col, emissive:col, emissiveIntensity:0.45,
+      transparent:true, opacity:0.92,
+      shininess:60,
+    })
+  );
+  sphere.position.copy(pos);
+  sphere.castShadow = true;
+  sphere.userData.nodeId = nd.id;
+  scene.add(sphere);
+
+  /* Per-node point light */
+  const pl = new THREE.PointLight(col, 0.45, 5);
+  pl.position.copy(pos);
+  scene.add(pl);
+
+  /* Vertical pillar to ground */
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.02, 0.02, pos.y+0.5, 6),
+    new THREE.MeshBasicMaterial({ color:col, transparent:true, opacity:0.25 })
+  );
+  beam.position.set(pos.x, (pos.y+0.5)/2 - 0.5, pos.z);
+  scene.add(beam);
+
+  return { sphere, ring, pl };
+}
+
+function buildTxAntennaDetail(cx, cz) {
+  /* Mast */
+  const mast = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.042, 0.058, 4.5, 8),
+    new THREE.MeshLambertMaterial({ color:0x4a6a8a })
+  );
+  mast.position.set(cx, 4.25, cz);
+  mast.castShadow = true;
+  scene.add(mast);
+
+  /* Yagi elements */
+  const eMat = new THREE.MeshLambertMaterial({ color:0x6b8aaa });
+  const lengths = [1.6, 1.3, 1.0, 0.8];
+  lengths.forEach((l, i) => {
+    const el = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, l, 6), eMat);
+    el.rotation.z = Math.PI/2;
+    el.position.set(cx, 5.5 - i*0.65, cz);
+    scene.add(el);
+  });
+}
+
+function buildRxAntennaDetail(cx, cz) {
+  /* Shorter receive dipole array */
+  const mast = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.038, 0.052, 3.8, 8),
+    new THREE.MeshLambertMaterial({ color:0x3d5a74 })
+  );
+  mast.position.set(cx, 3.9, cz);
+  mast.castShadow = true;
+  scene.add(mast);
+
+  const eMat = new THREE.MeshLambertMaterial({ color:0x5a7a94 });
+  const lengths = [1.4, 1.1, 0.9];
+  lengths.forEach((l, i) => {
+    const el = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, l, 6), eMat);
+    el.rotation.z = Math.PI/2;
+    el.position.set(cx, 4.8 - i*0.6, cz);
+    scene.add(el);
+  });
+}
+
+function buildTWR20Building(cx, cz) {
+  /* Tầng 20 building — taller narrow structure */
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(2.8, 8, 2.8),
+    new THREE.MeshLambertMaterial({ color:0x0a1628 })
+  );
+  body.position.set(cx, 3.5, cz);
+  body.castShadow = true;
+  scene.add(body);
+
+  /* Roof */
+  scene.add(Object.assign(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(3.2, 0.3, 3.2),
+      new THREE.MeshLambertMaterial({ color:0x1a3555 })
+    ),
+    { position: new THREE.Vector3(cx, 7.65, cz) }
+  ));
+
+  /* Windows */
+  const wMat = new THREE.MeshBasicMaterial({ color:0x1e40af, transparent:true, opacity:0.8 });
+  for (let i=0; i<5; i++) {
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.38), wMat);
+    w.position.set(cx+1.41, 3+i*0.72, cz);
+    w.rotation.y = Math.PI/2;
+    scene.add(w);
+  }
+}
+
+function buildXmgDetail(cx, cz) {
+  /* Rack unit representation for xMG */
+  const rMat = new THREE.MeshLambertMaterial({ color:0x1a3555 });
+  for (let i=0; i<2; i++) {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.55), rMat);
+    r.position.set(cx, 0.6+i*0.92, cz);
+    scene.add(r);
+  }
+}
+
+function statusColor(st) {
+  const map = { ok:0x34d399, warn:0xfbbf24, crit:0xf87171 };
+  return map[st] || 0x4a6a8a;
+}
+
+function buildLink(lk) {
+  const a = POS[lk.from].clone();
+  const b = POS[lk.to].clone();
+
+  const ringC = { red:0xf87171, blue:0x60a5fa, both:0x38bdf8 };
+  const col = ringC[lk.ring] || 0x38bdf8;
+
+  /* Arc midpoint */
+  const arc  = lk.type==='fiber' ? 1.4 : 0.7;
+  const mid  = new THREE.Vector3(
+    (a.x+b.x)/2, Math.max(a.y,b.y)+arc, (a.z+b.z)/2
+  );
+  const curve = new THREE.CatmullRomCurve3([a, mid, b]);
+
+  const r    = lk.type==='fiber' ? 0.042 : 0.028;
+  const segs = lk.type==='fiber' ? 40    : 28;
+
+  const tube = new THREE.Mesh(
+    new THREE.TubeGeometry(curve, segs, r, 7, false),
+    new THREE.MeshPhongMaterial({
+      color:col, emissive:col, emissiveIntensity:0.55,
+      transparent:true, opacity: lk.type==='fiber' ? 0.88 : 0.72,
+    })
+  );
+  scene.add(tube);
+
+  return { tube, curve, col };
+}
+
+function buildParticles(lk) {
+  const obj = linkObjects[lk.id];
+  if (!obj) return;
+
+  const n   = PARTICLE_COUNT[lk.type] || 3;
+  const col = obj.col;
+
+  for (let i=0; i<n; i++) {
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.075, 7, 7),
+      new THREE.MeshBasicMaterial({ color:col, transparent:true, opacity:0.9 })
+    );
+    scene.add(mesh);
+    particles.push(mesh);
+    particleData.push({
+      curve: obj.curve,
+      t:     i / n,
+      speed: 0.0028 + Math.random()*0.002,
+      col,
+    });
+  }
+}
+
+function buildLabel(nd) {
+  const div = document.createElement('div');
+  div.className = 'node-label';
+  div.id = 'lbl-' + nd.id;
+  const lines = nd.label.split('\n');
+  div.innerHTML = `<span class="lbl-main">${lines[0]}<br><span style="opacity:0.7">${lines[1]||''}</span></span>
+                   <span class="lbl-sub">${nd.sub}</span>`;
+  document.body.appendChild(div);
+  return div;
+}
+
+/* ───────────────────────────────────────────────────────────
+   PHẦN 5 — ANIMATION + CAMERA + EVENTS
+   ─────────────────────────────────────────────────────────── */
+
+let _t0 = Date.now();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = (Date.now()-_t0)*0.001;
+
+  /* Particle travel along link curves */
+  for (let i=0; i<particles.length; i++) {
+    const pd = particleData[i];
+    pd.t = (pd.t + pd.speed) % 1;
+    particles[i].position.copy(pd.curve.getPoint(pd.t));
+    particles[i].material.opacity = 0.45 + 0.5*Math.abs(Math.sin(pd.t*Math.PI));
+  }
+
+  /* Beacon blink */
+  scene.traverse(obj => {
+    if (obj.userData && obj.userData.blink) {
+      obj.material.opacity = 0.3 + 0.7*Math.abs(Math.sin(t*2.8));
+    }
+  });
+
+  /* Node pulse */
+  Object.values(nodeMeshes).forEach((nm, idx) => {
+    nm.sphere.scale.setScalar(1 + 0.028*Math.sin(t*1.8 + idx));
+    nm.ring.material.opacity = 0.12 + 0.1*Math.sin(t*1.2 + idx*0.5);
+  });
+
+  updateLabels();
+  updateCNSLabel();
+  renderer.render(scene, camera);
+}
+
+function updateLabels() {
+  NODES_DEF.forEach(nd => {
+    const pos3d = POS[nd.id].clone().add(new THREE.Vector3(0, 0.75, 0));
+    const proj  = pos3d.project(camera);
+    const W = renderer.domElement.clientWidth  || window.innerWidth;
+    const H = renderer.domElement.clientHeight || window.innerHeight;
+    const x = ( proj.x*0.5+0.5)*W;
+    const y = (-proj.y*0.5+0.5)*H;
+    const div = labelDivs[nd.id];
+    if (proj.z < 1 && proj.z > -1) {
+      div.style.cssText = `display:block;left:${x}px;top:${y}px;position:absolute;`;
+    } else {
+      div.style.display = 'none';
+    }
+  });
+}
+
+function updateCNSLabel() {
+  /* CNS Room bounding box label — projected from world center of box */
+  const cnsPos = new THREE.Vector3(1, 2.5, 0);
+  const proj   = cnsPos.project(camera);
+  const W = renderer.domElement.clientWidth  || window.innerWidth;
+  const H = renderer.domElement.clientHeight || window.innerHeight;
+  const el = document.getElementById('cns-label');
+  if (!el) return;
+  const x = ( proj.x*0.5+0.5)*W;
+  const y = (-proj.y*0.5+0.5)*H;
+  if (proj.z < 1) {
+    el.style.cssText = `display:block;left:${x}px;top:${y}px;position:absolute;`;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function updateCamera() {
+  const x = camRadius * Math.sin(camTheta) * Math.cos(camPhi);
+  const y = camRadius * Math.sin(camPhi);
+  const z = camRadius * Math.cos(camTheta) * Math.cos(camPhi);
+  camera.position.set(x, Math.max(2, y), z);
+  camera.lookAt(0, 1.5, 0);
+}
+
+let _dragging = false;
+function onMouseDown(e) {
+  _dragging    = false;
+  isDragging   = false;
+  prevMouse    = { x:e.clientX, y:e.clientY };
+}
+function onMouseUp(e) {
+  isDragging = _dragging;
+}
+function onMouseMove(e) {
+  /* Update mouse coords for raycaster */
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x =  ((e.clientX - rect.left) / rect.width )*2 - 1;
+  mouse.y = -((e.clientY - rect.top ) / rect.height)*2 + 1;
+
+  /* Orbit drag */
+  if (e.buttons === 1) {
+    const dx = e.clientX - prevMouse.x;
+    const dy = e.clientY - prevMouse.y;
+    if (Math.abs(dx)+Math.abs(dy) > 3) _dragging = true;
+    camTheta -= dx * 0.007;
+    camPhi    = Math.max(0.08, Math.min(Math.PI*0.46, camPhi - dy*0.005));
+    prevMouse = { x:e.clientX, y:e.clientY };
+    updateCamera();
+  }
+}
+
+function onWheel(e) {
+  e.preventDefault();
+  camRadius = Math.max(8, Math.min(65, camRadius + e.deltaY * 0.045));
+  updateCamera();
+}
+
+function onResize() {
+  const W = window.innerWidth, H = window.innerHeight;
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+  renderer.setSize(W, H);
+}
+
+function onClick(e) {
+  if (_dragging) return;
+  raycaster.setFromCamera(mouse, camera);
+  const spheres = Object.values(nodeMeshes).map(nm => nm.sphere);
+  const hits    = raycaster.intersectObjects(spheres);
+  if (hits.length) {
+    const nodeId = hits[0].object.userData.nodeId;
+    const nd = NODES_DEF.find(n => n.id === nodeId);
+    if (nd) { selectedNode = nodeId; openPanel(nd); }
+  } else {
+    closePanel();
+  }
+}
+
+/* ───────────────────────────────────────────────────────────
+   PHẦN 6 — INFO PANEL
+   ─────────────────────────────────────────────────────────── */
+
+function openPanel(nd) {
+  const lines = nd.label.split('\n');
+  document.getElementById('ip-title').textContent = lines[0] + ' — ' + (lines[1]||'');
+  document.getElementById('ip-sub').textContent   = nd.sub;
+
+  const stL = { ok:'● NORMAL', warn:'⚠ WARNING', crit:'✕ CRITICAL', unknown:'? UNKNOWN' };
+  const stC = { ok:'badge-ok',  warn:'badge-warn',  crit:'badge-err',   unknown:'badge-unk' };
+  document.getElementById('ip-badge-row').innerHTML =
+    `<span class="badge ${stC[nd.status]||'badge-unk'}">${stL[nd.status]||'? UNKNOWN'}</span>`;
+
+  document.getElementById('ip-info').innerHTML =
+    Object.entries(nd.info||{}).map(([k,v]) =>
+      `<div class="ip-row"><span class="ik">${k}</span><span class="iv">${v}</span></div>`
+    ).join('');
+
+  const kpi  = nd.kpi || {};
+  const dPct = Math.min((kpi.delay ||0)/100*100, 100);
+  const jPct = Math.min((kpi.jitter||0)/20 *100, 100);
+  const lPct = Math.min((kpi.loss  ||0)/1  *100, 100);
+  const bc   = p => p<50 ? '#34d399' : p<100 ? '#fbbf24' : '#f87171';
+
+  let kpiHtml = `<div style="font-size:.66em;color:#4a6a8a;text-transform:uppercase;
+    letter-spacing:.08em;font-weight:700;margin-bottom:6px;margin-top:10px">
+    ⚡ KPI — EUROCAE ED-137</div>`;
+
+  if (kpi.delay !== undefined) {
+    kpiHtml += `
+    <div class="kpi-bar-lbl"><span>One-way Delay</span><span style="color:${bc(dPct)}">${kpi.delay} ms</span></div>
+    <div class="kpi-bar-wrap"><div class="kpi-bar-fill" style="width:${dPct}%;background:${bc(dPct)}"></div></div>
+    <div class="kpi-bar-lbl"><span>Jitter</span><span style="color:${bc(jPct)}">${kpi.jitter} ms</span></div>
+    <div class="kpi-bar-wrap"><div class="kpi-bar-fill" style="width:${jPct}%;background:${bc(jPct)}"></div></div>
+    <div class="kpi-bar-lbl"><span>Packet Loss</span><span style="color:${bc(lPct)}">${kpi.loss}%</span></div>
+    <div class="kpi-bar-wrap"><div class="kpi-bar-fill" style="width:${lPct}%;background:${bc(lPct)}"></div></div>`;
+  } else {
+    kpiHtml += `<div style="font-size:.75em;color:#4a6a8a;padding:4px 0">
+      KPI đo kiểm theo đường truyền (TX/RX)</div>`;
+  }
+  document.getElementById('ip-kpi').innerHTML = kpiHtml;
+  document.getElementById('info-panel').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('info-panel').classList.remove('open');
+  selectedNode = null;
+}
+window.closePanel = closePanel;
+
+/* ───────────────────────────────────────────────────────────
+   ENTRY POINT
+   ─────────────────────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded', () => {
+  /* Inject CNS room label */
+  const cnsLbl = document.createElement('div');
+  cnsLbl.id = 'cns-label';
+  cnsLbl.style.cssText =
+    'position:absolute;pointer-events:none;transform:translate(-50%,-100%);' +
+    'font-size:.6em;color:#1e3a5f;font-weight:700;letter-spacing:.1em;' +
+    'text-transform:uppercase;background:rgba(6,13,26,.7);padding:2px 6px;border-radius:3px;';
+  cnsLbl.textContent = '— CNS ROOM —';
+  document.body.appendChild(cnsLbl);
+
+  setTimeout(init3D, 80);
+});
+</script>
+</body>
+</html>

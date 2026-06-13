@@ -1,0 +1,163 @@
+---
+title: Sơ đồ Truyền dẫn VHF — Đài KSKL Long Thành ↔ Trạm TX ↔ Trạm RX
+---
+flowchart LR
+
+%% ═══════════════════════════════════════════════════════
+%%  TRẠM PHÁT TX
+%% ═══════════════════════════════════════════════════════
+subgraph TX["🏭  TRẠM PHÁT  (TX)"]
+    direction TB
+
+    subgraph TX_RADIO["Radio VHF — 18× Park Air T6-TV"]
+        TX_MAIN["T6-TV MAIN ×9\nLAN1: 10.60.7.1–9/27\nLAN3: 10.60.7.71–79/27"]
+        TX_STBY["T6-TV STANDBY ×9\nLAN1: 10.60.7.41–49/27\nLAN3: 10.60.7.81–89/27"]
+    end
+
+    TX_ANT["Anten CXL 3-1LW ×18\n+ Filter + Chống sét"]
+
+    subgraph TX_NET["Mạng nội bộ TX"]
+        TX_SW6860M["SW6860-MAIN-01\nALE OS6860E-24\nGW: 10.60.7.30/27"]
+        TX_SW6860S["SW6860-STANDBY-01\nALE OS6860E-24\nGW: 10.60.7.62/27"]
+        TX_SW6360["SW6360\nALE OS6360-24\nGW: 10.60.7.94/27"]
+        TX_LCMS["LCMS HP Z1 G9\n10.60.7.65/27"]
+    end
+
+    TX_MAIN -->|"LAN1 — VoIP\nSIP/RTP ED-137"| TX_SW6860M
+    TX_STBY -->|"LAN1 — VoIP\nSIP/RTP ED-137"| TX_SW6860S
+    TX_MAIN -->|"LAN3 — RCMS\nSNMP V1/V2c/V3"| TX_SW6360
+    TX_STBY -->|"LAN3 — RCMS\nSNMP V1/V2c/V3"| TX_SW6360
+    TX_SW6360 --- TX_LCMS
+    TX_ANT -.->|"RF 118–136 MHz\nAM VHF A/G"| TX_MAIN
+    TX_ANT -.->|"RF 118–136 MHz"| TX_STBY
+end
+
+%% ═══════════════════════════════════════════════════════
+%%  ĐÀI KSKL LONG THÀNH — ATCC
+%% ═══════════════════════════════════════════════════════
+subgraph ATCC["🗼  ĐÀI KSKL LONG THÀNH  (ATCC / TWR)"]
+    direction TB
+
+    subgraph ATCC_VOIP["Lõi VoIP VCCS — subnet 10.60.8.x/24"]
+        ATCC_SW1["ATCT-VCCS-SW6860-01\nALE OS6860E-24\nPort 21: RX-RCMS\nPort 22: TX-RCMS"]
+        ATCC_SW2["ATCT-VCCS-SW6860-02\nALE OS6860E-24"]
+        xMG1["VCCS xMG #1\nFREQUENTIS\n10.60.8.x"]
+        xMG2["VCCS xMG #2\nFREQUENTIS\n10.60.8.x"]
+        CWP["CWP ×15\nController Working Position\n10.60.8.x"]
+        SWITCH_CORE["RED / BLUE\nSwitch Core\nFREQUENTIS"]
+    end
+
+    subgraph ATCC_RCMS["Trung tâm Giám sát RCMS"]
+        TX_RCMS["TX-VHF-RCMS\nHP Z1 G9\n10.60.7.98/28"]
+        RX_RCMS["RX-VHF-RCMS\nHP Z1 G9\n10.60.7.97/28"]
+        UB_RCMS["UBVHF-RCMS\nHP Z1 G9\n10.60.11.30/27"]
+        GAMS["GAMS\nAlarm Management\nSNMP Trap Receiver"]
+        RAPS["RAPS\nVoice Recorder\n(Analog audio từ S4-IP)"]
+    end
+
+    subgraph UBVHF["⚡ Ultimate Backup VHF — Tầng 20 TWR — 10.60.11.0/27"]
+        direction TB
+        T6TRV["T6-TRV ×6\nPark Air\n10.60.11.1–6/27\n(Tần số: Tùy chỉnh + 121.5)"]
+        S4IP["S4-IP Controller ×6\nPark Air\n10.60.11.11–16/27\n(TCP port 5001, Không SNMP)"]
+        SW6360_TWR["TWR-UBVHF-SW6360-01\nALE OS6360-24\nTầng 20 TWR"]
+        SW6360_ATCT["ATCT-UBVHF-SW6360-01\nALE OS6360-24\nPort 22→GAMS\nPort 23→RAPS\nPort 24→RCMS"]
+        LCMS_UB["UBVHF-LCMS\nHP Z1 G9\n10.60.11.29/27"]
+        UB_ANT["Anten ×6\n(PN: 1000075)"]
+    end
+
+    subgraph NOKIA_MPLS["MPLS Backbone — Nokia"]
+        NK_7250["Nokia 7250 IXR-e\nMPLS Router (TWR)"]
+        NK_7705["Nokia 7705 SAR-8\nE&M Interface"]
+    end
+
+    %% VoIP core links
+    ATCC_SW1 <--> ATCC_SW2
+    ATCC_SW1 --> xMG1
+    ATCC_SW2 --> xMG2
+    xMG1 <--> SWITCH_CORE
+    xMG2 <--> SWITCH_CORE
+    SWITCH_CORE --> CWP
+
+    %% RCMS internal links
+    ATCC_SW1 -->|"Port 22"| TX_RCMS
+    ATCC_SW1 -->|"Port 21"| RX_RCMS
+    TX_RCMS -->|"SNMP Trap"| GAMS
+    RX_RCMS -->|"SNMP Trap"| GAMS
+    UB_RCMS -->|"SNMP Trap"| GAMS
+
+    %% UBVHF internal links
+    T6TRV -->|"LAN1 Port 1–6"| SW6360_TWR
+    S4IP  -->|"IP1 Port 11–16"| SW6360_TWR
+    SW6360_TWR -->|"Optical uplink\nPort 27 ↔ Port 27"| SW6360_ATCT
+    SW6360_ATCT -->|"Port 24"| UB_RCMS
+    SW6360_ATCT -->|"Port 23"| RAPS
+    SW6360_ATCT -->|"Port 22"| GAMS
+    SW6360_TWR --- LCMS_UB
+    UB_ANT -.->|"RF VHF AM"| T6TRV
+
+    %% Nokia backbone
+    NK_7250 --- NK_7705
+    NK_7250 --- ATCC_SW1
+end
+
+%% ═══════════════════════════════════════════════════════
+%%  TRẠM THU RX
+%% ═══════════════════════════════════════════════════════
+subgraph RX["📡  TRẠM THU  (RX)"]
+    direction TB
+
+    subgraph RX_RADIO["Radio VHF — 18× Park Air T6-RV"]
+        RX_MAIN["T6-RV MAIN ×9\nLAN1: 10.60.6.1–9/27\nLAN3: 10.60.6.71–79/27"]
+        RX_STBY["T6-RV STANDBY ×9\nLAN1: 10.60.6.41–49/27\nLAN3: 10.60.6.81–89/27"]
+    end
+
+    RX_ANT["Anten CXL 3-1LW ×18\nPN:100000075\n+ Filter + Chống sét"]
+
+    subgraph RX_NET["Mạng nội bộ RX"]
+        RX_SW6860M["SW6860-MAIN-01\nALE OS6860E-24\nMGMT: 10.60.99.9/24\nVoIP: 10.60.6.20/27"]
+        RX_SW6860S["SW6860-STANDBY-01\nALE OS6860E-24"]
+        RX_SW6360["SW6360\nALE OS6360-24\nGW: 10.60.6.94/27"]
+        RX_LCMS["LCMS HP Z1 G9\n10.60.6.65/27"]
+    end
+
+    RX_MAIN -->|"LAN1 — VoIP\nSIP/RTP ED-137"| RX_SW6860M
+    RX_STBY -->|"LAN1 — VoIP\nSIP/RTP ED-137"| RX_SW6860S
+    RX_MAIN -->|"LAN3 — RCMS\nSNMP V1/V2c/V3"| RX_SW6360
+    RX_STBY -->|"LAN3 — RCMS\nSNMP V1/V2c/V3"| RX_SW6360
+    RX_SW6360 --- RX_LCMS
+    RX_ANT -.->|"RF 118–136 MHz\nAM VHF A/G"| RX_MAIN
+    RX_ANT -.->|"RF 118–136 MHz"| RX_STBY
+end
+
+%% ═══════════════════════════════════════════════════════
+%%  LIÊN KẾT TRUYỀN DẪN NGOẠI VI — CÁP QUANG 48 Fo
+%% ═══════════════════════════════════════════════════════
+
+TX_SW6860M  <-->|"🔵 Fo1 — VoIP MAIN\n48 Fo SM\nED-137: Delay<100ms\nJitter<20ms Loss<1%"| ATCC_SW1
+TX_SW6860S  <-->|"🟡 Fo2 — VoIP STANDBY\n48 Fo SM (dự phòng)"| ATCC_SW2
+TX_SW6360   <-->|"🟢 Fo — RCMS TX\nSNMP monitoring"| ATCC_SW1
+
+RX_SW6860M  <-->|"🔵 Fo1 — VoIP MAIN\n48 Fo SM\nED-137: Delay<100ms\nJitter<20ms Loss<1%"| ATCC_SW1
+RX_SW6860S  <-->|"🟡 Fo2 — VoIP STANDBY\n48 Fo SM (dự phòng)"| ATCC_SW2
+RX_SW6360   <-->|"🟢 Fo — RCMS RX\nSNMP monitoring"| ATCC_SW1
+
+%% ═══════════════════════════════════════════════════════
+%%  STYLE
+%% ═══════════════════════════════════════════════════════
+classDef radio     fill:#1a6b3a,stroke:#0d4a28,color:#fff
+classDef switch_vo fill:#1a3a6b,stroke:#0d2848,color:#fff
+classDef switch_rc fill:#2d6b4a,stroke:#1a4a30,color:#fff
+classDef rcms_ws   fill:#4a3a6b,stroke:#2d1a4a,color:#fff
+classDef vccs_eq   fill:#6b3a1a,stroke:#4a2810,color:#fff
+classDef alarm     fill:#8b1a1a,stroke:#5a0d0d,color:#fff
+classDef nokia_eq  fill:#003366,stroke:#001a33,color:#fff
+classDef ant_eq    fill:#555,stroke:#333,color:#fff,stroke-dasharray:5 5
+
+class TX_MAIN,TX_STBY,RX_MAIN,RX_STBY,T6TRV radio
+class TX_SW6860M,TX_SW6860S,RX_SW6860M,RX_SW6860S,ATCC_SW1,ATCC_SW2 switch_vo
+class TX_SW6360,RX_SW6360,SW6360_TWR,SW6360_ATCT switch_rc
+class TX_RCMS,RX_RCMS,UB_RCMS,TX_LCMS,RX_LCMS,LCMS_UB rcms_ws
+class xMG1,xMG2,CWP,SWITCH_CORE,S4IP vccs_eq
+class GAMS,RAPS alarm
+class NK_7250,NK_7705 nokia_eq
+class TX_ANT,RX_ANT,UB_ANT ant_eq

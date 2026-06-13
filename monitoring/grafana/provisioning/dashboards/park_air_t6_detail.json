@@ -1,0 +1,302 @@
+{
+  "uid": "vatm-parkair-t6",
+  "title": "Park Air T6 — VHF Radio Detail",
+  "description": "Chi tiết thiết bị: T6-TV (TX), T6-RV (RX), T6-TRV (TWR) — SNMP V2c qua LAN3",
+  "tags": ["vatm", "park-air", "t6", "snmp"],
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "timezone": "Asia/Ho_Chi_Minh",
+  "templating": {
+    "list": [
+      {
+        "name": "site",
+        "label": "Site",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "query": "label_values(up{job=~\"snmp_.*\"}, job)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+
+    {
+      "id": 1, "type": "stat", "title": "T6 Radios UP (SNMP reachable)",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 10 }, { "color": "green", "value": 36 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "count(up{job=~\"snmp_(tx|rx|ubvhf).*\"} == 1)",
+        "legendFormat": "UP", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 2, "type": "stat", "title": "T6 Radios DOWN",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "red", "value": 1 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "count(up{job=~\"snmp_(tx|rx|ubvhf).*\"} == 0) or vector(0)",
+        "legendFormat": "DOWN", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 3, "type": "stat", "title": "T6 Interfaces DOWN (eth*)",
+      "description": "t6_if_oper_status == 2 = down",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "red", "value": 1 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "count(t6_if_oper_status{ifDescr=~\"eth.*\"} == 2) or vector(0)",
+        "legendFormat": "IF Down", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 4, "type": "stat", "title": "T6 radios khởi động < 5 phút",
+      "description": "Cảnh báo thiết bị mới restart",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "orange", "value": 1 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "count((t6_uptime_ticks / 100) < 300) or vector(0)",
+        "legendFormat": "Restarted", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 5, "type": "stat", "title": "T6 Error rate (5m avg)",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 10 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "sum(rate(t6_if_in_errors[5m]))",
+        "legendFormat": "errors/s", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 6, "type": "stat", "title": "T6 Mem Available (avg)",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kbytes",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 51200 }, { "color": "green", "value": 102400 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "orientation": "auto" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "avg(t6_mem_avail_kb)",
+        "legendFormat": "Mem avail", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 10, "type": "table", "title": "Trạng thái SNMP scrape — Tất cả T6 radios",
+      "gridPos": { "x": 0, "y": 4, "w": 14, "h": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Value" },
+            "properties": [
+              { "id": "mappings", "value": [
+                  { "type": "value", "options": { "1": { "text": "✅ UP",   "color": "green" } } },
+                  { "type": "value", "options": { "0": { "text": "🔴 DOWN", "color": "red"   } } }
+              ]},
+              { "id": "custom.displayMode", "value": "color-text" }
+            ]
+          }
+        ]
+      },
+      "options": { "footer": { "show": false } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "up{job=~\"snmp_(tx|rx|ubvhf).*\"}",
+        "legendFormat": "{{instance}} ({{job}})",
+        "refId": "A",
+        "instant": true
+      }],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        { "id": "organize", "options": { "renameByName": { "instance": "IP / Host", "job": "Job (Site)", "Value": "SNMP" } } }
+      ]
+    },
+
+    {
+      "id": 11, "type": "table", "title": "Trạng thái Interface eth* — Park Air T6",
+      "description": "1=up, 2=down. Cần xác nhận OID ifOperStatus với Park Air MIB thực tế.",
+      "gridPos": { "x": 14, "y": 4, "w": 10, "h": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Value" },
+            "properties": [
+              { "id": "mappings", "value": [
+                  { "type": "value", "options": { "1": { "text": "✅ Up",   "color": "green" } } },
+                  { "type": "value", "options": { "2": { "text": "🔴 Down", "color": "red"   } } }
+              ]},
+              { "id": "custom.displayMode", "value": "color-text" }
+            ]
+          }
+        ]
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "t6_if_oper_status{ifDescr=~\"eth.*\"}",
+        "legendFormat": "{{instance}} / {{ifDescr}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        { "id": "organize", "options": { "renameByName": { "instance": "Radio", "ifDescr": "Interface", "Value": "Status" } } }
+      ]
+    },
+
+    {
+      "id": 20, "type": "timeseries", "title": "T6 CPU Load (%) theo thời gian",
+      "description": "t6_cpu_load_1min — cảnh báo nếu > 90%",
+      "gridPos": { "x": 0, "y": 13, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "lineWidth": 1, "fillOpacity": 5 },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 }
+          ]}
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "t6_cpu_load_1min / 100",
+        "legendFormat": "{{instance}}", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 21, "type": "timeseries", "title": "T6 Interface Errors & Discards (rate 5m)",
+      "gridPos": { "x": 12, "y": 13, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 10 }
+          ]}
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+          "expr": "rate(t6_if_in_errors[5m]) > 0",
+          "legendFormat": "errors {{instance}}", "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+          "expr": "rate(t6_if_in_discards[5m]) > 0",
+          "legendFormat": "discards {{instance}}", "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 22, "type": "timeseries", "title": "T6 Memory Available (kB) — cảnh báo < 50MB",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kbytes",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 51200 }, { "color": "green", "value": 102400 }
+          ]}
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "t6_mem_avail_kb",
+        "legendFormat": "{{instance}}", "refId": "A"
+      }]
+    },
+
+    {
+      "id": 23, "type": "timeseries", "title": "T6 Uptime (giờ)",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "custom": { "lineWidth": 2, "fillOpacity": 3 }
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus_vatm" },
+        "expr": "t6_uptime_ticks / 100 / 3600",
+        "legendFormat": "{{instance}}", "refId": "A"
+      }]
+    }
+
+  ]
+}

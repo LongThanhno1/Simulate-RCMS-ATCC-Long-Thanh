@@ -1,0 +1,222 @@
+---
+# ============================================================
+# Playbook 00: Cài đặt môi trường Lab Simulation
+# Mục đích: Cấu hình các Ubuntu VMs làm router simulator
+#           - Cài snmpd + mib files
+#           - Cấu hình community string
+#           - Tạo script giả lập Nokia SR OS responses
+# Chỉ chạy một lần khi setup phòng lab
+# Sử dụng: ansible-playbook -i ../hosts.ini 00_setup_lab.yml --limit lab_simulation
+# ============================================================
+
+- name: "LAB SETUP | Cài đặt SNMP daemon và công cụ đo lường"
+  hosts: lab_simulation
+  gather_facts: true
+  become: true
+
+  tasks:
+    # --- Package Installation ---
+    - name: "Cập nhật apt cache"
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: "Cài đặt các gói cần thiết"
+      apt:
+        name:
+          - snmpd
+          - snmp
+          - snmp-mibs-downloader
+          - iputils-ping
+          - net-tools
+          - iproute2
+          - python3
+          - python3-pip
+          - iperf3           # Đo bandwidth/jitter thực tế
+          - mtr-tiny         # Traceroute + latency
+          - tcpdump
+        state: present
+
+    # --- Configure snmpd ---
+    - name: "Backup cấu hình snmpd gốc"
+      copy:
+        src: /etc/snmp/snmpd.conf
+        dest: /etc/snmp/snmpd.conf.bak
+        remote_src: true
+        force: false
+
+    - name: "Cấu hình snmpd với community string VATM"
+      copy:
+        content: |
+          # VATM Lab Simulation - snmpd configuration
+          # Simulates Nokia SR OS SNMP responses
+
+          # Community strings
+          rocommunity  public   127.0.0.1
+          rocommunity  vatm-ro  {{ ansible_host }}
+          rocommunity  public   192.168.100.0/24
+
+          # System info (simulate Nokia device)
+          sysDescr     "Nokia 7705 SAR-8 (Simulation) - SR OS 24.11"
+          sysObjectID  .1.3.6.1.4.1.6527.1.3.7    # Nokia 7705 OID
+          sysLocation  "{{ sim_device | default(inventory_hostname) }} - LAB VATM"
+          sysContact   "ATSEP ATCC Long Thanh <atsep@vatm.vn>"
+
+          # Listen on all interfaces
+          agentAddress udp:161,udp6:[::1]:161
+
+          # Enable MIBs
+          view   systemview  included  .1.3.6.1.2.1.1
+          view   systemview  included  .1.3.6.1.2.1.2
+          view   systemview  included  .1.3.6.1.2.1.31
+          view   systemview  included  .1.3.6.1.4.1.6527
+          access  notConfigGroup ""  any  noauth  exact  systemview  none  none
+
+          # Interface simulation (IF-MIB)
+          extend  ifOperStatus  /bin/bash -c "cat /sys/class/net/eth0/operstate | grep -c up"
+
+          # Performance counters (using host's real values)
+          includeAllDisks
+          disk /
+          load 1 5 15
+        dest: /etc/snmp/snmpd.conf
+        backup: true
+      notify: Restart snmpd
+
+    - name: "Tạo thư mục MIBS tùy chỉnh Nokia"
+      file:
+        path: /usr/share/snmp/mibs/nokia
+        state: directory
+
+    # --- Nokia SAA Simulation Script ---
+    - name: "Tạo script giả lập Nokia SR OS CLI output"
+      copy:
+        content: |
+          #!/bin/bash
+          # Nokia SR OS CLI Simulator for Lab Testing
+          # Usage: simulate_sros.sh <command>
+
+          SIM_DEVICE="{{ sim_device | default(inventory_hostname) }}"
+          TIMESTAMP=$(date "+%Y/%m/%d %H:%M:%S")
+
+          case "$1" in
+            "show system information")
+              echo "================================================================================"
+              echo "System Information"
+              echo "================================================================================"
+              echo "System Name            : ${SIM_DEVICE}"
+              echo "System Type            : 7705 SAR-8 (SIMULATION)"
+              echo "System Version         : SR OS 24.11 (SIMULATION)"
+              echo "System Up Time         : $(uptime -p | sed 's/up //')"
+              echo "System Contact         : ATSEP ATCC Long Thanh"
+              echo "System Location        : LAB SIMULATION"
+              echo "System Date            : ${TIMESTAMP}"
+              echo "================================================================================"
+              ;;
+            "show port")
+              echo "================================================================================"
+              echo "Ports"
+              echo "================================================================================"
+              echo "Port          Admin  Link  Port  SFP/XFP     MDI   Speed     Description"
+              echo "              State  State State  Present             Duplex"
+              echo "-------------------------------------------------------------------------------"
+              echo "1/1/1         Up     Up    Up     Yes         N/A   1000Full  ISP-VNPT-Primary"
+              echo "1/1/2         Up     Up    Up     Yes         N/A   1000Full  ISP-VIETTEL-Backup"
+              echo "1/2/1         Up     Up    Up     Yes         N/A   1000Full  Internal-Link"
+              echo "================================================================================"
+              ;;
+            "show router ospf neighbor")
+              echo "================================================================================"
+              echo " OSPF Neighbors"
+              echo "================================================================================"
+              echo " Interface-Name                     Rtr Id            State      Pri    RetxQ"
+              echo "                                    Area-Id"
+              echo "--------------------------------------------------------------------------------"
+              echo " to-atcc-hcm-pri                    10.255.0.1        Full       1      0"
+              echo "                                    0.0.0.0"
+              echo " to-atcc-hcm-sec                    10.255.0.1        Full       1      0"
+              echo "                                    0.0.0.1"
+              echo "================================================================================"
+              ;;
+            "show saa"*)
+              echo "================================================================================"
+              echo " SAA Test Results (SIMULATION)"
+              echo "================================================================================"
+              echo " Test: VATM-LAT-${SIM_DEVICE}"
+              echo " Owner: VATM-ATCC"
+              echo "--------------------------------------------------------------------------------"
+              RTT=$(echo "scale=3; $(( RANDOM % 30 + 5 )).$(( RANDOM % 999 ))" | bc 2>/dev/null || echo "15.234")
+              JITTER=$(echo "scale=3; $(( RANDOM % 5 )).$(( RANDOM % 999 ))" | bc 2>/dev/null || echo "2.341")
+              echo " Last Run At     : ${TIMESTAMP}"
+              echo " Avg Round Trip  : ${RTT} ms"
+              echo " Min Round Trip  : $(echo "$RTT - 2" | bc 2>/dev/null || echo "12.100") ms"
+              echo " Max Round Trip  : $(echo "$RTT + 5" | bc 2>/dev/null || echo "20.500") ms"
+              echo " Avg Jitter      : ${JITTER} ms"
+              echo " Pkts Sent/Rcvd  : 100/100"
+              echo " Pkts Loss       : 0"
+              echo "================================================================================"
+              ;;
+            "show router mpls lsp")
+              echo "================================================================================"
+              echo " MPLS LSPs (SIMULATION)"
+              echo "================================================================================"
+              echo " LSP Name                                       To           Admin  Oper"
+              echo "                                                             State  State"
+              echo "--------------------------------------------------------------------------------"
+              echo " to-atcc-hcm-primary                            10.255.0.1   Up     Up"
+              echo " to-atcc-hcm-backup                             10.255.0.2   Up     Up"
+              echo "================================================================================"
+              ;;
+            *)
+              echo "--- SIMULATION: Command '${1}' not recognized ---"
+              echo "Available: show system information | show port | show router ospf neighbor | show saa | show router mpls lsp"
+              ;;
+          esac
+        dest: /usr/local/bin/simulate_sros.sh
+        mode: '0755'
+
+    # --- Cài đặt cron đo kiểm iperf3 ---
+    - name: "Cài đặt iperf3 server service"
+      copy:
+        content: |
+          [Unit]
+          Description=iperf3 Network Test Server (VATM Lab)
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/bin/iperf3 -s -p 5201
+          Restart=always
+          User=nobody
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/iperf3.service
+      notify: Enable iperf3
+
+    - name: "Khởi động snmpd"
+      systemd:
+        name: snmpd
+        state: started
+        enabled: true
+
+    - name: "Test SNMP connectivity"
+      command: "snmpget -v2c -c public localhost sysDescr.0"
+      register: snmp_test
+      ignore_errors: true
+
+    - name: "In kết quả test SNMP"
+      debug:
+        msg: "SNMP Test: {{ snmp_test.stdout | default(snmp_test.stderr) }}"
+
+  handlers:
+    - name: Restart snmpd
+      systemd:
+        name: snmpd
+        state: restarted
+
+    - name: Enable iperf3
+      systemd:
+        name: iperf3.service
+        state: started
+        enabled: true
+        daemon_reload: true

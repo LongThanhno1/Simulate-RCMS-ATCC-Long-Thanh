@@ -1,0 +1,88 @@
+---
+# ============================================================
+# Playbook 02: Tổng hợp báo cáo từ dữ liệu JSON đã thu thập
+# Mục đích: Đọc các file .json từ raw/, tổng hợp thành báo cáo
+#           Markdown và CSV cho kỹ thuật viên
+# Sử dụng: ansible-playbook -i hosts.ini playbooks/02_generate_report.yml
+# ============================================================
+
+- name: "VATM | Tổng hợp báo cáo đo kiểm đường truyền"
+  hosts: localhost
+  gather_facts: true
+  connection: local
+
+  vars:
+    raw_dir:    "{{ report_base_dir }}/{{ report_date }}/raw"
+    report_dir: "{{ report_base_dir }}/{{ report_date }}"
+
+  tasks:
+    - name: "Tạo thư mục báo cáo"
+      file:
+        path: "{{ report_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: "Tìm tất cả file JSON đã thu thập"
+      find:
+        paths: "{{ raw_dir }}"
+        patterns: "*.json"
+      register: json_files
+
+    - name: "Load dữ liệu từ các file JSON"
+      set_fact:
+        all_metrics: "{{ all_metrics | default([]) + [lookup('file', item.path) | from_json] }}"
+      loop: "{{ json_files.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+
+    - name: "Phân loại: Thiết bị thành công / thất bại"
+      set_fact:
+        success_hosts: "{{ all_metrics | selectattr('collection_status', 'equalto', 'SUCCESS') | list }}"
+        fail_hosts:    "{{ all_metrics | selectattr('collection_status', 'ne', 'SUCCESS') | list }}"
+
+    - name: "Tạo báo cáo Markdown"
+      template:
+        src: "../roles/nokia_sros_collector/templates/report.md.j2"
+        dest: "{{ report_dir }}/BCKIEMDUONGTRUYEN_{{ report_date }}_{{ report_time }}.md"
+      vars:
+        collected_ok:   "{{ success_hosts | length }}"
+        collected_fail: "{{ fail_hosts | length }}"
+      ignore_errors: true
+
+    - name: "Tạo CSV tổng hợp"
+      copy:
+        content: |
+          hostname,site,model,device_role,host_ip,status,collected_at
+          {% for m in all_metrics %}
+          {{ m.hostname }},{{ m.site }},{{ m.model }},{{ m.device_role | default('N/A') }},{{ m.host_ip }},{{ m.collection_status }},{{ m.collected_at }}
+          {% endfor %}
+        dest: "{{ report_dir }}/summary_{{ report_date }}.csv"
+
+    - name: "In tóm tắt kết quả"
+      debug:
+        msg: |
+          ============================================================
+          BÁO CÁO ĐO KIỂM ĐƯỜNG TRUYỀN VATM ATCC LONG THÀNH
+          Ngày: {{ report_date }} | Giờ: {{ report_time }}
+          ============================================================
+          Tổng thiết bị: {{ all_metrics | length }}
+          ✅ Thành công:  {{ success_hosts | length }}
+          ❌ Lỗi/Timeout: {{ fail_hosts | length }}
+
+          Báo cáo Markdown: {{ report_dir }}/BCKIEMDUONGTRUYEN_{{ report_date }}_{{ report_time }}.md
+          Báo cáo CSV:      {{ report_dir }}/summary_{{ report_date }}.csv
+          ============================================================
+
+    - name: "Lưu trữ (archive) báo cáo cũ hơn 30 ngày"
+      find:
+        paths: "{{ report_base_dir }}"
+        age: "30d"
+        file_type: directory
+      register: old_reports
+
+    - name: "Di chuyển báo cáo cũ vào archive"
+      command: "mv {{ item.path }} {{ report_archive_dir }}/"
+      loop: "{{ old_reports.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      ignore_errors: true

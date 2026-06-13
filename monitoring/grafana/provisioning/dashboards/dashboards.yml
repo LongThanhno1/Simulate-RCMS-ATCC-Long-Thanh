@@ -1,0 +1,15 @@
+# ============================================================
+# Grafana Dashboard Provider — Auto-load JSON dashboards
+# ============================================================
+apiVersion: 1
+
+providers:
+  - name:            VATM Dashboards
+    orgId:           1
+    type:            file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates:  false
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false

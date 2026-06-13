@@ -1,0 +1,76 @@
+# ============================================================
+# Blackbox Exporter Configuration
+# VATM ATCC Long Thành | Park Air VHF System
+# ============================================================
+# Modules:
+#   tcp_rcms_s4ip  — TCP connect đến Park Air S4-IP port 5001 (RCMS protocol)
+#                    S4-IP KHÔNG có SNMP → đây là cách duy nhất kiểm tra connectivity
+#   icmp_ping      — ICMP ping đến RCMS/LCMS workstations và switches
+#   tcp_connect    — TCP connect generic (dùng kiểm tra các port dịch vụ khác)
+# ============================================================
+
+modules:
+
+  # ─────────────────────────────────────────────────────────
+  # TCP: Park Air S4-IP RCMS Controller — port 5001
+  # Targets: 10.60.11.11, 10.60.11.12, ..., 10.60.11.16
+  # ─────────────────────────────────────────────────────────
+  tcp_rcms_s4ip:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      # Chỉ kiểm tra TCP handshake thành công → S4-IP đang hoạt động
+      # Không gửi data vì RCMS protocol là proprietary
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: false
+      tls: false
+
+  # ─────────────────────────────────────────────────────────
+  # ICMP: Ping đến RCMS workstations & switches
+  # Targets: 10.60.7.98, 10.60.7.65, 10.60.7.97, 10.60.6.65
+  #          10.60.11.30, 10.60.11.29
+  #          10.60.7.94, 10.60.6.94 (SW6360)
+  # ─────────────────────────────────────────────────────────
+  icmp_ping:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: false
+      # Gửi 1 gói ICMP; Prometheus sẽ poll định kỳ
+      # Latency đo được = probe_duration_seconds (one-way × 2 RTT)
+      dont_fragment: false
+
+  # ─────────────────────────────────────────────────────────
+  # ICMP với payload lớn hơn — đo MTU path và loss rate
+  # Dùng cho đường truyền quan trọng TX ↔ ATCC ↔ RX
+  # ─────────────────────────────────────────────────────────
+  icmp_ping_large:
+    prober: icmp
+    timeout: 10s
+    icmp:
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: false
+      payload_size: 1400         # Gần MTU 1500 để test fragmentation
+
+  # ─────────────────────────────────────────────────────────
+  # ICMP alias — dùng cho prometheus.yml job blackbox_ping_workstations
+  # Module name phải khớp với params.module trong prometheus.yml
+  # ─────────────────────────────────────────────────────────
+  icmp:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: false
+      dont_fragment: false
+
+  # ─────────────────────────────────────────────────────────
+  # TCP Generic — kiểm tra port dịch vụ khác nếu cần
+  # ─────────────────────────────────────────────────────────
+  tcp_connect:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: false

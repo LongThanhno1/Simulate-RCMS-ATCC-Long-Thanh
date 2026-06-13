@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Sơ đồ Truyền dẫn VHF — Đài KSKL Long Thành</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; margin: 0; padding: 20px; }
+  h1 { text-align: center; color: #4fc3f7; font-size: 1.2em; margin-bottom: 4px; }
+  p.sub { text-align: center; color: #888; font-size: 0.85em; margin-bottom: 20px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px; }
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 0.78em; }
+  .leg-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+  .mermaid { background: #1a1d27; border-radius: 12px; padding: 20px; overflow-x: auto; }
+
+  .ed137-table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 0.82em; }
+  .ed137-table th { background: #1a3a6b; color: #7eb8f7; padding: 8px 12px; text-align: left; }
+  .ed137-table td { padding: 7px 12px; border-bottom: 1px solid #2a2d3a; }
+  .ed137-table tr:nth-child(even) td { background: #161925; }
+  .ok   { color: #4caf50; font-weight: bold; }
+  .warn { color: #ffc107; font-weight: bold; }
+  .crit { color: #f44336; font-weight: bold; }
+
+  h2 { color: #4fc3f7; font-size: 0.95em; margin-top: 28px; border-bottom: 1px solid #2a3a4a; padding-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<h1>🗼 Sơ đồ Truyền dẫn VHF — Đài KSKL Long Thành</h1>
+<p class="sub">Hệ thống VHF A/G theo chuẩn EUROCAE ED-137 &nbsp;|&nbsp; Hợp đồng 8225/HĐ-QLB &nbsp;|&nbsp; VATM / ANSV</p>
+
+<div class="legend">
+  <div class="leg-item"><div class="leg-dot" style="background:#1a6b3a"></div>Radio T6 (TX/RX/TRV)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#1a3a6b"></div>Switch VoIP (SW6860)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#2d6b4a"></div>Switch RCMS (SW6360)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#4a3a6b"></div>RCMS / LCMS (HP Z1 G9)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#6b3a1a"></div>VCCS / FREQUENTIS</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#8b1a1a"></div>GAMS / RAPS</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#003366"></div>Nokia MPLS</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#555;border:1px dashed #aaa"></div>Anten / RF</div>
+</div>
+
+<div class="mermaid">
+%%{init: {'theme': 'dark', 'flowchart': {'htmlLabels': true, 'curve': 'basis'}}}%%
+flowchart LR
+
+subgraph TX["🏭  TRẠM PHÁT  TX"]
+    direction TB
+    subgraph TXR["Radio — 18× T6-TV"]
+        TXM["T6-TV MAIN ×9\nLAN1: 10.60.7.1–9\nLAN3: 10.60.7.71–79"]
+        TXS["T6-TV STANDBY ×9\nLAN1: 10.60.7.41–49\nLAN3: 10.60.7.81–89"]
+    end
+    TXA["Anten ×18 CXL 3-1LW\n+ Filter + Chống sét"]
+    TX6860M["SW6860-MAIN-01\nGW:10.60.7.30/27"]
+    TX6860S["SW6860-STANDBY-01\nGW:10.60.7.62/27"]
+    TX6360["SW6360\nGW:10.60.7.94/27"]
+    TXLCMS["LCMS HP Z1 G9\n10.60.7.65/27"]
+    TXM -->|LAN1 VoIP| TX6860M
+    TXS -->|LAN1 VoIP| TX6860S
+    TXM -->|LAN3 RCMS SNMP| TX6360
+    TXS -->|LAN3 RCMS SNMP| TX6360
+    TX6360 --- TXLCMS
+    TXA -.->|RF AM VHF| TXM
+    TXA -.->|RF AM VHF| TXS
+end
+
+subgraph ATCC["🗼  ĐÀI KSKL LONG THÀNH  ATCC / TWR"]
+    direction TB
+
+    subgraph VOIP["VoIP Core — VCCS 10.60.8.x/24"]
+        ASW1["ATCT-VCCS-SW6860-01\nPort21:RX-RCMS Port22:TX-RCMS"]
+        ASW2["ATCT-VCCS-SW6860-02"]
+        XMG1["VCCS xMG #1\nFREQUENTIS"]
+        XMG2["VCCS xMG #2\nFREQUENTIS"]
+        CORE["RED/BLUE Switch Core"]
+        CWP["CWP ×15\nController Working Position"]
+    end
+
+    subgraph MON["Trung tâm Giám sát"]
+        TXRCMS["TX-VHF-RCMS\n10.60.7.98/28"]
+        RXRCMS["RX-VHF-RCMS\n10.60.7.97/28"]
+        UBRCMS["UBVHF-RCMS\n10.60.11.30/27"]
+        GAMS["GAMS\nSNMP Alarm"]
+        RAPS["RAPS\nVoice Recorder"]
+    end
+
+    subgraph UBVHF["⚡ Ultimate Backup VHF — Tầng 20 TWR"]
+        TRV["T6-TRV ×6\n10.60.11.1–6/27"]
+        S4["S4-IP ×6\n10.60.11.11–16/27\nTCP:5001 No SNMP"]
+        SW6360T["TWR-UBVHF-SW6360-01"]
+        SW6360A["ATCT-UBVHF-SW6360-01\nP22:GAMS P23:RAPS P24:RCMS"]
+        LCMSU["UBVHF-LCMS\n10.60.11.29/27"]
+        UANT["Anten ×6 PN:1000075"]
+    end
+
+    subgraph MPLS["MPLS Backbone — Nokia"]
+        NK1["Nokia 7250 IXR-e\nMPLS Router"]
+        NK2["Nokia 7705 SAR-8\nE&M Interface"]
+    end
+
+    ASW1 <--> ASW2
+    ASW1 --> XMG1 --> CORE --> CWP
+    ASW2 --> XMG2 --> CORE
+    ASW1 -->|Port 22| TXRCMS
+    ASW1 -->|Port 21| RXRCMS
+    TXRCMS -->|SNMP| GAMS
+    RXRCMS -->|SNMP| GAMS
+    UBRCMS -->|SNMP| GAMS
+    TRV -->|LAN1 P1-6| SW6360T
+    S4  -->|IP1 P11-16| SW6360T
+    SW6360T <-->|Fo Optical P27-P27| SW6360A
+    SW6360A -->|P24| UBRCMS
+    SW6360A -->|P23| RAPS
+    SW6360A -->|P22| GAMS
+    SW6360T --- LCMSU
+    UANT -.->|RF VHF AM| TRV
+    NK1 --- NK2
+    NK1 --- ASW1
+end
+
+subgraph RX["📡  TRẠM THU  RX"]
+    direction TB
+    subgraph RXR["Radio — 18× T6-RV"]
+        RXM["T6-RV MAIN ×9\nLAN1: 10.60.6.1–9\nLAN3: 10.60.6.71–79"]
+        RXS["T6-RV STANDBY ×9\nLAN1: 10.60.6.41–49\nLAN3: 10.60.6.81–89"]
+    end
+    RXA["Anten ×18 CXL 3-1LW\nPN:100000075\n+ Filter + Chống sét"]
+    RX6860M["SW6860-MAIN-01\nMGMT:10.60.99.9/24\nVoIP:10.60.6.20/27"]
+    RX6860S["SW6860-STANDBY-01"]
+    RX6360["SW6360\nGW:10.60.6.94/27"]
+    RXLCMS["LCMS HP Z1 G9\n10.60.6.65/27"]
+    RXM -->|LAN1 VoIP| RX6860M
+    RXS -->|LAN1 VoIP| RX6860S
+    RXM -->|LAN3 RCMS SNMP| RX6360
+    RXS -->|LAN3 RCMS SNMP| RX6360
+    RX6360 --- RXLCMS
+    RXA -.->|RF AM VHF| RXM
+    RXA -.->|RF AM VHF| RXS
+end
+
+TX6860M <-->|"Fo1 VoIP MAIN\n48 Fo SM\nED-137 KPI"| ASW1
+TX6860S <-->|"Fo2 VoIP STBY\n48 Fo SM"| ASW2
+TX6360  <-->|"Fo RCMS TX\nSNMP"| ASW1
+
+RX6860M <-->|"Fo1 VoIP MAIN\n48 Fo SM\nED-137 KPI"| ASW1
+RX6860S <-->|"Fo2 VoIP STBY\n48 Fo SM"| ASW2
+RX6360  <-->|"Fo RCMS RX\nSNMP"| ASW1
+
+classDef radio     fill:#1a6b3a,stroke:#0d4a28,color:#fff
+classDef sw_voip   fill:#1a3a6b,stroke:#0d2848,color:#fff
+classDef sw_rcms   fill:#2d6b4a,stroke:#1a4a30,color:#fff
+classDef ws        fill:#4a3a6b,stroke:#2d1a4a,color:#fff
+classDef vccs      fill:#6b3a1a,stroke:#4a2810,color:#fff
+classDef alarm_sys fill:#8b1a1a,stroke:#5a0d0d,color:#fff
+classDef mpls      fill:#003366,stroke:#001a33,color:#fff
+classDef ant       fill:#444,stroke:#888,color:#ccc,stroke-dasharray:4 4
+
+class TXM,TXS,RXM,RXS,TRV radio
+class TX6860M,TX6860S,RX6860M,RX6860S,ASW1,ASW2 sw_voip
+class TX6360,RX6360,SW6360T,SW6360A sw_rcms
+class TXRCMS,RXRCMS,UBRCMS,TXLCMS,RXLCMS,LCMSU ws
+class XMG1,XMG2,CWP,CORE,S4 vccs
+class GAMS,RAPS alarm_sys
+class NK1,NK2 mpls
+class TXA,RXA,UANT ant
+</div>
+
+<h2>📊 Ngưỡng KPI theo chuẩn EUROCAE ED-137</h2>
+<table class="ed137-table">
+  <tr><th>KPI</th><th class="ok">Xanh — Bình thường</th><th class="warn">Vàng — Cảnh báo</th><th class="crit">Đỏ — Sự cố</th></tr>
+  <tr><td>One-way Delay</td><td class="ok">< 50 ms</td><td class="warn">50 – 100 ms</td><td class="crit">> 100 ms</td></tr>
+  <tr><td>Jitter</td><td class="ok">< 10 ms</td><td class="warn">10 – 20 ms</td><td class="crit">> 20 ms</td></tr>
+  <tr><td>Packet Loss</td><td class="ok">< 0.1 %</td><td class="warn">0.1 – 1 %</td><td class="crit">> 1 %</td></tr>
+  <tr><td>VSWR Anten</td><td class="ok">≤ 1.5 : 1</td><td class="warn">1.5 – 2.0 : 1</td><td class="crit">> 2.0 : 1</td></tr>
+  <tr><td>BER Đường truyền</td><td class="ok">< 10⁻⁶</td><td class="warn">10⁻⁶ – 10⁻⁴</td><td class="crit">> 10⁻⁴</td></tr>
+</table>
+
+<h2>🔑 Ghi chú kiến trúc</h2>
+<ul style="font-size:0.83em; line-height:1.8; color:#bbb;">
+  <li><strong>Hai mạng độc lập:</strong> SW6860 (VoIP/ED-137) và SW6360 (RCMS/monitoring) — không cross nhau tại TX/RX.</li>
+  <li><strong>T6 Radio:</strong> LAN1 → SW6860 (VoIP tới VCCS xMG), LAN3 → SW6360 (SNMP tới RCMS).</li>
+  <li><strong>S4-IP Controller:</strong> KHÔNG có SNMP — chỉ kiểm tra qua TCP port 5001 (RCMS protocol).</li>
+  <li><strong>RCMS:</strong> Poll SNMP từ T6 radio, sau đó forward SNMP trap tới GAMS. Prometheus Exporter nên poll cùng subnet LAN3 với RCMS.</li>
+  <li><strong>Dự phòng cáp quang:</strong> Fo1 (tuyến chính) và Fo2 (tuyến dự phòng) — 48 sợi đơn mode mỗi tuyến.</li>
+</ul>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'dark', securityLevel: 'loose',
+    flowchart: { htmlLabels: true, curve: 'basis', nodeSpacing: 50, rankSpacing: 80 } });
+</script>
+</body>
+</html>

@@ -1,0 +1,569 @@
+# ============================================================
+# VATM ATCC Long Thành — Prometheus Configuration
+# Dự án: Giám sát đường truyền VHF theo chuẩn ED-137
+# Hệ thống: Park Air T6-TV / T6-RV / T6-TRV + ALE OS6860/OS6360
+# IP Source: TMTK-VHF&BackupVHF.pdf (HĐ 8225/HĐ-QLB 06/12/2024)
+# Tác giả: Đỗ Thanh Long — ATSEP VATM ATCC Long Thành
+# NOTE: Prometheus YAML parser không hỗ trợ anchors — relabel_configs
+#       được expand inline cho từng job.
+# ============================================================
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  scrape_timeout:      10s
+  external_labels:
+    system:     'vatm-longthanh-atcc'
+    datacenter: 'ATCC_Long_Thanh'
+    standard:   'ED-137'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - "rules/ed137_alerts.yml"
+  - "rules/park_air_t6_alerts.yml"
+  - "rules/switch_alerts.yml"
+  - "rules/vccs_alerts.yml"
+
+# ============================================================
+scrape_configs:
+
+  # ── Self-monitoring ──────────────────────────────────────
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'VM-Monitor-Server'
+          role:     'monitoring_host'
+
+  - job_name: 'pushgateway'
+    honor_labels: true
+    static_configs:
+      - targets: ['pushgateway:9091']
+        labels:
+          instance: 'pushgateway'
+
+  # ════════════════════════════════════════════════════════
+  # TRẠM PHÁT TX — Park Air T6-TV
+  # Poll LAN3 (RCMS subnet 10.60.7.64/27) — không ảnh hưởng VoIP
+  # MAIN: 10.60.7.71–79  |  STANDBY: 10.60.7.81–89
+  # ════════════════════════════════════════════════════════
+  - job_name: 'snmp_tx_t6tv_main'
+    scrape_interval: 15s
+    metrics_path: /snmp
+    params:
+      module: [park_air_t6]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.7.71   # MAIN-118.425 MHz — Clearance Delivery chính
+          - 10.60.7.72   # MAIN-121.725 MHz — CLD dự phòng
+          - 10.60.7.73   # MAIN-121.775 MHz — Aerodrome Control chính
+          - 10.60.7.74   # MAIN-121.850 MHz — AD dự phòng
+          - 10.60.7.75   # MAIN-121.925 MHz — NW-GND chính
+          - 10.60.7.76   # MAIN-124.325 MHz — NW-GND dự phòng
+          - 10.60.7.77   # MAIN-124.625 MHz — NE-GND chính
+          - 10.60.7.78   # MAIN-125.275 MHz — NE-GND dự phòng
+          - 10.60.7.79   # MAIN-121.500 MHz — EMERGENCY
+        labels:
+          site:       'TX_Station'
+          device:     'Park_Air_T6-TV'
+          role:       'transmitter'
+          redundancy: 'main'
+          lan_poll:   'LAN3_RCMS'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  - job_name: 'snmp_tx_t6tv_standby'
+    scrape_interval: 15s
+    metrics_path: /snmp
+    params:
+      module: [park_air_t6]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.7.81   # STANDBY-118.425
+          - 10.60.7.82   # STANDBY-121.725
+          - 10.60.7.83   # STANDBY-121.775
+          - 10.60.7.84   # STANDBY-121.850
+          - 10.60.7.85   # STANDBY-121.925
+          - 10.60.7.86   # STANDBY-124.325
+          - 10.60.7.87   # STANDBY-124.625
+          - 10.60.7.88   # STANDBY-125.275
+          - 10.60.7.89   # STANDBY-121.500 EMERGENCY
+        labels:
+          site:       'TX_Station'
+          device:     'Park_Air_T6-TV'
+          role:       'transmitter'
+          redundancy: 'standby'
+          lan_poll:   'LAN3_RCMS'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ════════════════════════════════════════════════════════
+  # TRẠM THU RX — Park Air T6-RV
+  # Poll LAN3 (RCMS subnet 10.60.6.64/27)
+  # MAIN: 10.60.6.71–79  |  STANDBY: 10.60.6.81–89
+  # ════════════════════════════════════════════════════════
+  - job_name: 'snmp_rx_t6rv_main'
+    scrape_interval: 15s
+    metrics_path: /snmp
+    params:
+      module: [park_air_t6]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.6.71   # MAIN-118.425
+          - 10.60.6.72   # MAIN-121.725
+          - 10.60.6.73   # MAIN-121.775
+          - 10.60.6.74   # MAIN-121.850
+          - 10.60.6.75   # MAIN-121.925
+          - 10.60.6.76   # MAIN-124.325
+          - 10.60.6.77   # MAIN-124.625
+          - 10.60.6.78   # MAIN-125.275
+          - 10.60.6.79   # MAIN-121.500 EMERGENCY
+        labels:
+          site:       'RX_Station'
+          device:     'Park_Air_T6-RV'
+          role:       'receiver'
+          redundancy: 'main'
+          lan_poll:   'LAN3_RCMS'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  - job_name: 'snmp_rx_t6rv_standby'
+    scrape_interval: 15s
+    metrics_path: /snmp
+    params:
+      module: [park_air_t6]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.6.81   # STANDBY-118.425
+          - 10.60.6.82   # STANDBY-121.725
+          - 10.60.6.83   # STANDBY-121.775
+          - 10.60.6.84   # STANDBY-121.850
+          - 10.60.6.85   # STANDBY-121.925
+          - 10.60.6.86   # STANDBY-124.325
+          - 10.60.6.87   # STANDBY-124.625
+          - 10.60.6.88   # STANDBY-125.275
+          - 10.60.6.89   # STANDBY-121.500 EMERGENCY
+        labels:
+          site:       'RX_Station'
+          device:     'Park_Air_T6-RV'
+          role:       'receiver'
+          redundancy: 'standby'
+          lan_poll:   'LAN3_RCMS'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ════════════════════════════════════════════════════════
+  # ULTIMATE BACKUP VHF — Park Air T6-TRV (Tầng 20 TWR)
+  # Subnet: 10.60.11.0/27
+  # ════════════════════════════════════════════════════════
+  - job_name: 'snmp_ubvhf_t6trv'
+    scrape_interval: 15s
+    metrics_path: /snmp
+    params:
+      module: [park_air_t6]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.11.1   # TWR-UBVHF-T6TRV-01
+          - 10.60.11.2   # TWR-UBVHF-T6TRV-02
+          - 10.60.11.3   # TWR-UBVHF-T6TRV-03
+          - 10.60.11.4   # TWR-UBVHF-T6TRV-04
+          - 10.60.11.5   # TWR-UBVHF-T6TRV-05
+          - 10.60.11.6   # TWR-UBVHF-T6TRV-06 — 121.500 MHz EMERGENCY
+        labels:
+          site:   'UBVHF_TWR_Floor20'
+          device: 'Park_Air_T6-TRV'
+          role:   'transceiver_ultimate_backup'
+          subnet: '10.60.11.0/27'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ════════════════════════════════════════════════════════
+  # SWITCH VoIP — ALE OS6860E-24
+  # TX MAIN: 10.60.7.30 | TX STBY: 10.60.7.62
+  # RX MAIN: 10.60.99.9 (MGMT)
+  # ════════════════════════════════════════════════════════
+  - job_name: 'snmp_sw6860_tx'
+    scrape_interval: 30s
+    metrics_path: /snmp
+    params:
+      module: [ale_switch]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.7.30   # TX-VHF-SW6860-MAIN-01
+          - 10.60.7.62   # TX-VHF-SW6860-STANDBY-01
+        labels:
+          site:   'TX_Station'
+          device: 'ALE_OS6860E-24'
+          role:   'voip_switch'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  - job_name: 'snmp_sw6860_rx'
+    scrape_interval: 30s
+    metrics_path: /snmp
+    params:
+      module: [ale_switch]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.99.9   # RX-VHF-SW6860-MAIN-01 (MGMT IP)
+        labels:
+          site:   'RX_Station'
+          device: 'ALE_OS6860E-24'
+          role:   'voip_switch'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ════════════════════════════════════════════════════════
+  # SWITCH RCMS — ALE OS6360-24
+  # TX: 10.60.7.94 | RX: 10.60.6.94
+  # ════════════════════════════════════════════════════════
+  - job_name: 'snmp_sw6360_rcms'
+    scrape_interval: 30s
+    metrics_path: /snmp
+    params:
+      module: [ale_switch]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.7.94   # TX-VHF-SW6360
+          - 10.60.6.94   # RX-VHF-SW6360
+        labels:
+          device: 'ALE_OS6360-24'
+          role:   'rcms_switch'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ════════════════════════════════════════════════════════
+  # BLACKBOX — TCP Health Check S4-IP port 5001
+  # (S4-IP KHÔNG có SNMP — dùng blackbox TCP connect)
+  # Subnet: 10.60.11.11–16
+  # ════════════════════════════════════════════════════════
+  - job_name: 'blackbox_s4ip_tcp5001'
+    scrape_interval: 15s
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+          - 10.60.11.11:5001   # TWR-UBVHF-S4IP-01
+          - 10.60.11.12:5001   # TWR-UBVHF-S4IP-02
+          - 10.60.11.13:5001   # TWR-UBVHF-S4IP-03
+          - 10.60.11.14:5001   # TWR-UBVHF-S4IP-04
+          - 10.60.11.15:5001   # TWR-UBVHF-S4IP-05
+          - 10.60.11.16:5001   # TWR-UBVHF-S4IP-06
+        labels:
+          site:     'UBVHF_TWR_Floor20'
+          device:   'Park_Air_S4-IP'
+          role:     'operator_controller'
+          protocol: 'RCMS_TCP_5001'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   blackbox-exporter:9115
+
+  # ════════════════════════════════════════════════════════
+  # BLACKBOX — ICMP Ping: RCMS / LCMS workstations
+  # ════════════════════════════════════════════════════════
+  - job_name: 'blackbox_ping_workstations'
+    scrape_interval: 30s
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+          - 10.60.7.98    # TX-VHF-RCMS  (HP Z1 G9)
+          - 10.60.7.97    # RX-VHF-RCMS  (HP Z1 G9)
+          - 10.60.11.30   # UBVHF-RCMS   (HP Z1 G9)
+          - 10.60.7.65    # TX-VHF-LCMS  (HP Z1 G9)
+          - 10.60.6.65    # RX-VHF-LCMS  (HP Z1 G9)
+          - 10.60.11.29   # UBVHF-LCMS   (HP Z1 G9)
+        labels:
+          device: 'HP_Z1_G9'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   blackbox-exporter:9115
+
+  # ════════════════════════════════════════════════════════
+  # VCCS SYSTEM — FREQUENTIS (CNS Room + Tầng 20 TWR)
+  # Nguồn IP: BVTC VCCS LTIA (VCCS-06, VCCS-08)
+  # Subnet: 10.60.8.x (VCCS Core Network — tách biệt RCMS subnet)
+  # CẢNH BÁO: KHÔNG poll thiết bị VCCS qua LAN1 (VoIP path)
+  # ════════════════════════════════════════════════════════
+
+  # ── VCCS Switch Core (RED + BLUE) ──────────────────────
+  - job_name: 'snmp_vccs_sw_core'
+    scrape_interval: 30s
+    metrics_path: /snmp
+    params:
+      module: [ale_switch]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.8.203   # BLUE SWITCH CORE (VCCS-06)
+          - 10.60.8.204   # RED SWITCH CORE (VCCS-06)
+        labels:
+          site:    'ATCC_CNS_Room'
+          device:  'VCCS_Switch_Core'
+          role:    'vccs_core_switch'
+          subnet:  '10.60.8.0/24'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ── VCCS Switch Tầng 20 TWR ────────────────────────────
+  - job_name: 'snmp_vccs_sw_20fl'
+    scrape_interval: 30s
+    metrics_path: /snmp
+    params:
+      module: [ale_switch]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.8.201   # Switch_VCCS_20FL_1 (VCCS-08)
+          - 10.60.8.202   # Switch_VCCS_20FL_2 (VCCS-08)
+        labels:
+          site:    'UBVHF_TWR_Floor20'
+          device:  'VCCS_Switch_20FL'
+          role:    'vccs_floor20_switch'
+          subnet:  '10.60.8.0/24'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ── FREQUENTIS xMG#1 — QMG01–11 (J1 + J2) ─────────────
+  # J1 → RED SWITCH CORE | J2 → BLUE SWITCH CORE
+  - job_name: 'snmp_vccs_xmg1'
+    scrape_interval: 15s
+    metrics_path: /snmp
+    params:
+      module: [frequentis_xmg]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.8.71   # xMG#1 QMG01-J1 → RED (RAD01: 118.425 MHz)
+          - 10.60.8.72   # xMG#1 QMG01-J2 → BLUE
+          - 10.60.8.73   # xMG#1 QMG02-J1 (RAD02: 124.325 MHz)
+          - 10.60.8.74   # xMG#1 QMG02-J2
+          - 10.60.8.75   # xMG#1 QMG03-J1 (RAD03: 121.425 MHz)
+          - 10.60.8.76   # xMG#1 QMG03-J2
+          - 10.60.8.77   # xMG#1 QMG04-J1 (RAD04: 121.775 MHz)
+          - 10.60.8.78   # xMG#1 QMG04-J2
+          - 10.60.8.79   # xMG#1 QMG05-J1 (RAD05: 121.925 MHz)
+          - 10.60.8.80   # xMG#1 QMG05-J2
+          - 10.60.8.81   # xMG#1 QMG06-J1 (RAD06: 121.725 MHz)
+          - 10.60.8.82   # xMG#1 QMG06-J2
+          - 10.60.8.83   # xMG#1 QMG07-J1 (RAD07: 124.625 MHz)
+          - 10.60.8.84   # xMG#1 QMG07-J2
+          - 10.60.8.85   # xMG#1 QMG08-J1 (RAD08: 125.275 MHz)
+          - 10.60.8.86   # xMG#1 QMG08-J2
+          - 10.60.8.87   # xMG#1 QMG09-J1 (RAD09: 121.500 MHz — EMERGENCY)
+          - 10.60.8.88   # xMG#1 QMG09-J2
+          - 10.60.8.89   # xMG#1 QMG10-J1 (RAD-ATIS: 125.275 MHz)
+          - 10.60.8.90   # xMG#1 QMG10-J2
+          - 10.60.8.91   # xMG#1 QMG11-J1
+          - 10.60.8.92   # xMG#1 QMG11-J2
+        labels:
+          site:       'ATCC_CNS_Room'
+          device:     'Frequentis_xMG1'
+          role:       'vccs_gateway_primary'
+          redundancy: 'main'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ── FREQUENTIS xMG#2 — QMG01–11 (J1 + J2) ─────────────
+  - job_name: 'snmp_vccs_xmg2'
+    scrape_interval: 15s
+    metrics_path: /snmp
+    params:
+      module: [frequentis_xmg]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.8.101  # xMG#2 QMG01-J1 (STANDBY: 118.425 MHz)
+          - 10.60.8.102  # xMG#2 QMG01-J2
+          - 10.60.8.103  # xMG#2 QMG02-J1 (124.325 MHz)
+          - 10.60.8.104  # xMG#2 QMG02-J2
+          - 10.60.8.105  # xMG#2 QMG03-J1 (121.425 MHz)
+          - 10.60.8.106  # xMG#2 QMG03-J2
+          - 10.60.8.107  # xMG#2 QMG04-J1 (121.775 MHz)
+          - 10.60.8.108  # xMG#2 QMG04-J2
+          - 10.60.8.109  # xMG#2 QMG05-J1 (121.925 MHz)
+          - 10.60.8.110  # xMG#2 QMG05-J2
+          - 10.60.8.111  # xMG#2 QMG06-J1 (121.725 MHz)
+          - 10.60.8.112  # xMG#2 QMG06-J2
+          - 10.60.8.113  # xMG#2 QMG07-J1 (124.625 MHz)
+          - 10.60.8.114  # xMG#2 QMG07-J2
+          - 10.60.8.115  # xMG#2 QMG08-J1 (125.275 MHz)
+          - 10.60.8.116  # xMG#2 QMG08-J2
+          - 10.60.8.117  # xMG#2 QMG09-J1 (121.500 MHz — EMERGENCY)
+          - 10.60.8.118  # xMG#2 QMG09-J2
+          - 10.60.8.119  # xMG#2 QMG10-J1 (RAD-ATIS)
+          - 10.60.8.120  # xMG#2 QMG10-J2
+          - 10.60.8.121  # xMG#2 QMG11-J1
+          - 10.60.8.122  # xMG#2 QMG11-J2
+        labels:
+          site:       'ATCC_CNS_Room'
+          device:     'Frequentis_xMG2'
+          role:       'vccs_gateway_standby'
+          redundancy: 'standby'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ── VCCS Servers — ICMP Ping ────────────────────────────
+  - job_name: 'blackbox_ping_vccs_servers'
+    scrape_interval: 30s
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+          - 10.60.8.12    # SVR1 — VCCS Server 1 (VCCS-06)
+          - 10.60.8.2     # SVR2 — VCCS Server 2 (VCCS-06)
+        labels:
+          site:   'ATCC_CNS_Room'
+          device: 'VCCS_Server'
+          role:   'vccs_application_server'
+      - targets:
+          - 10.60.8.254   # VCCS-WS-20FL — VCCS Operator Workstation tầng 20 TWR
+                          # Xác nhận từ BVTC VCCS-08: Switch_VCCS_20FL_1 Port1, "WSRCMS – ETH"
+                          # ≠ 10.60.11.30 (VHF-RCMS WS — TMTK source, mạng khác)
+        labels:
+          site:   'UBVHF_TWR_Floor20'
+          device: 'VCCS_Workstation'
+          role:   'operator_ws'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   blackbox-exporter:9115
+
+  # ════════════════════════════════════════════════════════
+  # LAB SIMULATION — Ubuntu VMs chạy snmpd giả lập T6 radio
+  # Comment block này khi deploy production
+  # ════════════════════════════════════════════════════════
+  - job_name: 'snmp_lab_tx'
+    scrape_interval: 15s
+    metrics_path: /snmp
+    params:
+      module: [linux_snmp]
+      auth: [public_v2]
+    static_configs:
+      - targets:
+          - 192.168.100.21   # lab-tx-main   (giả lập T6-TV MAIN)
+          - 192.168.100.22   # lab-tx-standby (giả lập T6-TV STANDBY)
+        labels:
+          env:  'lab'
+          site: 'TX_Station'
+          mode: 'simulation'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  - job_name: 'snmp_lab_rx'
+    scrape_interval: 15s
+    metrics_path: /snmp
+    params:
+      module: [linux_snmp]
+      auth: [public_v2]
+    static_configs:
+      - targets:
+          - 192.168.100.23   # lab-rx-main    (giả lập T6-RV MAIN)
+          - 192.168.100.24   # lab-rx-standby  (giả lập T6-RV STANDBY)
+          - 192.168.100.25   # lab-ubvhf       (giả lập T6-TRV)
+        labels:
+          env:  'lab'
+          site: 'RX_Station'
+          mode: 'simulation'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116

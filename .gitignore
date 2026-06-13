@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+
+# Docker
+.env
+*.env.local
+
+# Ansible
+*.retry
+ansible/.vault_pass
+ansible/group_vars/all/vault.yml
+
+# Grafana persistent data
+monitoring/grafana/data/
+
+# Prometheus data
+monitoring/prometheus/data/
+
+# Reports output
+reports/
+*.xlsx
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
