@@ -280,4 +280,12 @@
           vatm_vccs_ping_jitter_ms{site="ATCC_CNS_Room",device="{{ item.name }}",group="{{ item.group }}",redundancy="{{ item.redundancy }}",ip="{{ item.ip }}"} {{ item.jitter }}
           # HELP vatm_vccs_ping_loss_percent VCCS device ICMP packet loss %
           # TYPE vatm_vccs_ping_loss_percent gauge
-          vatm_vccs_ping_loss_percent{site="ATCC_CNS_Room",device="{{ item.name }}",group="{{ item.group }}",redund
+          vatm_vccs_ping_loss_percent{site="ATCC_CNS_Room",device="{{ item.name }}",group="{{ item.group }}",redundancy="{{ item.redundancy }}",ip="{{ item.ip }}"} {{ item.loss }}
+        body_format: raw
+        headers:
+          Content-Type: "text/plain; version=0.0.4; charset=utf-8"
+        status_code: [200, 202]
+      loop: "{{ vccs_results_parsed }}"
+      loop_control:
+        label: "{{ item.name }}"
+      ignore_errors: true  # Không fail nếu Pushgateway chưa chạy
