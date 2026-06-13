@@ -40,24 +40,74 @@
 .leg-dot  { width:9px; height:9px; border-radius:50%; }
 
 /* ================================================================
-   NODE DETAIL PANEL
+   NODE DETAIL MODAL — popup trung tâm
    ================================================================ */
-.node-panel {
-  position: absolute;   /* overlay lên canvas, không đẩy layout */
-  top: 8px;
-  right: 8px;
-  width: 285px;
-  max-height: calc(100% - 16px);
-  overflow-y: auto;
-  background: rgba(13, 30, 52, 0.96);
-  backdrop-filter: blur(6px);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(0,0,0,.55);
-  animation: panelIn .18s ease-out;
-  transition: border-color .3s;
-  z-index: 10;
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 5, 15, 0.72);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeOverlay .15s ease;
 }
+@keyframes fadeOverlay { from{opacity:0} to{opacity:1} }
+
+.modal-box {
+  background: var(--bg2, #0d1e34);
+  border: 1px solid var(--border, #1a3558);
+  border-radius: 12px;
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  box-shadow: 0 12px 48px rgba(0,0,0,.75);
+  animation: modalIn .18s cubic-bezier(.22,.68,0,1.2);
+}
+@keyframes modalIn {
+  from { opacity:0; transform: scale(.94) translateY(12px); }
+  to   { opacity:1; transform: scale(1)  translateY(0); }
+}
+
+.modal-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: rgba(0,0,0,.2);
+  border-radius: 12px 12px 0 0;
+}
+.modal-header-info { flex: 1; min-width: 0; }
+.modal-title {
+  font-weight: 700;
+  font-size: 1em;
+  color: var(--blue, #38bdf8);
+  letter-spacing: .04em;
+}
+.modal-sub {
+  font-size: .72em;
+  color: var(--text2, #4a7090);
+  margin-top: 3px;
+}
+
+.modal-body { padding: 14px 16px; }
+
+.modal-actions {
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.modal-actions .btn { flex: 1; justify-content: center; min-width: 100px; }
+
+/* ================================================================
+   NODE DETAIL PANEL (legacy — không dùng nữa, giữ để tham chiếu)
+   ================================================================ */
+.node-panel { display: none !important; }
 @keyframes panelIn { from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:translateX(0)} }
 
 .panel-header {
@@ -171,6 +221,65 @@
   font-size: .72em; color: var(--green);
   text-align: center; padding: 4px;
   display: none;
+}
+
+/* ================================================================
+   DEVICE CARD — MAIN / STANDBY PANEL
+   ================================================================ */
+
+/* Status bar màu theo trạng thái ED-137 */
+.dev-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  font-size: .8em;
+  font-weight: 700;
+  border-radius: 5px;
+  margin-bottom: 8px;
+  letter-spacing: .03em;
+}
+.st-ok   { background: rgba(0,255,136,.1);  color: #00ff88; border: 1px solid rgba(0,255,136,.35); }
+.st-warn { background: rgba(255,170,0,.1);  color: #ffaa00; border: 1px solid rgba(255,170,0,.35); }
+.st-crit { background: rgba(255,34,68,.1);  color: #ff2244; border: 1px solid rgba(255,34,68,.35); }
+.st-unk  { background: rgba(74,112,144,.1); color: #4a7090; border: 1px solid rgba(74,112,144,.35); }
+
+.dev-ts  { font-size: .8em; font-weight: 400; opacity: .75; }
+
+/* Bảng thông tin thiết bị */
+.dev-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .78em;
+}
+.dev-table tr { border-bottom: 1px solid var(--border); }
+.dev-table tr:last-child { border-bottom: none; }
+.dk {
+  color: var(--text2);
+  padding: 5px 8px 5px 0;
+  width: 38%;
+  vertical-align: top;
+  line-height: 1.4;
+}
+.dv {
+  color: var(--text);
+  padding: 5px 0;
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.4;
+}
+.dv.mono { font-family: 'Consolas', 'Courier New', monospace; }
+
+/* Thông báo không có STANDBY vật lý */
+.dev-na {
+  text-align: center;
+  padding: 22px 14px;
+  color: var(--text2);
+  font-size: .8em;
+  line-height: 1.7;
+  background: rgba(74,112,144,.06);
+  border-radius: 5px;
+  border: 1px dashed var(--border);
 }
 
 /* ================================================================

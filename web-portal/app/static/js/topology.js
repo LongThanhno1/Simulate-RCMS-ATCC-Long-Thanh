@@ -13,73 +13,138 @@ let _animRunning = false, _hov = null;
 
 /* ================================================================
    NODE DEFINITIONS
+   devices.main / devices.standby — hiển thị trong Panel MAIN/STANDBY
+   statusKey: key trong window.topo nhận từ WebSocket
+   SN/PN: điền sau khi có dữ liệu thực tế từ nhà cung cấp
    ================================================================ */
 const TOPO_NODES = [
   {
     id: 'tx', title: 'TRẠM PHÁT', sub: 'TX Station', ip: '10.60.7.71~89',
-    info: {
-      'Thiết bị':     'Park Air T6-TV (×9 kênh)',
-      'Subnet RCMS':  '10.60.7.0/24',
-      'SNMP monitor': 'LAN3 · community: vatm_ro',
-      'Giao thức':    'SNMP UDP 161',
-      'Kết nối':      'VSAT + Cáp quang → xMG',
-    },
     kpi: { delay: 12, jitter: 3, loss: 0.02 },
+    devices: {
+      main: {
+        label:     'T6-TV MAIN (×9 kênh VHF)',
+        model:     'Park Air T6-TV',
+        sn:        '—',
+        pn:        '—',
+        ip:        '10.60.7.71 ÷ 10.60.7.79',
+        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        statusKey: 'tx_status',
+      },
+      standby: {
+        label:     'T6-TV STANDBY (×9 kênh VHF)',
+        model:     'Park Air T6-TV',
+        sn:        '—',
+        pn:        '—',
+        ip:        '10.60.7.81 ÷ 10.60.7.89',
+        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        statusKey: 'tx_stby_status',
+      },
+    },
   },
   {
     id: 'rx', title: 'TRẠM THU', sub: 'RX Station', ip: '10.60.6.71~89',
-    info: {
-      'Thiết bị':     'Park Air T6-RV (×9 kênh)',
-      'Subnet RCMS':  '10.60.6.0/24',
-      'SNMP monitor': 'LAN3 · community: vatm_ro',
-      'Giao thức':    'SNMP UDP 161',
-      'Kết nối':      'Cáp quang → xMG',
-    },
     kpi: { delay: 18, jitter: 4, loss: 0.05 },
+    devices: {
+      main: {
+        label:     'T6-RV MAIN (×9 kênh VHF)',
+        model:     'Park Air T6-RV',
+        sn:        '—',
+        pn:        '—',
+        ip:        '10.60.6.71 ÷ 10.60.6.79',
+        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        statusKey: 'rx_status',
+      },
+      standby: {
+        label:     'T6-RV STANDBY (×9 kênh VHF)',
+        model:     'Park Air T6-RV',
+        sn:        '—',
+        pn:        '—',
+        ip:        '10.60.6.81 ÷ 10.60.6.89',
+        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        statusKey: 'rx_stby_status',
+      },
+    },
   },
   {
-    id: 'xmg', title: 'xMG SWITCH', sub: 'Core Aggregation', ip: '10.60.10.1',
-    info: {
-      'Thiết bị':   'Nokia xMG (L3 Core Switch)',
-      'IP Quản lý': '10.60.10.1',
-      'SNMP':       'LAN3 · vatm_ro',
-      'Vai trò':    'Aggregation · Dual-Ring Core',
-      'Uplink':     'RED J1 + BLUE J2',
-    },
+    id: 'xmg', title: 'xMG SWITCH', sub: 'Core Aggregation', ip: '10.60.8.71~122',
     kpi: { delay: 5, jitter: 1, loss: 0.01 },
+    devices: {
+      main: {
+        label:     'Frequentis xMG #1 (Primary)',
+        model:     'Frequentis xMG VoIP Gateway',
+        sn:        '—',
+        pn:        '—',
+        ip:        '10.60.8.71 ÷ 10.60.8.92  (11 QMG cards)',
+        conn:      'SNMP UDP 9116 · LAN3 (RCMS subnet)',
+        statusKey: 'xmg_status',
+      },
+      standby: {
+        label:     'Frequentis xMG #2 (Standby)',
+        model:     'Frequentis xMG VoIP Gateway',
+        sn:        '—',
+        pn:        '—',
+        ip:        '10.60.8.101 ÷ 10.60.8.122  (11 QMG cards)',
+        conn:      'SNMP UDP 9116 · LAN3 (RCMS subnet)',
+        statusKey: 'xmg_stby_status',
+      },
+    },
   },
   {
-    id: 'red_sw', title: 'RED J1 SW', sub: 'Primary Ring Switch', ip: '10.60.11.1',
-    info: {
-      'Thiết bị':   'Nokia RED Ring Switch',
-      'IP Quản lý': '10.60.11.1',
-      'Ring':       'RED J1 (Primary — Active)',
-      'SNMP':       'LAN3 · vatm_ro',
-      'Kết nối':    'xMG ← → FL20 CWP',
-    },
+    id: 'red_sw', title: 'RED J1 SW', sub: 'Primary Ring Switch', ip: '10.60.8.204',
     kpi: { delay: 8, jitter: 2, loss: 0.01 },
+    devices: {
+      main: {
+        label:     'ALE OS6860 CORE (RED ring)',
+        model:     'ALE OmniSwitch OS6860',
+        sn:        '—',
+        pn:        '—',
+        ip:        '10.60.8.204',
+        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        statusKey: 'red_sw_status',
+      },
+      standby: null,   /* Dự phòng ở cấp Ring — không có SW vật lý riêng */
+    },
   },
   {
-    id: 'blue_sw', title: 'BLUE J2 SW', sub: 'Standby Ring Switch', ip: '10.60.12.1',
-    info: {
-      'Thiết bị':   'Nokia BLUE Ring Switch',
-      'IP Quản lý': '10.60.12.1',
-      'Ring':       'BLUE J2 (Standby — Failover)',
-      'SNMP':       'LAN3 · vatm_ro',
-      'Kết nối':    'xMG ← → FL20 CWP',
-    },
+    id: 'blue_sw', title: 'BLUE J2 SW', sub: 'Standby Ring Switch', ip: '10.60.8.203',
     kpi: { delay: 10, jitter: 3, loss: 0.02 },
+    devices: {
+      main: {
+        label:     'ALE OS6860 CORE (BLUE ring)',
+        model:     'ALE OmniSwitch OS6860',
+        sn:        '—',
+        pn:        '—',
+        ip:        '10.60.8.203',
+        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        statusKey: 'blue_sw_status',
+      },
+      standby: null,   /* Dự phòng ở cấp Ring — không có SW vật lý riêng */
+    },
   },
   {
-    id: 'fl20', title: 'FL 20 — TWR', sub: 'Đài KSKL Tầng 20', ip: '10.60.1.0/24',
-    info: {
-      'Thiết bị':  'Park Air S4-IP Controller',
-      'Monitor':   'TCP:5001 (Blackbox Exporter)',
-      'SNMP':      'Không hỗ trợ — TCP only',
-      'CWP':       '×11 Controller Working Positions',
-      'Vị trí':    'Tòa nhà TWR · Tầng 20 · ATCC Long Thành',
-    },
+    id: 'fl20', title: 'FL 20 — TWR', sub: 'Đài KSKL Tầng 20', ip: '10.60.8.201~202',
     kpi: { delay: 25, jitter: 5, loss: 0.1 },
+    devices: {
+      main: {
+        label:     'SW_20FL_1 (RED ring side)',
+        model:     'ALE OmniSwitch (SW_20FL_1)',
+        sn:        '—',
+        pn:        '—',
+        ip:        '10.60.8.201',
+        conn:      'Cáp quang ← RED SW CORE (10.60.8.204)',
+        statusKey: 'fl20_status',
+      },
+      standby: {
+        label:     'SW_20FL_2 (BLUE ring side)',
+        model:     'ALE OmniSwitch (SW_20FL_2)',
+        sn:        '—',
+        pn:        '—',
+        ip:        '10.60.8.202',
+        conn:      'Cáp quang ← BLUE SW CORE (10.60.8.203)',
+        statusKey: 'fl20_stby_status',
+      },
+    },
   },
 ];
 
@@ -492,58 +557,91 @@ function _onClick(e) {
 }
 
 /* ================================================================
-   NODE DETAIL PANEL
+   NODE DETAIL PANEL — MAIN / STANDBY
    ================================================================ */
 
+/**
+ * _devStatusInfo — lấy trạng thái thiết bị từ window.topo
+ * @param {string|null} statusKey — key trong window.topo (vd: 'tx_status')
+ * @returns {{ cls, icon, lbl }} — CSS class + icon + label hiển thị
+ */
+function _devStatusInfo(statusKey) {
+  const t  = window.topo || {};
+  const st = statusKey ? (t[statusKey] || 'unknown') : 'unknown';
+  return {
+    ok:      { cls: 'st-ok',   icon: '●', lbl: 'OK' },
+    warn:    { cls: 'st-warn', icon: '⚠', lbl: 'WARNING' },
+    crit:    { cls: 'st-crit', icon: '✕', lbl: 'CRITICAL' },
+    unknown: { cls: 'st-unk',  icon: '?', lbl: 'UNKNOWN' },
+  }[st] || { cls: 'st-unk', icon: '?', lbl: 'UNKNOWN' };
+}
+
+/**
+ * _renderDevCard — render thẻ thiết bị vào container
+ * @param {string} slot  — 'main' hoặc 'standby'
+ * @param {object|null} dev — object device từ TOPO_NODES.devices
+ */
+function _renderDevCard(slot, dev) {
+  const el = document.getElementById('ptab-' + slot + '-card');
+  if (!el) return;
+
+  /* Không có thiết bị dự phòng vật lý */
+  if (!dev) {
+    el.innerHTML = `<div class="dev-na">
+      Không có thiết bị STANDBY vật lý riêng.<br>
+      <small style="opacity:.75">Dự phòng ở cấp Ring — RED ↔ BLUE tự động chuyển đổi.</small>
+    </div>`;
+    return;
+  }
+
+  const si = _devStatusInfo(dev.statusKey);
+  const ts = (window.topo && window.topo.ts)
+    ? new Date(window.topo.ts).toLocaleTimeString('vi-VN')
+    : '—';
+
+  el.innerHTML = `
+    <div class="dev-status-bar ${si.cls}">
+      <span>${si.icon} ${si.lbl}</span>
+      <span class="dev-ts">${ts}</span>
+    </div>
+    <table class="dev-table">
+      <tr><td class="dk">Thiết bị</td>
+          <td class="dv">${dev.model}<br><small style="opacity:.7;font-size:.85em">${dev.label}</small></td></tr>
+      <tr><td class="dk">Serial Number</td>
+          <td class="dv mono">${dev.sn}</td></tr>
+      <tr><td class="dk">Part Number</td>
+          <td class="dv mono">${dev.pn}</td></tr>
+      <tr><td class="dk">IP Address</td>
+          <td class="dv mono">${dev.ip}</td></tr>
+      <tr><td class="dk">Kết nối</td>
+          <td class="dv">${dev.conn}</td></tr>
+    </table>`;
+}
+
+/**
+ * _openNodePanel — mở panel khi click vào node trên canvas
+ * @param {object} nd — phần tử từ TOPO_NODES
+ */
 function _openNodePanel(nd) {
   window.selNode  = nd.id;
   window.curPanel = nd;
 
-  const panel = document.getElementById('node-panel');
-  if (!panel) return;
-  const $ = id => document.getElementById(id);
+  const overlay = document.getElementById('node-modal-overlay');
+  if (!overlay) return;
 
-  if ($('panel-title')) $('panel-title').textContent = nd.title;
-  if ($('panel-sub'))   $('panel-sub').textContent   = nd.sub + (nd.ip ? ' · ' + nd.ip : '');
+  /* Header */
+  const $t = document.getElementById('panel-title');
+  const $s = document.getElementById('panel-sub');
+  if ($t) $t.textContent = nd.title;
+  if ($s) $s.textContent = nd.sub + (nd.ip ? ' · ' + nd.ip : '');
 
-  const b  = $('panel-badge');
-  const st = _nodeStatus(nd.id);
-  if (b) {
-    const cl = { ok: 'bg-green', warn: 'bg-yellow', crit: 'bg-red', unknown: 'bg-blue' };
-    const lb = { ok: '● NORMAL', warn: '⚠ WARNING', crit: '✕ CRITICAL', unknown: '? UNKNOWN' };
-    b.className   = 'badge ' + (cl[st] || 'bg-blue');
-    b.textContent = lb[st]  || '? UNKNOWN';
-  }
+  /* Render device cards */
+  const devs = nd.devices || {};
+  _renderDevCard('main',    devs.main    || null);
+  _renderDevCard('standby', devs.standby || null);
 
-  const info = $('panel-info');
-  if (info) {
-    info.innerHTML = Object.entries(nd.info || {}).map(([k, v]) =>
-      `<div class="info-row"><span class="ik">${k}</span><span class="iv">${v}</span></div>`
-    ).join('');
-  }
+  /* Active tab → MAIN */
+  switchPanelTab('main');
 
-  _setKpi('delay',  nd.kpi ? nd.kpi.delay  : null, 100, 'ms');
-  _setKpi('jitter', nd.kpi ? nd.kpi.jitter : null, 20,  'ms');
-  _setKpi('loss',   nd.kpi ? nd.kpi.loss   : null, 1,   '%');
-
-  /* Reset panel tabs về thongtin */
-  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.panel-tab-content').forEach(t => t.classList.remove('active'));
-  const firstTab = document.querySelector('.panel-tab');
-  const ttContent = $('ptab-thongtin');
-  if (firstTab)  firstTab.classList.add('active');
-  if (ttContent) ttContent.classList.add('active');
-
-  panel.style.display = 'flex';
-}
-
-function _setKpi(key, val, max, unit) {
-  const ve = document.getElementById('pv-' + key);
-  const be = document.getElementById('pb-' + key);
-  if (!ve || !be) return;
-  if (val === undefined || val === null) { ve.textContent = 'N/A'; return; }
-  ve.textContent = val + ' ' + unit;
-  const pct = Math.min(val / max * 100, 100);
-  be.style.width      = pct + '%';
-  be.style.background = pct < 50 ? 'var(--green)' : pct < 100 ? 'var(--yellow)' : 'var(--red)';
+  overlay.style.display = 'flex';
 }

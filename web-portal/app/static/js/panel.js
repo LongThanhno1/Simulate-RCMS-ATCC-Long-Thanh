@@ -4,14 +4,15 @@
    Phụ thuộc: config.js (NODES, NODE_PARAMS_DEF) + app.js (topo, selNode, curPanel, nodeSettings)
    ================================================================ */
 
-/* ── Chuyển tab bên trong Node Panel ── */
+/* ── Chuyển tab bên trong Node Panel (MAIN / STANDBY) ── */
 function switchPanelTab(tab) {
-  document.querySelectorAll('.panel-tab').forEach((t,i) => {
-    t.classList.toggle('active', (tab==='thongtin'&&i===0)||(tab==='thongso'&&i===1));
+  const TABS = ['main', 'standby'];
+  document.querySelectorAll('.panel-tab').forEach((t, i) => {
+    t.classList.toggle('active', TABS[i] === tab);
   });
   document.querySelectorAll('.panel-tab-content').forEach(t => t.classList.remove('active'));
-  document.getElementById('ptab-'+tab).classList.add('active');
-  if (tab === 'thongso' && curPanel) renderParamForm(curPanel.id);
+  const el = document.getElementById('ptab-' + tab);
+  if (el) el.classList.add('active');
 }
 
 /* ── Render form thông số cho một node ── */
@@ -120,9 +121,10 @@ function updatePanelKpi(nodeId) {
   setBar('pb-loss',   'pv-loss',   topo[keys.l],   1, ' %');
 }
 
-/* ── Đóng panel ── */
+/* ── Đóng modal ── */
 function closePanel() {
-  document.getElementById('node-panel').style.display = 'none';
+  const overlay = document.getElementById('node-modal-overlay');
+  if (overlay) overlay.style.display = 'none';
   selNode = null;
   curPanel = null;
   drawTopo();
