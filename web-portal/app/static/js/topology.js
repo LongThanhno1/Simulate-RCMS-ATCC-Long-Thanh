@@ -708,7 +708,12 @@ function _renderDevCard(slot, dev) {
       <td class="eq-vendor">${it.vendor}</td>
       <td class="eq-qty">${it.qty}</td>
       <td class="eq-ip mono">${it.ip}</td>
-      <td class="eq-freq">${it.freq || '—'}</td>
+      <td class="eq-freq"><input class="freq-input"
+        value="${(it.freq || '—').replace(/"/g, '&quot;')}"
+        data-node="${window.curPanel ? window.curPanel.id : ''}"
+        data-slot="${slot}" data-idx="${idx}"
+        onchange="updateFreq(this)"
+        title="Nhấp để chỉnh tần số — tự động lưu"></td>
       <td class="eq-note">${it.note || '—'}</td>
       <td class="eq-ping">${pingCell}</td>
     </tr>`;
@@ -796,3 +801,154 @@ function _openNodePanel(nd) {
 
   overlay.style.display = 'flex';
 }
+
+/* ================================================================
+   TRẠNG THÁI TAB — Status card grid với ping check
+   ================================================================ */
+
+/**
+ * _renderStatusTab — vẽ lưới card trạng thái tất cả thiết bị trong node
+ * Màu: xanh lá=OK · vàng=Cảnh báo · đỏ=Lỗi · xám=Ra khỏi hệ thống/Chưa kiểm tra
+ */
+function _renderStatusTab(nd) {
+  const el = document.getElementById('ptab-status-card');
+  if (!el) return;
+  const devs = nd.devices || {};
+
+  const legend = `
+    <div class="status-legend">
+      <span class="leg-item"><span class="leg-dot" style="background:#00ff88;box-shadow:0 0 6px #00ff88"></span> OK — Đạt ngưỡng ED-137</span>
+      <span class="leg-item"><span class="leg-dot" style="background:#ffaa00"></span> Cảnh báo — Trễ cao / Suy hao</span>
+      <span class="leg-item"><span class="leg-dot" style="background:#ff2244"></span> Lỗi — Mất kết nối</span>
+      <span class="leg-item"><span class="leg-dot" style="background:#4a7090"></span> Xám — Ra khỏi hệ thống / Chưa kiểm tra</span>
+    </div>`;
+
+  let html = legend;
+
+  ['main', 'standby'].forEach(slot => {
+    const dev = devs[slot];
+    if (!dev || !dev.items || dev.items.length === 0) return;
+    html += `<div class="status-group-title">${slot === 'main' ? '🟢 MAIN' : '🔵 STANDBY'} — ${dev.label}</div>`;
+    html += '<div class="status-grid">';
+    dev.items.forEach((it, idx) => {
+      const pingable = it.ip && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(it.ip);
+      const cardId   = `stcard-${slot}-${idx}`;
+      html += `
+        <div class="status-card st-unk" id="${cardId}"
+          ${pingable ? `onclick="pingStatusCard('${it.ip}','${cardId}')" title="Click để ping ${it.ip}"` : 'title="Không có IP — không thể ping"'}
+          style="${pingable ? '' : 'cursor:default;opacity:.65'}">
+          <div class="sc-dot st-unk" id="${cardId}-dot"></div>
+          <div class="sc-name">${it.name}</div>
+          <div class="sc-ip">${it.ip}</div>
+          <div class="sc-rtt" id="${cardId}-rtt">${pingable ? 'Chưa kiểm tra' : '—'}</div>
+        </div>`;
+    });
+    html += '</div>';
+  });
+
+  el.innerHTML = html;
+}
+
+/** pingStatusCard — ping 1 thiết bị và cập nhật màu card */
+async function pingStatusCard(ip, cardId) {
+  const card  = document.getElementById(cardId);
+  const dot   = document.getElementById(cardId + '-dot');
+  const rttEl = document.getElementById(cardId + '-rtt');
+  if (!card) return;
+
+  dot.className   = 'sc-dot st-pend';
+  card.className  = 'status-card st-pend';
+  if (rttEl) rttEl.textContent = '⟳ Đang ping...';
+
+  try {
+    const res  = await fetch(`/api/ping/${encodeURIComponent(ip)}`);
+    const data = await res.json();
+    if (data.reachable) {
+      const cls = (data.rtt_ms !== null && data.rtt_ms < 100) ? 'st-ok' : 'st-warn';
+      card.className = `status-card ${cls}`;
+      dot.className  = `sc-dot ${cls}`;
+      if (rttEl) rttEl.textContent = `RTT: ${data.rtt_ms ?? '—'}ms · Loss: ${data.loss_pct}%`;
+    } else {
+      card.className = 'status-card st-crit';
+      dot.className  = 'sc-dot st-crit';
+      if (rttEl) rttEl.textContent = 'Timeout — không phản hồi';
+    }
+  } catch (e) {
+    card.className = 'status-card st-crit';
+    dot.className  = 'sc-dot st-crit';
+    if (rttEl) rttEl.textContent = 'Lỗi kết nối backend';
+  }
+}
+
+/** _pingAllStatus — ping đồng loạt tất cả thiết bị có IP trong tab Trạng thái */
+async function _pingAllStatus() {
+  if (!window.curPanel) return;
+  const devs  = window.curPanel.devices || {};
+  const tasks = [];
+
+  ['main', 'standby'].forEach(slot => {
+    const dev = devs[slot];
+    if (!dev || !dev.items) return;
+    dev.items.forEach((it, idx) => {
+      if (it.ip && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(it.ip)) {
+        tasks.push(pingStatusCard(it.ip, `stcard-${slot}-${idx}`));
+      }
+    });
+  });
+
+  await Promise.allSettled(tasks);
+}
+
+/* ================================================================
+   KẾ HOẠCH TẦN SỐ — Lưu/Load qua localStorage
+   ================================================================ */
+const _FREQ_KEY = 'vatm_freq_plan';
+
+/** updateFreq — gọi từ onchange của input tần số trong bảng thiết bị */
+function updateFreq(input) {
+  const ndId = input.dataset.node;
+  const slot = input.dataset.slot;
+  const idx  = parseInt(input.dataset.idx);
+  const nd   = TOPO_NODES.find(n => n.id === ndId);
+  if (nd && nd.devices && nd.devices[slot] && nd.devices[slot].items[idx]) {
+    nd.devices[slot].items[idx].freq = input.value;
+  }
+  _saveFreqStore();
+}
+
+function _saveFreqStore() {
+  try {
+    const store = {};
+    TOPO_NODES.forEach(nd => {
+      ['main', 'standby'].forEach(slot => {
+        const dev = nd.devices && nd.devices[slot];
+        if (!dev || !dev.items) return;
+        dev.items.forEach((it, i) => {
+          store[`${nd.id}__${slot}__${i}`] = it.freq;
+        });
+      });
+    });
+    localStorage.setItem(_FREQ_KEY, JSON.stringify(store));
+  } catch (e) {}
+}
+
+function _loadFreqStore() {
+  try {
+    const raw = localStorage.getItem(_FREQ_KEY);
+    if (!raw) return;
+    const store = JSON.parse(raw);
+    TOPO_NODES.forEach(nd => {
+      ['main', 'standby'].forEach(slot => {
+        const dev = nd.devices && nd.devices[slot];
+        if (!dev || !dev.items) return;
+        dev.items.forEach((it, i) => {
+          const k = `${nd.id}__${slot}__${i}`;
+          if (store[k] !== undefined) it.freq = store[k];
+        });
+      });
+    });
+  } catch (e) {}
+}
+
+/* Nạp kế hoạch tần số đã lưu ngay khi script load */
+_loadFreqStore();

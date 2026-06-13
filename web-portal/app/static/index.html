@@ -265,13 +265,17 @@
         <div class="modal-title" id="panel-title">—</div>
         <div class="modal-sub"   id="panel-sub">—</div>
       </div>
-      <button class="panel-close" onclick="closePanel()">✕</button>
+      <div class="modal-header-actions">
+        <button class="zoom-btn" id="modal-zoom-btn" onclick="toggleModalZoom()" title="Phóng to / Thu nhỏ">⤢</button>
+        <button class="panel-close" onclick="closePanel()">✕</button>
+      </div>
     </div>
 
-    <!-- Tabs: MAIN / STANDBY -->
+    <!-- Tabs: MAIN / STANDBY / TRẠNG THÁI -->
     <div class="panel-tabs">
-      <div class="panel-tab active" onclick="switchPanelTab('main')">🟢 MAIN</div>
-      <div class="panel-tab"        onclick="switchPanelTab('standby')">🔵 STANDBY</div>
+      <div class="panel-tab active" data-tab="main"    onclick="switchPanelTab('main')">🟢 MAIN</div>
+      <div class="panel-tab"        data-tab="standby" onclick="switchPanelTab('standby')">🔵 STANDBY</div>
+      <div class="panel-tab"        data-tab="status"  onclick="switchPanelTab('status')">📊 TRẠNG THÁI</div>
     </div>
 
     <!-- Tab MAIN -->
@@ -281,7 +285,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn btn-green" onclick="runNodeMeasure()">▶ Đo kiểm trạm này</button>
-        <button class="btn btn-blue"  onclick="openNodeGrafana()">📊 Grafana Dashboard</button>
+        <button class="btn btn-blue"  onclick="saveFrequencies()">💾 Lưu tần số</button>
         <button class="btn btn-grey btn-sm" onclick="closePanel()">✕ Đóng</button>
       </div>
     </div>
@@ -292,13 +296,31 @@
         <div id="ptab-standby-card"></div>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-blue"  onclick="openNodeGrafana()">📊 Grafana Dashboard</button>
+        <button class="btn btn-blue"  onclick="saveFrequencies()">💾 Lưu tần số</button>
+        <button class="btn btn-grey btn-sm" onclick="closePanel()">✕ Đóng</button>
+      </div>
+    </div>
+
+    <!-- Tab TRẠNG THÁI -->
+    <div class="panel-tab-content" id="ptab-status">
+      <div class="modal-body">
+        <div id="ptab-status-card"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-blue btn-sm" onclick="_pingAllStatus()">⚡ Ping tất cả thiết bị</button>
         <button class="btn btn-grey btn-sm" onclick="closePanel()">✕ Đóng</button>
       </div>
     </div>
 
   </div><!-- /modal-box -->
 </div><!-- /node-modal-overlay -->
+
+<!-- Toast: xác nhận lưu tần số -->
+<div id="freq-save-toast" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+  background:#00ff88;color:#061a10;padding:9px 22px;border-radius:20px;font-weight:700;
+  z-index:3000;font-size:.82em;pointer-events:none;box-shadow:0 4px 16px rgba(0,255,136,.4)">
+  ✓ Đã lưu kế hoạch tần số
+</div>
 
 </body>
 </html>

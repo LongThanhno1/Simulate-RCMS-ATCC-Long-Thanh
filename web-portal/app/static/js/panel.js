@@ -4,15 +4,38 @@
    Phụ thuộc: config.js (NODES, NODE_PARAMS_DEF) + app.js (topo, selNode, curPanel, nodeSettings)
    ================================================================ */
 
-/* ── Chuyển tab bên trong Node Panel (MAIN / STANDBY) ── */
+/* ── Chuyển tab bên trong Node Panel (MAIN / STANDBY / TRẠNG THÁI) ── */
 function switchPanelTab(tab) {
-  const TABS = ['main', 'standby'];
-  document.querySelectorAll('.panel-tab').forEach((t, i) => {
-    t.classList.toggle('active', TABS[i] === tab);
+  document.querySelectorAll('.panel-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
   });
   document.querySelectorAll('.panel-tab-content').forEach(t => t.classList.remove('active'));
   const el = document.getElementById('ptab-' + tab);
   if (el) el.classList.add('active');
+  /* Render status tab lazily khi người dùng click vào */
+  if (tab === 'status' && window.curPanel && typeof _renderStatusTab === 'function') {
+    _renderStatusTab(window.curPanel);
+  }
+}
+
+/* ── Toggle phóng to / thu nhỏ modal ── */
+function toggleModalZoom() {
+  const box = document.querySelector('.modal-box');
+  const btn = document.getElementById('modal-zoom-btn');
+  if (!box) return;
+  const expanded = box.classList.toggle('modal-expanded');
+  if (btn) btn.textContent = expanded ? '⤡' : '⤢';
+}
+
+/* ── Lưu kế hoạch tần số + hiển thị toast ── */
+function saveFrequencies() {
+  if (typeof _saveFreqStore === 'function') _saveFreqStore();
+  const toast = document.getElementById('freq-save-toast');
+  if (toast) {
+    toast.style.display = 'block';
+    clearTimeout(toast._tid);
+    toast._tid = setTimeout(() => { toast.style.display = 'none'; }, 2200);
+  }
 }
 
 /* ── Render form thông số cho một node ── */
