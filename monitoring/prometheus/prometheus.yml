@@ -26,6 +26,7 @@ rule_files:
   - "rules/ed137_alerts.yml"
   - "rules/park_air_t6_alerts.yml"
   - "rules/switch_alerts.yml"
+  - "rules/vccs_alerts.yml"
 
 # ============================================================
 scrape_configs:
@@ -336,6 +337,172 @@ scrape_configs:
           - 10.60.11.29   # UBVHF-LCMS   (HP Z1 G9)
         labels:
           device: 'HP_Z1_G9'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   blackbox-exporter:9115
+
+  # ════════════════════════════════════════════════════════
+  # VCCS SYSTEM — FREQUENTIS (CNS Room + Tầng 20 TWR)
+  # Nguồn IP: BVTC VCCS LTIA (VCCS-06, VCCS-08)
+  # Subnet: 10.60.8.x (VCCS Core Network — tách biệt RCMS subnet)
+  # CẢNH BÁO: KHÔNG poll thiết bị VCCS qua LAN1 (VoIP path)
+  # ════════════════════════════════════════════════════════
+
+  # ── VCCS Switch Core (RED + BLUE) ──────────────────────
+  - job_name: 'snmp_vccs_sw_core'
+    scrape_interval: 30s
+    metrics_path: /snmp
+    params:
+      module: [ale_switch]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.8.203   # BLUE SWITCH CORE (VCCS-06)
+          - 10.60.8.204   # RED SWITCH CORE (VCCS-06)
+        labels:
+          site:    'ATCC_CNS_Room'
+          device:  'VCCS_Switch_Core'
+          role:    'vccs_core_switch'
+          subnet:  '10.60.8.0/24'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ── VCCS Switch Tầng 20 TWR ────────────────────────────
+  - job_name: 'snmp_vccs_sw_20fl'
+    scrape_interval: 30s
+    metrics_path: /snmp
+    params:
+      module: [ale_switch]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.8.201   # Switch_VCCS_20FL_1 (VCCS-08)
+          - 10.60.8.202   # Switch_VCCS_20FL_2 (VCCS-08)
+        labels:
+          site:    'UBVHF_TWR_Floor20'
+          device:  'VCCS_Switch_20FL'
+          role:    'vccs_floor20_switch'
+          subnet:  '10.60.8.0/24'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ── FREQUENTIS xMG#1 — QMG01–11 (J1 + J2) ─────────────
+  # J1 → RED SWITCH CORE | J2 → BLUE SWITCH CORE
+  - job_name: 'snmp_vccs_xmg1'
+    scrape_interval: 15s
+    metrics_path: /snmp
+    params:
+      module: [frequentis_xmg]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.8.71   # xMG#1 QMG01-J1 → RED (RAD01: 118.425 MHz)
+          - 10.60.8.72   # xMG#1 QMG01-J2 → BLUE
+          - 10.60.8.73   # xMG#1 QMG02-J1 (RAD02: 124.325 MHz)
+          - 10.60.8.74   # xMG#1 QMG02-J2
+          - 10.60.8.75   # xMG#1 QMG03-J1 (RAD03: 121.425 MHz)
+          - 10.60.8.76   # xMG#1 QMG03-J2
+          - 10.60.8.77   # xMG#1 QMG04-J1 (RAD04: 121.775 MHz)
+          - 10.60.8.78   # xMG#1 QMG04-J2
+          - 10.60.8.79   # xMG#1 QMG05-J1 (RAD05: 121.925 MHz)
+          - 10.60.8.80   # xMG#1 QMG05-J2
+          - 10.60.8.81   # xMG#1 QMG06-J1 (RAD06: 121.725 MHz)
+          - 10.60.8.82   # xMG#1 QMG06-J2
+          - 10.60.8.83   # xMG#1 QMG07-J1 (RAD07: 124.625 MHz)
+          - 10.60.8.84   # xMG#1 QMG07-J2
+          - 10.60.8.85   # xMG#1 QMG08-J1 (RAD08: 125.275 MHz)
+          - 10.60.8.86   # xMG#1 QMG08-J2
+          - 10.60.8.87   # xMG#1 QMG09-J1 (RAD09: 121.500 MHz — EMERGENCY)
+          - 10.60.8.88   # xMG#1 QMG09-J2
+          - 10.60.8.89   # xMG#1 QMG10-J1 (RAD-ATIS: 125.275 MHz)
+          - 10.60.8.90   # xMG#1 QMG10-J2
+          - 10.60.8.91   # xMG#1 QMG11-J1
+          - 10.60.8.92   # xMG#1 QMG11-J2
+        labels:
+          site:       'ATCC_CNS_Room'
+          device:     'Frequentis_xMG1'
+          role:       'vccs_gateway_primary'
+          redundancy: 'main'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ── FREQUENTIS xMG#2 — QMG01–11 (J1 + J2) ─────────────
+  - job_name: 'snmp_vccs_xmg2'
+    scrape_interval: 15s
+    metrics_path: /snmp
+    params:
+      module: [frequentis_xmg]
+      auth: [vatm_ro_v2]
+    static_configs:
+      - targets:
+          - 10.60.8.101  # xMG#2 QMG01-J1 (STANDBY: 118.425 MHz)
+          - 10.60.8.102  # xMG#2 QMG01-J2
+          - 10.60.8.103  # xMG#2 QMG02-J1 (124.325 MHz)
+          - 10.60.8.104  # xMG#2 QMG02-J2
+          - 10.60.8.105  # xMG#2 QMG03-J1 (121.425 MHz)
+          - 10.60.8.106  # xMG#2 QMG03-J2
+          - 10.60.8.107  # xMG#2 QMG04-J1 (121.775 MHz)
+          - 10.60.8.108  # xMG#2 QMG04-J2
+          - 10.60.8.109  # xMG#2 QMG05-J1 (121.925 MHz)
+          - 10.60.8.110  # xMG#2 QMG05-J2
+          - 10.60.8.111  # xMG#2 QMG06-J1 (121.725 MHz)
+          - 10.60.8.112  # xMG#2 QMG06-J2
+          - 10.60.8.113  # xMG#2 QMG07-J1 (124.625 MHz)
+          - 10.60.8.114  # xMG#2 QMG07-J2
+          - 10.60.8.115  # xMG#2 QMG08-J1 (125.275 MHz)
+          - 10.60.8.116  # xMG#2 QMG08-J2
+          - 10.60.8.117  # xMG#2 QMG09-J1 (121.500 MHz — EMERGENCY)
+          - 10.60.8.118  # xMG#2 QMG09-J2
+          - 10.60.8.119  # xMG#2 QMG10-J1 (RAD-ATIS)
+          - 10.60.8.120  # xMG#2 QMG10-J2
+          - 10.60.8.121  # xMG#2 QMG11-J1
+          - 10.60.8.122  # xMG#2 QMG11-J2
+        labels:
+          site:       'ATCC_CNS_Room'
+          device:     'Frequentis_xMG2'
+          role:       'vccs_gateway_standby'
+          redundancy: 'standby'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  __param_target
+      - source_labels: [__param_target]
+        target_label:  instance
+      - target_label:  __address__
+        replacement:   snmp-exporter:9116
+
+  # ── VCCS Servers — ICMP Ping ────────────────────────────
+  - job_name: 'blackbox_ping_vccs_servers'
+    scrape_interval: 30s
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+          - 10.60.8.12    # SVR1 — VCCS Server 1 (VCCS-06)
+          - 10.60.8.2     # SVR2 — VCCS Server 2 (VCCS-06)
+        labels:
+          site:   'ATCC_CNS_Room'
+          device: 'VCCS_Server'
+          role:   'vccs_application_server'
     relabel_configs:
       - source_labels: [__address__]
         target_label:  __param_target

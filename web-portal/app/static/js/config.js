@@ -36,15 +36,17 @@ const NODES = {
   },
   atcc: {
     id:'atcc', icon:'🗼',
-    label:['ĐÀI KSKL','Long Thành'], sub:'ALE OS6860E + S4-IP',
+    label:['ĐÀI KSKL','Long Thành'], sub:'FREQUENTIS xMG + ALE',
     cx:480, cy:140, hw:105, hh:58,
     playbook:'all_rcms', grafana:'vatm-ed137-overview',
     info:{
-      'Vai trò':'Trung tâm điều phối',
-      'Switch':'ALE OS6860E-24 (SNMP v2c)',
-      'Controller':'S4-IP (TCP port 5001)',
-      'Monitoring':'Blackbox Exporter',
-      'Location':'Long Thành, Đồng Nai',
+      'Vai trò':'Trung tâm điều phối ED-137',
+      'VCCS Gateway':'Frequentis xMG#1/xMG#2 (10.60.8.71–122)',
+      'Switch Core':'RED (10.60.8.204) + BLUE (10.60.8.203)',
+      'Switch 20FL':'20FL_1 (10.60.8.201) + 20FL_2 (10.60.8.202)',
+      'VCCS Servers':'SVR1 (10.60.8.12) / SVR2 (10.60.8.2)',
+      'S4-IP Controller':'TCP port 5001 (Blackbox Exporter)',
+      'Location':'Long Thành, Đồng Nai — CNS Room',
     },
   },
   rx: {
@@ -114,7 +116,7 @@ const NODE_PARAMS_DEF = {
     { key:'delay_warn',   label:'Delay WARN',           type:'number', val:50,           unit:'ms' },
     { key:'delay_crit',   label:'Delay CRIT',           type:'number', val:100,          unit:'ms' },
     { section: '📡 Giám sát SNMP Target' },
-    { key:'snmp_target_count',    label:'Tổng số SNMP targets', type:'number', val:52,  unit:'target' },
+    { key:'snmp_target_count',    label:'Tổng số SNMP targets', type:'number', val:97,  unit:'target' },
     { key:'alert_threshold_pct',  label:'Cảnh báo khi DOWN >',  type:'number', val:10,  unit:'%',  min:1, max:100 },
   ],
   rx: [

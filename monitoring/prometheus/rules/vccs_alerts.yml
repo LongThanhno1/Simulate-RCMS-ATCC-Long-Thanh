@@ -1,0 +1,204 @@
+# ============================================================
+# VATM ATCC Long Thành — VCCS Alert Rules
+# Hệ thống: FREQUENTIS xMG#1/xMG#2 + Switch Core RED/BLUE
+# Tiêu chuẩn: EUROCAE ED-137 + BVTC VCCS LTIA
+# Tác giả: Đỗ Thanh Long — ATSEP VATM ATCC Long Thành
+# ============================================================
+
+groups:
+
+  # ══════════════════════════════════════════════════════
+  # GROUP 1: VCCS Switch Core — RED / BLUE
+  # Kiến trúc: dual-core redundancy, cả 2 phải UP đồng thời
+  # ══════════════════════════════════════════════════════
+  - name: vccs_switch_core
+    rules:
+
+      # ── 1a. Switch Core mất kết nối (SNMP unreachable) ──
+      - alert: VCCSSwitchCoreDown
+        expr: up{job="snmp_vccs_sw_core"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          system: vccs
+          subsystem: switch_core
+        annotations:
+          summary: "🔴 VCCS Switch Core DOWN: {{ $labels.instance }}"
+          description: |
+            SNMP không thể kết nối tới VCCS Switch Core tại {{ $labels.instance }}.
+            Thiết bị: {{ $labels.device }} | Site: {{ $labels.site }}
+            Ảnh hưởng: Toàn bộ kênh VoIP ED-137 qua switch này có thể bị gián đoạn.
+            Hành động: Kiểm tra kết nối vật lý và nguồn cấp tại CNS Room.
+
+      # ── 1b. Cả 2 Switch Core đều DOWN — CATASTROPHIC ──
+      - alert: VCCSDualSwitchCoreFailed
+        expr: count(up{job="snmp_vccs_sw_core"} == 0) == 2
+        for: 30s
+        labels:
+          severity: critical
+          system: vccs
+          subsystem: switch_core
+          priority: P1
+        annotations:
+          summary: "🚨 P1 — CẢ HAI VCCS SWITCH CORE (RED + BLUE) DOWN"
+          description: |
+            THẢM HỌA: RED SWITCH CORE (10.60.8.204) VÀ BLUE SWITCH CORE (10.60.8.203)
+            đều không phản hồi SNMP.
+            Tất cả 10 kênh VoIP ED-137 (RAD01–09 + ATIS) có thể bị mất hoàn toàn.
+            HÀNH ĐỘNG NGAY: Kích hoạt quy trình backup Ultimate Backup VHF (Tầng 20 TWR).
+            Liên hệ Frequentis support và KTVT trực ca trưởng.
+
+      # ── 1c. Port switch core bị down ──
+      - alert: VCCSSwitchCorePortDown
+        expr: ale_port_oper_status{job="snmp_vccs_sw_core"} == 2
+        for: 2m
+        labels:
+          severity: warning
+          system: vccs
+          subsystem: switch_core
+        annotations:
+          summary: "⚠️ VCCS Switch Core port DOWN: {{ $labels.instance }} – {{ $labels.ifDescr }}"
+          description: |
+            Port {{ $labels.ifDescr }} trên {{ $labels.instance }} chuyển sang trạng thái DOWN.
+            Kiểm tra kết nối cáp và trạng thái thiết bị đầu cuối kết nối vào port này.
+
+  # ══════════════════════════════════════════════════════
+  # GROUP 2: VCCS Switch Tầng 20 (20FL)
+  # ══════════════════════════════════════════════════════
+  - name: vccs_switch_floor20
+    rules:
+
+      - alert: VCCSSwitchFloor20Down
+        expr: up{job="snmp_vccs_sw_20fl"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          system: vccs
+          subsystem: switch_floor20
+        annotations:
+          summary: "🔴 VCCS Switch Floor 20 DOWN: {{ $labels.instance }}"
+          description: |
+            Switch_VCCS_20FL tại Tầng 20 TWR không phản hồi: {{ $labels.instance }}.
+            Thiết bị: {{ $labels.device }}
+            Ảnh hưởng: Các CWP tại tầng 20 và T6-TRV UBVHF có thể mất kết nối VCCS.
+            Hành động: Kiểm tra nguồn DC 24V và kết nối fiber lên Switch Core.
+
+      - alert: VCCSSwitchFloor20PortDown
+        expr: ale_port_oper_status{job="snmp_vccs_sw_20fl"} == 2
+        for: 2m
+        labels:
+          severity: warning
+          system: vccs
+          subsystem: switch_floor20
+        annotations:
+          summary: "⚠️ VCCS 20FL port DOWN: {{ $labels.instance }} – {{ $labels.ifDescr }}"
+          description: |
+            Port {{ $labels.ifDescr }} trên {{ $labels.instance }} (Tầng 20) DOWN.
+
+  # ══════════════════════════════════════════════════════
+  # GROUP 3: FREQUENTIS xMG Gateways
+  # Đây là gateway xử lý toàn bộ luồng VoIP ED-137
+  # xMG#1 = Primary | xMG#2 = Standby
+  # ══════════════════════════════════════════════════════
+  - name: vccs_xmg_gateway
+    rules:
+
+      # ── 3a. xMG QMG port mất kết nối SNMP ──
+      - alert: VCCSxMGPortDown
+        expr: up{job=~"snmp_vccs_xmg[12]"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          system: vccs
+          subsystem: xmg
+        annotations:
+          summary: "🔴 Frequentis xMG QMG port DOWN: {{ $labels.instance }}"
+          description: |
+            QMG port {{ $labels.instance }} ({{ $labels.device }}) không phản hồi SNMP.
+            Redundancy: {{ $labels.redundancy }}
+            Ảnh hưởng: Kênh VoIP ED-137 tương ứng có thể bị gián đoạn.
+            Hành động: Kiểm tra trạng thái card QMG trên giao diện VCCS / GAMS server.
+
+      # ── 3b. xMG#1 PRIMARY mất quá nhiều port ──
+      - alert: VCCSxMG1MajorFailure
+        expr: count(up{job="snmp_vccs_xmg1"} == 0) > 4
+        for: 2m
+        labels:
+          severity: critical
+          system: vccs
+          subsystem: xmg
+          priority: P1
+        annotations:
+          summary: "🚨 xMG#1 (Primary) — Hỏng nặng: {{ $value }} port không phản hồi"
+          description: |
+            xMG#1 (Primary VCCS Gateway) có {{ $value }} QMG port không phản hồi.
+            Nếu xMG#2 (Standby) không takeover, nhiều kênh VoIP có thể bị mất.
+            Kiểm tra xMG#2 trạng thái standby và thực hiện failover thủ công nếu cần.
+
+      # ── 3c. Interface xMG bị lỗi cao (errors/discards) ──
+      - alert: VCCSxMGHighErrors
+        expr: |
+          rate(xmg_if_in_errors{job=~"snmp_vccs_xmg[12]"}[5m]) > 10
+        for: 3m
+        labels:
+          severity: warning
+          system: vccs
+          subsystem: xmg
+        annotations:
+          summary: "⚠️ xMG interface errors cao: {{ $labels.instance }} – {{ $labels.ifDescr }}"
+          description: |
+            Interface {{ $labels.ifDescr }} trên {{ $labels.instance }} có tốc độ lỗi
+            {{ $value | humanize }} lỗi/giây — vượt ngưỡng 10 errors/s.
+            Có thể ảnh hưởng chất lượng VoIP ED-137.
+
+      # ── 3d. Packet discards cao → nguy cơ mất gói > 1% ──
+      - alert: VCCSxMGHighDiscards
+        expr: |
+          rate(xmg_if_in_discards{job=~"snmp_vccs_xmg[12]"}[5m]) > 5
+        for: 3m
+        labels:
+          severity: warning
+          system: vccs
+          subsystem: xmg
+        annotations:
+          summary: "⚠️ xMG packet discard cao: {{ $labels.instance }} (ED-137 Loss risk)"
+          description: |
+            Interface {{ $labels.ifDescr }} đang discard {{ $value | humanize }} gói/giây.
+            Ngưỡng ED-137 Packet Loss: < 1%. Nguy cơ vi phạm tiêu chuẩn.
+
+  # ══════════════════════════════════════════════════════
+  # GROUP 4: VCCS Application Servers
+  # ══════════════════════════════════════════════════════
+  - name: vccs_servers
+    rules:
+
+      - alert: VCCSServerDown
+        expr: probe_success{job="blackbox_ping_vccs_servers"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          system: vccs
+          subsystem: server
+        annotations:
+          summary: "🔴 VCCS Server DOWN (ping fail): {{ $labels.instance }}"
+          description: |
+            VCCS Application Server {{ $labels.instance }} không phản hồi ICMP ping.
+            Thiết bị: {{ $labels.device }} | Site: {{ $labels.site }}
+            Ảnh hưởng: Giao diện VCCS và quản lý CWP có thể bị ngắt.
+            Hành động: Kiểm tra nguồn điện, kết nối mạng tại CNS Room.
+
+      # ── Cả 2 server đều down ──
+      - alert: VCCSBothServersDown
+        expr: count(probe_success{job="blackbox_ping_vccs_servers"} == 0) == 2
+        for: 30s
+        labels:
+          severity: critical
+          system: vccs
+          subsystem: server
+          priority: P1
+        annotations:
+          summary: "🚨 P1 — CẢ HAI VCCS SERVER (SVR1 + SVR2) DOWN"
+          description: |
+            SVR1 (10.60.8.12) và SVR2 (10.60.8.2) đều không phản hồi ICMP.
+            Hệ thống VCCS Frequentis có thể mất toàn bộ khả năng xử lý.
+            HÀNH ĐỘNG NGAY: Kích hoạt quy trình khẩn cấp, thông báo KTVT trực ca trưởng.

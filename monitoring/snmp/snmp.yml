@@ -277,6 +277,133 @@ modules:
         help: "Switch uptime in timeticks"
 
   # ══════════════════════════════════════════════════════
+  # MODULE: frequentis_xmg
+  # Áp dụng: FREQUENTIS xMG#1 / xMG#2 — QMG port cards
+  # Đây là media gateway ED-137 VoIP, mỗi QMG card có 2 NIC (J1/J2)
+  # J1 → RED SWITCH CORE | J2 → BLUE SWITCH CORE
+  # IP xMG#1 QMG01–11: 10.60.8.71–92 (J1=odd, J2=even)
+  # IP xMG#2 QMG01–11: 10.60.8.101–122
+  #
+  # NOTE về OID Frequentis:
+  #   Frequentis PEN (Private Enterprise Number): 8192 (Frequentis AG)
+  #   OID base: 1.3.6.1.4.1.8192
+  #   MIB proprietary chưa public. Dùng standard IF-MIB làm baseline.
+  #   Khi có MIB file từ Frequentis support, bổ sung OID vào TODO block.
+  # ══════════════════════════════════════════════════════
+  frequentis_xmg:
+
+    walk:
+      # ── Standard IF-MIB ──
+      - 1.3.6.1.2.1.2.2          # ifTable (interface stats)
+      - 1.3.6.1.2.1.31.1.1       # ifXTable (64-bit counters)
+      # ── System MIB ──
+      - 1.3.6.1.2.1.1            # sysDescr, sysUpTime, sysName
+      # ── IP-MIB ──
+      - 1.3.6.1.2.1.4.20         # ipAddrTable
+      # ── TODO: Frequentis xMG Proprietary MIB (PEN: 8192) ──
+      # Khi có MIB file từ Frequentis:
+      # - 1.3.6.1.4.1.8192.x.x  # xmgChannelStatus (ED-137 channel up/down)
+      # - 1.3.6.1.4.1.8192.x.x  # xmgVoipDelay (one-way delay ms)
+      # - 1.3.6.1.4.1.8192.x.x  # xmgVoipJitter (jitter ms)
+      # - 1.3.6.1.4.1.8192.x.x  # xmgVoipLoss (packet loss %)
+      # - 1.3.6.1.4.1.8192.x.x  # xmgAlarmStatus (0=OK, 1=WARN, 2=FAULT)
+      # - 1.3.6.1.4.1.8192.x.x  # xmgFrequency (active VHF frequency Hz)
+
+    metrics:
+
+      # ── Interface Operational Status ──
+      - name: xmg_if_oper_status
+        oid:  1.3.6.1.2.1.2.2.1.8
+        type: gauge
+        help: "xMG QMG port operational status (1=up, 2=down)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.2.2.1.2
+            type: DisplayString
+
+      # ── Interface Admin Status ──
+      - name: xmg_if_admin_status
+        oid:  1.3.6.1.2.1.2.2.1.7
+        type: gauge
+        help: "xMG QMG port admin status (1=up, 2=down)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      # ── Port RX Bytes ──
+      - name: xmg_if_in_octets
+        oid:  1.3.6.1.2.1.31.1.1.1.6
+        type: counter
+        help: "xMG port received bytes (64-bit)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+        lookups:
+          - labels: [ifIndex]
+            labelname: ifDescr
+            oid: 1.3.6.1.2.1.2.2.1.2
+            type: DisplayString
+
+      # ── Port TX Bytes ──
+      - name: xmg_if_out_octets
+        oid:  1.3.6.1.2.1.31.1.1.1.10
+        type: counter
+        help: "xMG port transmitted bytes (64-bit)"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      # ── Port RX Errors ──
+      - name: xmg_if_in_errors
+        oid:  1.3.6.1.2.1.2.2.1.14
+        type: counter
+        help: "xMG port inbound errors"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      # ── Port RX Discards (Packet Loss indicator) ──
+      - name: xmg_if_in_discards
+        oid:  1.3.6.1.2.1.2.2.1.13
+        type: counter
+        help: "xMG port inbound discards — thể hiện packet loss ED-137"
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      # ── System Uptime ──
+      - name: xmg_uptime_ticks
+        oid:  1.3.6.1.2.1.1.3.0
+        type: gauge
+        help: "xMG system uptime in timeticks"
+
+      # ── TODO: Frequentis ED-137 KPI Metrics ──
+      # Bổ sung khi có MIB file từ Frequentis support:
+      # - name: xmg_voip_delay_ms
+      #   oid:  1.3.6.1.4.1.8192.x.x
+      #   type: gauge
+      #   help: "ED-137 one-way delay in ms (threshold: 100ms)"
+      #
+      # - name: xmg_voip_jitter_ms
+      #   oid:  1.3.6.1.4.1.8192.x.x
+      #   type: gauge
+      #   help: "ED-137 jitter in ms (threshold: 20ms)"
+      #
+      # - name: xmg_voip_loss_pct
+      #   oid:  1.3.6.1.4.1.8192.x.x
+      #   type: gauge
+      #   help: "ED-137 packet loss % (threshold: 1%)"
+      #
+      # - name: xmg_channel_status
+      #   oid:  1.3.6.1.4.1.8192.x.x
+      #   type: gauge
+      #   help: "ED-137 VoIP channel status (0=OK, 1=degraded, 2=down)"
+
+  # ══════════════════════════════════════════════════════
   # MODULE: linux_snmp
   # Áp dụng: Ubuntu VMs chạy net-snmp trong LAB simulation
   # Giả lập T6 radio khi chưa có thiết bị thật
