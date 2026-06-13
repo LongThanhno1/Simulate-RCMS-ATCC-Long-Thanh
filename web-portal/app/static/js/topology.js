@@ -6,7 +6,7 @@
 
 /* ── Canvas logic dimensions ── */
 const CW = 960;
-const CH = 380;
+const CH = 440;
 const PULSE_SPEED = 0.20;
 const PULSE_INT   = 1.5;
 
@@ -71,7 +71,7 @@ function initTopology() {
    ================================================================ */
 function drawBackground() {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const HORIZON = CH * 0.62;
+  const HORIZON = CH * 0.74;   /* Hạ horizon xuống để TX/RX node (cy=150,295) đều nằm trên đất */
 
   /* Bầu trời */
   const sky = ctx.createLinearGradient(0,0,0,HORIZON);
@@ -151,9 +151,12 @@ function drawBackground() {
   /* Đường băng + đồi + tòa nhà */
   drawRunway(CW/2, CH, HORIZON, dark);
   drawHills(HORIZON, dark);
-  drawStationBuilding(155,  HORIZON+2, 56, 72, true,  dark, 'TX');
-  drawATCCTower(480, HORIZON, dark);
-  drawStationBuilding(805,  HORIZON+2, 56, 65, false, dark, 'RX');
+  /* TX+RX cùng x=88 — vẽ 1 compound station đại diện cả 2 VHF sites */
+  drawStationBuilding(88, HORIZON+2, 50, 65, true, dark, 'VHF');
+  /* ATCC tower đứng ở trung tâm, phía sau CNS room */
+  drawATCCTower(400, HORIZON, dark);
+  /* TWR tầng 20 bên phải */
+  drawTWR20Building(730, HORIZON, dark);
 }
 
 function drawCloud(x, y, opacity, dark) {
@@ -398,6 +401,100 @@ function drawATCCTower(cx, groundY, dark) {
   ctx.restore();
 }
 
+function drawTWR20Building(cx, groundY, dark) {
+  /* Tòa nhà TWR tầng 20 — cột anten màu xanh dương (BLUE ring) */
+  ctx.save();
+  ctx.globalAlpha = dark ? 0.50 : 0.38;
+  const bldCol  = dark ? '#0c1e32' : '#7a9ab5';
+  const roofCol = dark ? '#081628' : '#5a7a95';
+  const borderC = dark ? '#1e3a5f' : '#5a7a9a';
+  const antCol  = dark ? '#60a5fa' : '#2563eb';
+  const w = 42, h = 76;
+  ctx.fillStyle = bldCol;
+  roundRectPath(cx-w/2, groundY-h, w, h, 4); ctx.fill();
+  ctx.strokeStyle = borderC; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = roofCol;
+  ctx.beginPath();
+  ctx.moveTo(cx-w/2-3, groundY-h); ctx.lineTo(cx, groundY-h-11); ctx.lineTo(cx+w/2+3, groundY-h);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = dark ? 'rgba(96,165,250,0.30)' : 'rgba(147,197,253,0.50)';
+  for (let row=0; row<4; row++)
+    for (let col=0; col<3; col++)
+      ctx.fillRect(cx-w/2+4+col*12, groundY-h+9+row*16, 7, 10);
+  ctx.fillStyle = dark ? '#040e1a' : '#4a6a84';
+  ctx.fillRect(cx-5, groundY-17, 10, 17);
+  ctx.strokeStyle = antCol; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(cx, groundY-h-11); ctx.lineTo(cx, groundY-h-58); ctx.stroke();
+  [18,33,48].forEach(d => {
+    ctx.beginPath(); ctx.moveTo(cx-6, groundY-h-11-d); ctx.lineTo(cx+6, groundY-h-11-d); ctx.stroke();
+  });
+  ctx.globalAlpha = dark ? 0.45 : 0.35;
+  ctx.fillStyle = dark ? '#60a5fa' : '#1d4ed8';
+  ctx.font = 'bold 9px Consolas, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('FL20', cx, groundY-h+2);
+  ctx.restore();
+}
+
+/* Khung dashed bao quanh CNS Room (xMG + RED SW + BLUE SW) */
+function drawCNSRoom() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const pad = 20;
+  const left   = NODES.xmg.cx    - NODES.xmg.hw    - pad;
+  const right  = NODES.red_sw.cx + NODES.red_sw.hw  + pad;
+  const top    = NODES.red_sw.cy  - NODES.red_sw.hh  - pad;
+  const bottom = NODES.blue_sw.cy + NODES.blue_sw.hh + pad;
+  ctx.save();
+  /* Fill nhẹ */
+  ctx.fillStyle = dark ? 'rgba(56,189,248,0.03)' : 'rgba(3,105,161,0.03)';
+  roundRectPath(left, top, right-left, bottom-top, 10); ctx.fill();
+  /* Border dashed */
+  ctx.strokeStyle = dark ? 'rgba(56,189,248,0.28)' : 'rgba(3,105,161,0.22)';
+  ctx.lineWidth = 1.2; ctx.setLineDash([6, 4]);
+  ctx.shadowColor = dark ? 'rgba(56,189,248,0.15)' : 'transparent'; ctx.shadowBlur = 8;
+  roundRectPath(left, top, right-left, bottom-top, 10); ctx.stroke();
+  ctx.setLineDash([]); ctx.shadowBlur = 0;
+  /* Label */
+  ctx.fillStyle = dark ? 'rgba(56,189,248,0.50)' : 'rgba(3,105,161,0.45)';
+  ctx.font = 'bold 9px Consolas, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('■ CNS ROOM — ATCC Long Thành', (left+right)/2, top+4);
+  ctx.restore();
+}
+
+/* Legend góc dưới phải */
+function drawLegend() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const items = [
+    { c:'#38bdf8', label:'Cáp quang (2 rings)', dash:false, thick:true  },
+    { c:'#f87171', label:'RED ring (J1)',        dash:false, thick:false },
+    { c:'#60a5fa', label:'BLUE ring (J2)',       dash:false, thick:false },
+    { c:'#94a3b8', label:'RJ45 (CNS room)',      dash:true,  thick:false },
+  ];
+  const iH=14, bW=138, bH=items.length*iH+10;
+  const bx=CW-bW-8, by=CH-bH-8;
+  ctx.save();
+  ctx.fillStyle = dark ? 'rgba(6,13,26,0.82)' : 'rgba(235,242,250,0.88)';
+  roundRectPath(bx, by, bW, bH, 5); ctx.fill();
+  ctx.strokeStyle = dark ? 'rgba(56,189,248,0.20)' : 'rgba(148,163,184,0.30)';
+  ctx.lineWidth = 0.6; roundRectPath(bx, by, bW, bH, 5); ctx.stroke();
+  items.forEach(({c,label,dash,thick},i) => {
+    const y = by+6+i*iH+iH/2;
+    ctx.strokeStyle=c; ctx.lineWidth=thick?2.8:(dash?1.5:2);
+    ctx.setLineDash(dash?[4,3]:[]);
+    ctx.beginPath(); ctx.moveTo(bx+8,y); ctx.lineTo(bx+26,y); ctx.stroke();
+    if (thick) {
+      ctx.strokeStyle='rgba(255,255,255,0.20)'; ctx.lineWidth=0.8;
+      ctx.beginPath(); ctx.moveTo(bx+8,y); ctx.lineTo(bx+26,y); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.fillStyle=dark?'#94a3b8':'#475569';
+    ctx.font='9px Consolas,monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(label, bx+30, y);
+  });
+  ctx.restore();
+}
+
 /* Utility: rectangle bo góc lên path */
 function roundRectPath(x, y, w, h, r) {
   ctx.beginPath();
@@ -464,49 +561,67 @@ function drawStatusBadge(bx, by, status) {
   ctx.restore();
 }
 
-/* Vẽ đường kết nối */
+/* Vẽ đường kết nối — hỗ trợ fiber/rj45 và ring RED/BLUE/BOTH */
 function drawLink(link, status) {
-  const fn=NODES[link.from], tn=NODES[link.to];
-  const x1=fn.cx+fn.hw, y1=fn.cy, x2=tn.cx-tn.hw, y2=tn.cy, mx=(x1+x2)/2;
-  const c=sColor(status);
+  const fn = NODES[link.from], tn = NODES[link.to];
+  /* Anchor: right-edge của from → left-edge của to */
+  const x1 = fn.cx + fn.hw, y1 = fn.cy;
+  const x2 = tn.cx - tn.hw, y2 = tn.cy;
+  const mx = (x1 + x2) / 2;
+
+  /* Màu ring — override bởi status nếu warn/crit */
+  const RING_C = { red:'#f87171', blue:'#60a5fa', both:'#38bdf8' };
+  const ringC  = RING_C[link.ring] || '#38bdf8';
+  const lineC  = (status==='warn') ? '#fbbf24' : (status==='crit') ? '#ef4444' : ringC;
+
   ctx.save();
-  ctx.shadowColor=c; ctx.shadowBlur=status==='crit'?12:5;
-  ctx.strokeStyle=c; ctx.lineWidth=status==='crit'?2.5:1.8;
-  ctx.setLineDash(status==='unknown'?[8,5]:[]);
-  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.bezierCurveTo(mx,y1,mx,y2,x2,y2); ctx.stroke();
-  ctx.setLineDash([]); ctx.shadowBlur=0;
-  /* Nhãn link + HMI KPI overlay */
-  const lx=mx, ly=(y1+y2)/2-18;
-  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  if (link.type === 'fiber') {
+    /* Fiber — đường dày, phát sáng */
+    ctx.shadowColor = lineC; ctx.shadowBlur = status==='crit' ? 16 : 8;
+    ctx.strokeStyle = lineC; ctx.lineWidth  = status==='crit' ? 3.5 : 2.8;
+    ctx.setLineDash(status==='unknown' ? [8,5] : []);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.bezierCurveTo(mx,y1,mx,y2,x2,y2); ctx.stroke();
+    /* Lõi sáng trắng bên trong */
+    ctx.shadowBlur=0; ctx.strokeStyle='rgba(255,255,255,0.20)'; ctx.lineWidth=0.9;
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.bezierCurveTo(mx,y1,mx,y2,x2,y2); ctx.stroke();
+  } else {
+    /* RJ45 — đường mảnh hơn */
+    ctx.shadowColor = lineC; ctx.shadowBlur = 4;
+    ctx.strokeStyle = lineC; ctx.lineWidth  = status==='unknown' ? 1.4 : 2.0;
+    ctx.setLineDash(status==='unknown' ? [6,4] : []);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.bezierCurveTo(mx,y1,mx,y2,x2,y2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.shadowBlur = 0;
 
-  /* Lấy số liệu KPI thực tế từ topo (global, app.js) */
-  const kd = link.id==='tx_atcc' ? topo.delay_tx_atcc : topo.delay_atcc_rx;
-  const kl = link.id==='tx_atcc' ? topo.loss_tx_atcc  : topo.loss_atcc_rx;
-  const hasKpi = kd !== null && kd !== undefined;
-  const boxH = hasKpi ? 34 : 22;   /* chiều cao box tăng khi có KPI */
+  /* Nhãn link + KPI overlay */
+  const lx = mx, ly = (y1+y2)/2 - 12;
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
 
-  ctx.fillStyle=dark?'rgba(6,13,26,0.84)':'rgba(238,242,247,0.88)';
-  roundRectPath(lx-48, ly-10, 96, boxH, 4); ctx.fill();
-  ctx.strokeStyle=c; ctx.lineWidth=0.7;
-  roundRectPath(lx-48, ly-10, 96, boxH, 4); ctx.stroke();
+  /* KPI chỉ hiển thị trên 2 fiber long-haul (tx_xmg, rx_xmg) */
+  const isLH = (link.id==='tx_xmg' || link.id==='rx_xmg');
+  const kd   = link.id==='tx_xmg' ? topo.delay_tx_xmg  : topo.delay_rx_xmg;
+  const kl   = link.id==='tx_xmg' ? topo.loss_tx_xmg   : topo.loss_rx_xmg;
+  const hasKpi = isLH && kd !== null && kd !== undefined;
+  const boxH = hasKpi ? 36 : 24;
 
-  /* Nhãn tên link */
-  ctx.fillStyle=c;
-  ctx.font='9.5px Consolas,monospace';
+  ctx.fillStyle = dark ? 'rgba(6,13,26,0.85)' : 'rgba(234,242,250,0.90)';
+  roundRectPath(lx-46, ly-10, 92, boxH, 4); ctx.fill();
+  ctx.strokeStyle=lineC; ctx.lineWidth=0.7;
+  roundRectPath(lx-46, ly-10, 92, boxH, 4); ctx.stroke();
+
+  ctx.fillStyle=lineC; ctx.font='8.5px Consolas,monospace';
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  link.label.split('\n').forEach((l,i) => ctx.fillText(l,lx,ly-4+i*12));
+  link.label.split('\n').forEach((l,i) => ctx.fillText(l, lx, ly-1+i*11));
 
-  /* KPI metric dòng 3 — HMI readout */
   if (hasKpi) {
-    const dColor = kd>100?'#f87171': kd>50?'#fbbf24':'#34d399';
-    const lColor = kl>1  ?'#f87171': kl>0.1?'#fbbf24':'#34d399';
-    ctx.font='bold 8px Consolas,monospace';
-    ctx.fillStyle=dColor;
-    ctx.fillText('Δ'+kd.toFixed(1)+'ms', lx-22, ly+20);
-    ctx.fillStyle=dark?'#3d5a7a':'#94a3b8';
-    ctx.fillText('|', lx, ly+20);
-    ctx.fillStyle=lColor;
-    ctx.fillText((kl||0).toFixed(2)+'%loss', lx+22, ly+20);
+    const dC = kd>100?'#f87171': kd>50?'#fbbf24':'#34d399';
+    const lC = kl>1  ?'#f87171': kl>0.1?'#fbbf24':'#34d399';
+    ctx.font='bold 7.5px Consolas,monospace';
+    ctx.fillStyle=dC;  ctx.fillText('Δ'+kd.toFixed(1)+'ms',   lx-20, ly+22);
+    ctx.fillStyle=dark?'#3d5a7a':'#94a3b8'; ctx.fillText('|', lx,    ly+22);
+    ctx.fillStyle=lC;  ctx.fillText((kl||0).toFixed(2)+'%',   lx+20, ly+22);
   }
   ctx.restore();
 }
@@ -537,23 +652,30 @@ function drawPulses(link) {
 
 /* ── HÀM VẼ CHÍNH ── */
 function drawTopo() {
-  ctx.clearRect(0,0,CW,CH);
+  ctx.clearRect(0, 0, CW, CH);
   drawBackground();
   drawOverlayGrid();
-  LINKS.forEach(lk => drawLink(lk, lk.id==='tx_atcc'?topo.link_tx_atcc:topo.link_atcc_rx));
+  drawCNSRoom();   /* Khung CNS Room trước khi vẽ links */
+  /* Trạng thái link: topo['link_' + id] (app.js khai báo đủ 6 keys) */
+  LINKS.forEach(lk => drawLink(lk, topo['link_'+lk.id] || 'unknown'));
   LINKS.forEach(lk => drawPulses(lk));
-  const stMap = {tx:topo.tx_status, atcc:topo.atcc_status, rx:topo.rx_status};
+  const stMap = {
+    tx:topo.tx_status,    rx:topo.rx_status,
+    xmg:topo.xmg_status,  red_sw:topo.red_sw_status,
+    blue_sw:topo.blue_sw_status, fl20:topo.fl20_status,
+  };
   Object.values(NODES).forEach(n => drawNode(n, stMap[n.id]||'unknown', selNode===n.id));
+  drawLegend();
   /* Nhãn tiêu đề */
-  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   ctx.save();
-  ctx.fillStyle=dark?'#1e3a5f':'#6b8aaa';
-  ctx.font='11px Segoe UI, sans-serif';
-  ctx.textAlign='left'; ctx.textBaseline='top';
-  ctx.fillText('RCMS — TX ⟶ ATCC Long Thành ⟶ RX', 10, 8);
+  ctx.fillStyle = dark ? '#1e3a5f' : '#6b8aaa';
+  ctx.font = '11px Segoe UI, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText('TX/RX Sites ──[Cáp quang]──▶ CNS Room (xMG ▷ RED/BLUE ring) ──[Fiber]──▶ TWR FL20', 10, 8);
   if (topo.ts) {
-    ctx.textAlign='right';
-    ctx.fillText('Cập nhật: '+new Date(topo.ts).toLocaleTimeString('vi-VN'), CW-10, 8);
+    ctx.textAlign = 'right';
+    ctx.fillText('Cập nhật: ' + new Date(topo.ts).toLocaleTimeString('vi-VN'), CW-10, 8);
   }
   ctx.restore();
 }
@@ -564,12 +686,14 @@ function animLoop(ts) {
   lastFrame = ts;
   pulses = pulses.map(p=>({...p, t:p.t+PULSE_SPEED*dt})).filter(p=>p.t<1);
   const now = ts/1000;
+  const RING_C = { red:'#f87171', blue:'#60a5fa', both:'#38bdf8' };
   LINKS.forEach(lk => {
-    const st = lk.id==='tx_atcc'?topo.link_tx_atcc:topo.link_atcc_rx;
-    if (st==='crit'||st==='unknown') return;
-    if (now-lastPulse[lk.id]>PULSE_INT) {
-      pulses.push({lid:lk.id, t:0, c:st==='warn'?'#fbbf24':'#38bdf8'});
-      lastPulse[lk.id]=now;
+    const st = topo['link_'+lk.id] || 'unknown';
+    if (st==='crit' || st==='unknown') return;
+    if (now - lastPulse[lk.id] > PULSE_INT) {
+      const c = st==='warn' ? '#fbbf24' : (RING_C[lk.ring] || '#38bdf8');
+      pulses.push({ lid:lk.id, t:0, c });
+      lastPulse[lk.id] = now;
     }
   });
   drawTopo();

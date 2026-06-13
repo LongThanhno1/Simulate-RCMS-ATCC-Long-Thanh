@@ -17,58 +17,110 @@ const GF_DASH = {
 };
 
 /* ================================================================
-   NODE DEFINITIONS — Dữ liệu tĩnh từng trạm trên canvas
+   NODE DEFINITIONS — 6 nodes: TX, RX, xMG, RED SW, BLUE SW, FL20
+   Dual-ring topology per BVTC VCCS — xMG J1→RED ring, J2→BLUE ring
    ================================================================ */
 const NODES = {
   tx: {
     id:'tx', icon:'📡',
-    label:['TRẠM PHÁT','TX Station'], sub:'Park Air T6-TV',
-    cx:155, cy:148, hw:90, hh:55,
+    label:['TRẠM PHÁT','TX Station'], sub:'Park Air T6-TV ×9 ch',
+    cx:88, cy:150, hw:78, hh:50,
     playbook:'rcms_tx', grafana:'vatm-parkair-t6',
     info:{
-      'Thiết bị':'Park Air T6-TV',
-      'Số kênh':'9 kênh VHF (118–125 MHz)',
+      'Thiết bị':'Park Air T6-TV (×9 kênh VHF)',
+      'Dự phòng':'T6-TV Standby ×9',
       'IP MAIN (LAN3)':'10.60.7.71–79',
       'IP STBY (LAN3)':'10.60.7.81–89',
-      'SNMP Targets':'18 (community: vatm_ro)',
-      'Poll qua':'LAN3 — RCMS subnet only',
-    },
-  },
-  atcc: {
-    id:'atcc', icon:'🗼',
-    label:['ĐÀI KSKL','Long Thành'], sub:'FREQUENTIS xMG + ALE',
-    cx:480, cy:140, hw:105, hh:58,
-    playbook:'all_rcms', grafana:'vatm-ed137-overview',
-    info:{
-      'Vai trò':'Trung tâm điều phối ED-137',
-      'VCCS Gateway':'Frequentis xMG#1/xMG#2 (10.60.8.71–122)',
-      'Switch Core':'RED (10.60.8.204) + BLUE (10.60.8.203)',
-      'Switch 20FL':'20FL_1 (10.60.8.201) + 20FL_2 (10.60.8.202)',
-      'VCCS Servers':'SVR1 (10.60.8.12) / SVR2 (10.60.8.2)',
-      'S4-IP Controller':'TCP port 5001 (Blackbox Exporter)',
-      'Location':'Long Thành, Đồng Nai — CNS Room',
+      'SNMP':'LAN3 (RCMS subnet) — vatm_ro',
+      'Kết nối→xMG':'Cáp quang (LAN1 VoIP)',
     },
   },
   rx: {
     id:'rx', icon:'📻',
-    label:['TRẠM THU','RX Station'], sub:'Park Air T6-RV',
-    cx:805, cy:148, hw:90, hh:55,
+    label:['TRẠM THU','RX Station'], sub:'Park Air T6-RV ×9 ch',
+    cx:88, cy:295, hw:78, hh:50,
     playbook:'rcms_rx', grafana:'vatm-parkair-t6',
     info:{
-      'Thiết bị':'Park Air T6-RV',
-      'Số kênh':'9 kênh VHF',
+      'Thiết bị':'Park Air T6-RV (×9 kênh VHF)',
+      'Dự phòng':'T6-RV Standby ×9',
       'IP MAIN (LAN3)':'10.60.6.71–79',
       'IP STBY (LAN3)':'10.60.6.81–89',
-      'SNMP Targets':'18 (community: vatm_ro)',
-      'Poll qua':'LAN3 — RCMS subnet only',
+      'SNMP':'LAN3 (RCMS subnet) — vatm_ro',
+      'Kết nối→xMG':'Cáp quang (LAN1 VoIP)',
+    },
+  },
+  xmg: {
+    id:'xmg', icon:'⚡',
+    label:['FREQ. xMG','xMG#1 + xMG#2'], sub:'10.60.8.71–122',
+    cx:295, cy:223, hw:86, hh:52,
+    playbook:'all_rcms', grafana:'vatm-ed137-overview',
+    info:{
+      'Vị trí':'CNS Room — ATCC Long Thành',
+      'xMG#1 (Primary)':'10.60.8.71–92 (11 QMG cards)',
+      'xMG#2 (Standby)':'10.60.8.101–122 (11 QMG cards)',
+      'J1 → RED ring':'RJ45 → RED Switch Core (10.60.8.204)',
+      'J2 → BLUE ring':'RJ45 → BLUE Switch Core (10.60.8.203)',
+      'SNMP':'9116/frequentis_xmg',
+    },
+  },
+  red_sw: {
+    id:'red_sw', icon:'🔴',
+    label:['RED SW CORE','ALE OS6860'], sub:'10.60.8.204',
+    cx:495, cy:150, hw:82, hh:48,
+    info:{
+      'Model':'ALE OmniSwitch OS6860',
+      'IP':'10.60.8.204',
+      'Vai trò':'RED Ring — Primary path',
+      'Uplink TX/RX':'Từ xMG J1 (RJ45)',
+      'Uplink→FL20':'Fiber P49/P50 → SW_20FL_1',
+      'SNMP':'9116/ale_switch',
+    },
+  },
+  blue_sw: {
+    id:'blue_sw', icon:'🔵',
+    label:['BLUE SW CORE','ALE OS6860'], sub:'10.60.8.203',
+    cx:495, cy:295, hw:82, hh:48,
+    info:{
+      'Model':'ALE OmniSwitch OS6860',
+      'IP':'10.60.8.203',
+      'Vai trò':'BLUE Ring — Standby path',
+      'Uplink TX/RX':'Từ xMG J2 (RJ45)',
+      'Uplink→FL20':'Fiber P49/P50 → SW_20FL_2',
+      'SNMP':'9116/ale_switch',
+    },
+  },
+  fl20: {
+    id:'fl20', icon:'🗼',
+    label:['TWR TẦNG 20','T6-TRV + CWP'], sub:'10.60.8.201–202',
+    cx:730, cy:223, hw:86, hh:52,
+    grafana:'vatm-ed137-overview',
+    info:{
+      'Vị trí':'Đài KSKL Long Thành — Tầng 20',
+      'SW_20FL_1':'10.60.8.201 ← RED CORE (fiber)',
+      'SW_20FL_2':'10.60.8.202 ← BLUE CORE (fiber)',
+      'T6-TRV (VHF)':'×6 radio (10.60.11.1–6)',
+      'CWPs':'×11 operator workstations',
+      'VCCS WS':'10.60.8.254 / VHF-RCMS: 10.60.11.30',
     },
   },
 };
 
-/* ── LINK DEFINITIONS ── */
+/* ── LINK DEFINITIONS — 6 links: fiber và rj45, ring: red/blue/both ──
+   Nguồn: BVTC VCCS LTIA — xác nhận CHỈ cáp quang, KHÔNG có VSAT
+   RED ring (J1): xmg→red_sw→fl20 | BLUE ring (J2): xmg→blue_sw→fl20 */
 const LINKS = [
-  { id:'tx_atcc', from:'tx',   to:'atcc', label:'IP / VSAT\nTX → ATCC' },
-  { id:'atcc_rx', from:'atcc', to:'rx',   label:'IP / VSAT\nATCC → RX' },
+  { id:'tx_xmg',    from:'tx',     to:'xmg',     type:'fiber', ring:'both',
+    label:'Cáp quang\nTX→xMG (LAN1)' },
+  { id:'rx_xmg',    from:'rx',     to:'xmg',     type:'fiber', ring:'both',
+    label:'Cáp quang\nRX→xMG (LAN1)' },
+  { id:'xmg_red',   from:'xmg',    to:'red_sw',  type:'rj45',  ring:'red',
+    label:'RJ45 J1\nxMG→RED' },
+  { id:'xmg_blue',  from:'xmg',    to:'blue_sw', type:'rj45',  ring:'blue',
+    label:'RJ45 J2\nxMG→BLUE' },
+  { id:'red_fl20',  from:'red_sw', to:'fl20',    type:'fiber', ring:'red',
+    label:'Cáp quang\nRED→FL20' },
+  { id:'blue_fl20', from:'blue_sw',to:'fl20',    type:'fiber', ring:'blue',
+    label:'Cáp quang\nBLUE→FL20' },
 ];
 
 /* ================================================================
@@ -97,27 +149,6 @@ const NODE_PARAMS_DEF = {
     { key:'loss_crit',    label:'Loss CRIT',           type:'number', val:1.0,          unit:'%',  step:0.01, min:0.1, max:10 },
     { key:'delay_warn',   label:'Delay WARN',          type:'number', val:50,           unit:'ms', min:5,  max:99 },
     { key:'delay_crit',   label:'Delay CRIT',          type:'number', val:100,          unit:'ms', min:10, max:500 },
-  ],
-  atcc: [
-    { section: '🗼 ALE Switch (OS6860E)' },
-    { key:'switch_ip',    label:'Switch IP',           type:'text',   val:'10.60.10.1', unit:'' },
-    { key:'switch_comm',  label:'SNMP Community',      type:'text',   val:'vatm_ro',    unit:'' },
-    { key:'switch_vlan',  label:'VLAN LAN3 (RCMS)',    type:'number', val:30,           unit:'',   min:1, max:4094 },
-    { key:'poll_interval',label:'Poll interval',       type:'number', val:15,           unit:'s',  min:5, max:300 },
-    { section: '🎛️ S4-IP Controller (Park Air)' },
-    { key:'s4ip_ip',      label:'S4-IP IP',            type:'text',   val:'10.60.11.16',unit:'' },
-    { key:'s4ip_port',    label:'TCP Port (RCMS)',      type:'number', val:5001,         unit:'',   min:1, max:65535 },
-    { key:'s4ip_timeout', label:'Probe timeout',       type:'number', val:5,            unit:'s',  min:1, max:30 },
-    { section: '⚡ Ngưỡng ED-137 (toàn tuyến)' },
-    { key:'jitter_warn',  label:'Jitter WARN',         type:'number', val:10,           unit:'ms' },
-    { key:'jitter_crit',  label:'Jitter CRIT',         type:'number', val:20,           unit:'ms' },
-    { key:'loss_warn',    label:'Loss WARN',            type:'number', val:0.1,          unit:'%',  step:0.01 },
-    { key:'loss_crit',    label:'Loss CRIT',            type:'number', val:1.0,          unit:'%',  step:0.01 },
-    { key:'delay_warn',   label:'Delay WARN',           type:'number', val:50,           unit:'ms' },
-    { key:'delay_crit',   label:'Delay CRIT',           type:'number', val:100,          unit:'ms' },
-    { section: '📡 Giám sát SNMP Target' },
-    { key:'snmp_target_count',    label:'Tổng số SNMP targets', type:'number', val:97,  unit:'target' },
-    { key:'alert_threshold_pct',  label:'Cảnh báo khi DOWN >',  type:'number', val:10,  unit:'%',  min:1, max:100 },
   ],
   rx: [
     { section: '📡 Kết nối IP (LAN3 — RCMS subnet)' },

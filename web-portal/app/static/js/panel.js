@@ -73,7 +73,11 @@ function openPanel(node) {
   document.getElementById('param-save-msg').style.display = 'none';
   document.getElementById('panel-title').textContent = node.label.join(' ');
   document.getElementById('panel-sub').textContent   = node.icon + ' ' + node.sub;
-  const stMap = {tx:topo.tx_status, atcc:topo.atcc_status, rx:topo.rx_status};
+  const stMap = {
+    tx:topo.tx_status,    rx:topo.rx_status,
+    xmg:topo.xmg_status,  red_sw:topo.red_sw_status,
+    blue_sw:topo.blue_sw_status, fl20:topo.fl20_status,
+  };
   const st = stMap[node.id] || 'unknown';
   const badgeTxt = {ok:'● NORMAL', warn:'⚠ WARNING', crit:'✕ CRITICAL', unknown:'? UNKNOWN'};
   const badgeCls = {ok:'bg-green', warn:'bg-yellow', crit:'bg-red',     unknown:'bg-blue'};
@@ -93,11 +97,14 @@ function openPanel(node) {
   document.getElementById('node-panel').style.display = 'block';
 }
 
-/* ── Cập nhật KPI mini-bars trong panel ── */
+/* ── Cập nhật KPI mini-bars trong panel ──
+   KPI có sẵn: tx_xmg và rx_xmg (long-haul fiber links)
+   xmg/red_sw/blue_sw/fl20 không có KPI link riêng → bars để trống */
 function updatePanelKpi(nodeId) {
-  const keys = nodeId==='rx'
-    ? {d:'delay_atcc_rx', j:'jitter_atcc_rx', l:'loss_atcc_rx'}
-    : {d:'delay_tx_atcc', j:'jitter_tx_atcc', l:'loss_tx_atcc'};
+  const pfx = nodeId==='rx' ? 'rx_xmg' : nodeId==='tx' ? 'tx_xmg' : null;
+  const keys = pfx
+    ? {d:'delay_'+pfx, j:'jitter_'+pfx, l:'loss_'+pfx}
+    : {d:null, j:null, l:null};
 
   function setBar(bid, vid, val, max, unit) {
     if (val===null||val===undefined) return;

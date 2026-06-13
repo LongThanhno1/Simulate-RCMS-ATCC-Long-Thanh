@@ -13,12 +13,20 @@
 /* Canvas elements — gán trong DOMContentLoaded */
 let canvas, ctx;
 
-/* Topology real-time state — cập nhật từ WebSocket */
+/* Topology real-time state — cập nhật từ WebSocket
+   Dual-ring: TX/RX→xMG (fiber) | xMG→RED/BLUE SW (rj45) | SW→FL20 (fiber) */
 let topo = {
-  tx_status:'unknown',   atcc_status:'unknown',   rx_status:'unknown',
-  link_tx_atcc:'unknown', link_atcc_rx:'unknown',
-  delay_tx_atcc:null,    jitter_tx_atcc:null,     loss_tx_atcc:null,
-  delay_atcc_rx:null,    jitter_atcc_rx:null,     loss_atcc_rx:null,
+  /* Node statuses — 6 nodes */
+  tx_status:'unknown',      rx_status:'unknown',
+  xmg_status:'unknown',     red_sw_status:'unknown',
+  blue_sw_status:'unknown', fl20_status:'unknown',
+  /* Link statuses — 6 links */
+  link_tx_xmg:'unknown',   link_rx_xmg:'unknown',
+  link_xmg_red:'unknown',  link_xmg_blue:'unknown',
+  link_red_fl20:'unknown', link_blue_fl20:'unknown',
+  /* KPI metrics ED-137 — long-haul fiber links (tx_xmg, rx_xmg) */
+  delay_tx_xmg:null,  jitter_tx_xmg:null,  loss_tx_xmg:null,
+  delay_rx_xmg:null,  jitter_rx_xmg:null,  loss_rx_xmg:null,
   ts:null,
 };
 
@@ -28,7 +36,7 @@ let lastFrame = 0;
 let animId    = null;
 let selNode   = null;
 let curPanel  = null;
-let lastPulse = { tx_atcc:0, atcc_rx:0 };
+let lastPulse = { tx_xmg:0, rx_xmg:0, xmg_red:0, xmg_blue:0, red_fl20:0, blue_fl20:0 };
 
 /* Node parameter settings — persistent via localStorage */
 let nodeSettings = {};

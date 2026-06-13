@@ -20,9 +20,12 @@ async function loadSummary() {
     const sb = document.getElementById('status-badge');
     sb.innerHTML  = '<span class="dot dot-g"></span> Connected';
     sb.className  = 'status-ok';
-    if (d.tx_status)   topo.tx_status   = d.tx_status;
-    if (d.rx_status)   topo.rx_status   = d.rx_status;
-    if (d.atcc_status) topo.atcc_status = d.atcc_status;
+    /* Merge các status field từ backend vào topo — tự động map tên field */
+    ['tx_status','rx_status','xmg_status','red_sw_status','blue_sw_status','fl20_status',
+     'link_tx_xmg','link_rx_xmg','link_xmg_red','link_xmg_blue','link_red_fl20','link_blue_fl20',
+     'delay_tx_xmg','jitter_tx_xmg','loss_tx_xmg',
+     'delay_rx_xmg','jitter_rx_xmg','loss_rx_xmg',
+    ].forEach(k => { if (d[k] !== undefined) topo[k] = d[k]; });
   } catch(e) {
     const sb = document.getElementById('status-badge');
     sb.innerHTML = '<span class="dot dot-r"></span> Lỗi kết nối';
