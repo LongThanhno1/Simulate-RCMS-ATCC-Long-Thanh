@@ -59,9 +59,9 @@
   background: var(--bg2, #0d1e34);
   border: 1px solid var(--border, #1a3558);
   border-radius: 12px;
-  width: 460px;
+  width: 860px;
   max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 64px);
+  max-height: calc(100vh - 48px);
   overflow-y: auto;
   box-shadow: 0 12px 48px rgba(0,0,0,.75);
   animation: modalIn .18s cubic-bezier(.22,.68,0,1.2);
@@ -280,6 +280,70 @@
   background: rgba(74,112,144,.06);
   border-radius: 5px;
   border: 1px dashed var(--border);
+}
+
+/* ================================================================
+   EQUIPMENT TABLE — danh sách thiết bị MAIN/STANDBY per site
+   ================================================================ */
+
+/* Wrapper có thể scroll ngang nếu viewport hẹp */
+.eq-wrap {
+  overflow-x: auto;
+  margin-top: 4px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+
+.eq-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .73em;
+  white-space: nowrap;
+}
+
+.eq-table thead tr {
+  background: var(--bg4);
+}
+.eq-table th {
+  color: var(--blue);
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 600;
+  font-size: .72em;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+/* Row zebra striping */
+.eq-row     { background: transparent; }
+.eq-row-alt { background: rgba(255,255,255,.025); }
+.eq-table tbody tr:hover { background: rgba(56,189,248,.07); }
+
+.eq-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(26,53,88,.5);
+  vertical-align: middle;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.eq-table tbody tr:last-child td { border-bottom: none; }
+
+/* Column sizing */
+.eq-stt    { width: 28px;  color: var(--text3); text-align: center; font-variant-numeric: tabular-nums; }
+.eq-name   { min-width: 140px; color: var(--text); font-weight: 500; white-space: normal; }
+.eq-model  { min-width: 130px; color: var(--text); white-space: normal; }
+.eq-vendor { min-width: 140px; color: var(--text2); white-space: normal; }
+.eq-qty    { width: 36px;  color: var(--blue); font-weight: 700; text-align: center; }
+.eq-ip     { min-width: 120px; color: #7fddcc; }
+.eq-note   { min-width: 160px; color: var(--text2); white-space: normal; font-size: .92em; }
+
+/* PN sub-label */
+.eq-pn {
+  font-size: .82em;
+  color: var(--text3);
+  font-family: 'Consolas', 'Courier New', monospace;
 }
 
 /* ================================================================

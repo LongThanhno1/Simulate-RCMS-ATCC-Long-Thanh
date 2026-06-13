@@ -17,132 +17,181 @@ let _animRunning = false, _hov = null;
    statusKey: key trong window.topo nhận từ WebSocket
    SN/PN: điền sau khi có dữ liệu thực tế từ nhà cung cấp
    ================================================================ */
+/* ================================================================
+   TOPO_NODES — Dữ liệu thiết bị thực tế từ Hợp đồng TB06
+   Nguồn: TB06 (8225-HĐ-QLB) Phụ lục cung cấp hàng hóa + BƯỚC1_ThietBi.md
+   Cấu trúc: devices.main/standby.items[] — mảng thiết bị tại tab đó
+   ================================================================ */
 const TOPO_NODES = [
+  /* ── TRẠM PHÁT (TX) ────────────────────────────────────────── */
   {
-    id: 'tx', title: 'TRẠM PHÁT', sub: 'TX Station', ip: '10.60.7.71~89',
+    id: 'tx', title: 'TRẠM PHÁT', sub: 'TX Station — VHF AM Transmitter', ip: '10.60.7.0/27',
     kpi: { delay: 12, jitter: 3, loss: 0.02 },
     devices: {
       main: {
-        label:     'T6-TV MAIN (×9 kênh VHF)',
-        model:     'Park Air T6-TV',
-        sn:        '—',
-        pn:        '—',
-        ip:        '10.60.7.71 ÷ 10.60.7.79',
-        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        label:     'TX MAIN — 9 kênh VHF AM (Park Air T6-TV)',
         statusKey: 'tx_status',
+        items: [
+          { name: 'Máy phát VHF AM',    model: 'T6-TV',           pn: 'T6-TV',          vendor: 'Park Air / UK',           qty: 9, ip: '10.60.7.71÷79', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Switch VoIP MAIN',   model: 'OS6860E-24',      pn: 'OS6860E-24',     vendor: 'ALE / China',             qty: 1, ip: '10.60.7.30',    note: 'GW VLAN VoIP MAIN' },
+          { name: 'Switch RCMS (LAN3)', model: 'OS6360-24',       pn: 'OS6360-24',      vendor: 'ALE / China',             qty: 1, ip: '10.60.7.94',    note: 'GW RCMS subnet' },
+          { name: 'Máy tính LCMS',      model: 'HP Z1 G9',        pn: 'Z1 G9',          vendor: 'HP / China',              qty: 1, ip: '10.60.7.65',    note: 'Giám sát cục bộ' },
+          { name: 'Anten VHF',          model: 'CXL 3-1LW',       pn: '100000075',      vendor: 'Procom / North Macedonia', qty: 9, ip: '—',             note: 'Gắn cột anten TX' },
+          { name: 'Bộ lọc VHF',         model: '68-SYS00101/1',   pn: '68-SYS00101/1',  vendor: 'Park Air / Italia',       qty: 9, ip: '—',             note: 'Lọc sóng hài' },
+          { name: 'Thiết bị chống sét', model: 'GT-NFM-AL',       pn: 'GT-NFM-AL',      vendor: 'PolyPhaser / China',      qty: 9, ip: '—',             note: 'Bảo vệ đường anten' },
+        ],
       },
       standby: {
-        label:     'T6-TV STANDBY (×9 kênh VHF)',
-        model:     'Park Air T6-TV',
-        sn:        '—',
-        pn:        '—',
-        ip:        '10.60.7.81 ÷ 10.60.7.89',
-        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        label:     'TX STANDBY — 9 kênh VHF AM (Park Air T6-TV)',
         statusKey: 'tx_stby_status',
+        items: [
+          { name: 'Máy phát VHF AM',      model: 'T6-TV',         pn: 'T6-TV',          vendor: 'Park Air / UK',           qty: 9, ip: '10.60.7.81÷89', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Switch VoIP STANDBY',  model: 'OS6860E-24',    pn: 'OS6860E-24',     vendor: 'ALE / China',             qty: 1, ip: '10.60.7.62',    note: 'GW VoIP STANDBY' },
+          { name: 'Máy tính RCMS',        model: 'HP Z1 G9',      pn: 'Z1 G9',          vendor: 'HP / China',              qty: 1, ip: '10.60.7.98',    note: 'Giám sát từ xa TX' },
+          { name: 'PM giám sát R4-MARCS', model: 'R4-MARCS',      pn: 'R4-MARCS',       vendor: 'Park Air',                qty: 1, ip: '—',             note: 'SW RCMS poll T6-TV' },
+          { name: 'Anten VHF',            model: 'CXL 3-1LW',     pn: '100000075',      vendor: 'Procom / North Macedonia', qty: 9, ip: '—',             note: 'Gắn cột anten TX' },
+          { name: 'Bộ lọc VHF',           model: '68-SYS00101/1', pn: '68-SYS00101/1',  vendor: 'Park Air / Italia',       qty: 9, ip: '—',             note: '' },
+          { name: 'Thiết bị chống sét',   model: 'GT-NFM-AL',     pn: 'GT-NFM-AL',      vendor: 'PolyPhaser / China',      qty: 9, ip: '—',             note: '' },
+        ],
       },
     },
   },
+
+  /* ── TRẠM THU (RX) ─────────────────────────────────────────── */
   {
-    id: 'rx', title: 'TRẠM THU', sub: 'RX Station', ip: '10.60.6.71~89',
+    id: 'rx', title: 'TRẠM THU', sub: 'RX Station — VHF AM Receiver', ip: '10.60.6.0/27',
     kpi: { delay: 18, jitter: 4, loss: 0.05 },
     devices: {
       main: {
-        label:     'T6-RV MAIN (×9 kênh VHF)',
-        model:     'Park Air T6-RV',
-        sn:        '—',
-        pn:        '—',
-        ip:        '10.60.6.71 ÷ 10.60.6.79',
-        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        label:     'RX MAIN — 9 kênh VHF AM (Park Air T6-RV)',
         statusKey: 'rx_status',
+        items: [
+          { name: 'Máy thu VHF AM',     model: 'T6-RV',           pn: 'T6-RV',          vendor: 'Park Air / UK',           qty: 9, ip: '10.60.6.71÷79', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Switch VoIP MAIN',   model: 'OS6860E-24',      pn: 'OS6860E-24',     vendor: 'ALE / China',             qty: 1, ip: '10.60.99.9',    note: 'VLAN VoIP / MGMT' },
+          { name: 'Switch RCMS (LAN3)', model: 'OS6360-24',       pn: 'OS6360-24',      vendor: 'ALE / China',             qty: 1, ip: '10.60.6.94',    note: 'GW RCMS subnet' },
+          { name: 'Máy tính LCMS',      model: 'HP Z1 G9',        pn: 'Z1 G9',          vendor: 'HP / China',              qty: 1, ip: '10.60.6.65',    note: 'Giám sát cục bộ' },
+          { name: 'Anten VHF',          model: 'CXL 3-1LW',       pn: '100000075',      vendor: 'Procom / North Macedonia', qty: 9, ip: '—',             note: 'Yagi gắn cột anten RX' },
+          { name: 'Bộ lọc VHF',         model: '68-SYS00101/1',   pn: '68-SYS00101/1',  vendor: 'Park Air / Italia',       qty: 9, ip: '—',             note: 'Lọc sóng hài' },
+          { name: 'Thiết bị chống sét', model: 'GT-NFM-AL',       pn: 'GT-NFM-AL',      vendor: 'PolyPhaser / China',      qty: 9, ip: '—',             note: 'Bảo vệ đường anten' },
+        ],
       },
       standby: {
-        label:     'T6-RV STANDBY (×9 kênh VHF)',
-        model:     'Park Air T6-RV',
-        sn:        '—',
-        pn:        '—',
-        ip:        '10.60.6.81 ÷ 10.60.6.89',
-        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        label:     'RX STANDBY — 9 kênh VHF AM (Park Air T6-RV)',
         statusKey: 'rx_stby_status',
+        items: [
+          { name: 'Máy thu VHF AM',       model: 'T6-RV',         pn: 'T6-RV',          vendor: 'Park Air / UK',           qty: 9, ip: '10.60.6.81÷89', note: 'SNMP UDP 161 · LAN3' },
+          { name: 'Switch VoIP STANDBY',  model: 'OS6860E-24',    pn: 'OS6860E-24',     vendor: 'ALE / China',             qty: 1, ip: 'TBD',           note: 'GW VoIP dự phòng' },
+          { name: 'Máy tính RCMS',        model: 'HP Z1 G9',      pn: 'Z1 G9',          vendor: 'HP / China',              qty: 1, ip: '10.60.7.97',    note: 'Giám sát từ xa RX' },
+          { name: 'PM giám sát R4-MARCS', model: 'R4-MARCS',      pn: 'R4-MARCS',       vendor: 'Park Air',                qty: 1, ip: '—',             note: 'SW RCMS poll T6-RV' },
+          { name: 'Anten VHF',            model: 'CXL 3-1LW',     pn: '100000075',      vendor: 'Procom / North Macedonia', qty: 9, ip: '—',             note: '' },
+          { name: 'Bộ lọc VHF',           model: '68-SYS00101/1', pn: '68-SYS00101/1',  vendor: 'Park Air / Italia',       qty: 9, ip: '—',             note: '' },
+          { name: 'Thiết bị chống sét',   model: 'GT-NFM-AL',     pn: 'GT-NFM-AL',      vendor: 'PolyPhaser / China',      qty: 9, ip: '—',             note: '' },
+        ],
       },
     },
   },
+
+  /* ── xMG SWITCH (VCCS Media Gateway) ───────────────────────── */
   {
-    id: 'xmg', title: 'xMG SWITCH', sub: 'Core Aggregation', ip: '10.60.8.71~122',
+    id: 'xmg', title: 'xMG SWITCH', sub: 'VCCS Media Gateway — Frequentis', ip: '10.60.8.71÷122',
     kpi: { delay: 5, jitter: 1, loss: 0.01 },
     devices: {
       main: {
-        label:     'Frequentis xMG #1 (Primary)',
-        model:     'Frequentis xMG VoIP Gateway',
-        sn:        '—',
-        pn:        '—',
-        ip:        '10.60.8.71 ÷ 10.60.8.92  (11 QMG cards)',
-        conn:      'SNMP UDP 9116 · LAN3 (RCMS subnet)',
+        label:     'xMG #1 PRIMARY — 11 QMG Modules VoIP (18 tần số A/G)',
         statusKey: 'xmg_status',
+        items: [
+          { name: 'xMG Chassis 2.0 #1',      model: 'xMG 2.0',                 pn: 'xMG-2.0',    vendor: 'Frequentis / Canada', qty: 1,  ip: '10.60.8.71÷81', note: 'VoIP A/G gateway VCCS' },
+          { name: 'QMG Module (VHF VoIP)',    model: 'QMG Module for xMG 2.0',  pn: 'QMG-xMG2.0', vendor: 'Frequentis / Canada', qty: 10, ip: '10.60.8.71÷80', note: '18 tần số, 2 tần/card' },
+          { name: 'QMG Module (D-ATIS)',      model: 'QMG Module for xMG 2.0',  pn: 'QMG-xMG2.0', vendor: 'Frequentis / Canada', qty: 1,  ip: '10.60.8.81',    note: 'D-ATIS VoIP interface' },
+          { name: 'LS4 Application Server',   model: 'Dell PowerEdge R250',      pn: 'R250DELL',   vendor: 'Frequentis / Canada', qty: 1,  ip: 'TBD',           note: 'VCCS application server' },
+          { name: 'LS4 Unmanaged Switch',     model: 'LS4 Ethernet Switch',      pn: 'LS4-SW',     vendor: 'Frequentis / Canada', qty: 6,  ip: '—',             note: 'Internal LAN VCCS #1' },
+        ],
       },
       standby: {
-        label:     'Frequentis xMG #2 (Standby)',
-        model:     'Frequentis xMG VoIP Gateway',
-        sn:        '—',
-        pn:        '—',
-        ip:        '10.60.8.101 ÷ 10.60.8.122  (11 QMG cards)',
-        conn:      'SNMP UDP 9116 · LAN3 (RCMS subnet)',
+        label:     'xMG #2 STANDBY — 4 QMG Modules + Grandstream FXO GW',
         statusKey: 'xmg_stby_status',
+        items: [
+          { name: 'xMG Chassis 2.0 #2',      model: 'xMG 2.0',                  pn: 'xMG-2.0',    vendor: 'Frequentis / Canada', qty: 1, ip: '10.60.8.101÷111', note: 'VoIP failover chassis' },
+          { name: 'QMG Module (dự phòng)',    model: 'QMG Module for xMG 2.0',   pn: 'QMG-xMG2.0', vendor: 'Frequentis / Canada', qty: 4, ip: '10.60.8.101÷104', note: 'Failover VoIP interface' },
+          { name: 'Grandstream FXO Gateway',  model: 'GS 8FXS/8FXO + TMG-3E',   pn: 'TMG-3E',     vendor: 'Frequentis / Canada', qty: 3, ip: 'TBD',             note: 'Thoại analog FXO: 10 line' },
+          { name: 'LS4 Unmanaged Switch',     model: 'LS4 Ethernet Switch',       pn: 'LS4-SW',     vendor: 'Frequentis / Canada', qty: 6, ip: '—',               note: 'Internal LAN VCCS #2' },
+          { name: 'Máy tính LCMS VCCS',       model: 'HP Z1 G9',                  pn: 'Z1 G9',      vendor: 'HP / China',          qty: 1, ip: 'TBD',             note: 'Quản lý VCCS' },
+          { name: 'Máy tính RCMS VCCS',       model: 'HP Z1 G9',                  pn: 'Z1 G9',      vendor: 'HP / China',          qty: 1, ip: 'TBD',             note: 'Giám sát từ xa VCCS' },
+        ],
       },
     },
   },
+
+  /* ── RED SWITCH CORE (J1 — Primary Ring) ───────────────────── */
   {
-    id: 'red_sw', title: 'RED J1 SW', sub: 'Primary Ring Switch', ip: '10.60.8.204',
+    id: 'red_sw', title: 'RED J1 SW', sub: 'Core Switch — Nokia/ALE (RED Ring Primary)', ip: '10.60.8.204',
     kpi: { delay: 8, jitter: 2, loss: 0.01 },
     devices: {
       main: {
-        label:     'ALE OS6860 CORE (RED ring)',
-        model:     'ALE OmniSwitch OS6860',
-        sn:        '—',
-        pn:        '—',
-        ip:        '10.60.8.204',
-        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        label:     'RED SWITCH CORE — Hệ thống hạ tầng đường truyền chính (J1)',
         statusKey: 'red_sw_status',
+        items: [
+          { name: 'Router định tuyến biên',       model: '7250 IXR-eL',     pn: '7250 IXR-eL', vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        note: 'MPLS backbone router J1' },
+          { name: 'Router phân phối',              model: '7250 IXR-eL',     pn: '7250 IXR-eL', vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        note: 'Distribution router J1' },
+          { name: 'Thiết bị tổng hợp dịch vụ',    model: 'Nokia SAR-8',     pn: 'SAR-8',       vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        note: 'Service Aggregation Router' },
+          { name: 'Switch truy cập 24P (RED)',     model: 'OS6860E-24',      pn: 'OS6860E-24',  vendor: 'ALE / China',       qty: 4, ip: '10.60.8.204', note: 'SNMP UDP 161 · RED ring core' },
+          { name: 'Tường lửa vùng biên',           model: 'FortiGate FG-100F', pn: 'FG-100F',   vendor: 'Fortinet / Taiwan', qty: 1, ip: 'TBD',        note: 'Bảo vệ vùng biên RED' },
+          { name: 'Tường lửa DMZ',                model: 'FortiGate FG-400F', pn: 'FG-400F',   vendor: 'Fortinet / Taiwan', qty: 1, ip: 'TBD',        note: 'DMZ firewall' },
+        ],
       },
-      standby: null,   /* Dự phòng ở cấp Ring — không có SW vật lý riêng */
+      standby: null,  /* Dự phòng ở cấp Ring (RED↔BLUE dual-ring) — không có SW vật lý riêng */
     },
   },
+
+  /* ── BLUE SWITCH CORE (J2 — Standby Ring) ──────────────────── */
   {
-    id: 'blue_sw', title: 'BLUE J2 SW', sub: 'Standby Ring Switch', ip: '10.60.8.203',
+    id: 'blue_sw', title: 'BLUE J2 SW', sub: 'Core Switch — Nokia/ALE (BLUE Ring Standby)', ip: '10.60.8.203',
     kpi: { delay: 10, jitter: 3, loss: 0.02 },
     devices: {
       main: {
-        label:     'ALE OS6860 CORE (BLUE ring)',
-        model:     'ALE OmniSwitch OS6860',
-        sn:        '—',
-        pn:        '—',
-        ip:        '10.60.8.203',
-        conn:      'SNMP UDP 161 · LAN3 (RCMS subnet)',
+        label:     'BLUE SWITCH CORE — Hệ thống hạ tầng đường truyền dự phòng (J2)',
         statusKey: 'blue_sw_status',
+        items: [
+          { name: 'Router định tuyến biên',       model: '7250 IXR-eL',     pn: '7250 IXR-eL', vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        note: 'MPLS backbone router J2' },
+          { name: 'Thiết bị tổng hợp dịch vụ',    model: 'Nokia SAR-8',     pn: 'SAR-8',       vendor: 'Nokia / Mexico',    qty: 1, ip: 'TBD',        note: 'Service Aggregation Router' },
+          { name: 'Switch truy cập 24P (BLUE)',    model: 'OS6860E-24',      pn: 'OS6860E-24',  vendor: 'ALE / China',       qty: 4, ip: '10.60.8.203', note: 'SNMP UDP 161 · BLUE ring core' },
+          { name: 'Tường lửa vùng biên',           model: 'FortiGate FG-100F', pn: 'FG-100F',   vendor: 'Fortinet / Taiwan', qty: 1, ip: 'TBD',        note: 'Bảo vệ vùng biên BLUE' },
+          { name: 'Máy chủ quản trị (FOC)',        model: 'HPE DL360 Gen10+', pn: 'DL360-G10+', vendor: 'HPE / Singapore',   qty: 1, ip: 'TBD',        note: 'Management server FOC' },
+        ],
       },
-      standby: null,   /* Dự phòng ở cấp Ring — không có SW vật lý riêng */
+      standby: null,  /* Dự phòng ở cấp Ring (RED↔BLUE dual-ring) — không có SW vật lý riêng */
     },
   },
+
+  /* ── FL20 — Đài KSKL Tầng 20 (TWR) ─────────────────────────── */
   {
-    id: 'fl20', title: 'FL 20 — TWR', sub: 'Đài KSKL Tầng 20', ip: '10.60.8.201~202',
+    id: 'fl20', title: 'FL 20 — TWR', sub: 'Đài KSKL · Tầng 20 · ATCC Long Thành', ip: '10.60.11.0/27',
     kpi: { delay: 25, jitter: 5, loss: 0.1 },
     devices: {
       main: {
-        label:     'SW_20FL_1 (RED ring side)',
-        model:     'ALE OmniSwitch (SW_20FL_1)',
-        sn:        '—',
-        pn:        '—',
-        ip:        '10.60.8.201',
-        conn:      'Cáp quang ← RED SW CORE (10.60.8.204)',
+        label:     'UBVHF MAIN — SW_20FL_1 kết nối RED ring (6 kênh VHF dự phòng)',
         statusKey: 'fl20_status',
+        items: [
+          { name: 'Bộ thu phát VHF AM (UBVHF)', model: 'T6-TRV',           pn: 'T6-TRV',         vendor: 'Park Air / UK',           qty: 6, ip: '10.60.11.1÷6',   note: 'UBVHF · SNMP UDP 161 · LAN3' },
+          { name: 'S4-IP Controller',             model: 'S4-IP',            pn: 'S4-IP',          vendor: 'Park Air / UK',           qty: 6, ip: '10.60.11.11÷16', note: 'TCP port 5001 · Không SNMP' },
+          { name: 'Switch RCMS UBVHF',            model: 'OS6360-24',        pn: 'OS6360-24',      vendor: 'ALE / China',             qty: 1, ip: 'TBD',             note: 'Monitoring LAN tầng 20' },
+          { name: 'Máy tính LCMS UBVHF',          model: 'HP Z1 G9',         pn: 'Z1 G9',          vendor: 'HP / China',              qty: 1, ip: '10.60.11.29',     note: 'Giám sát cục bộ' },
+          { name: 'Anten VHF (UBVHF)',             model: 'CXL 3-1LW',        pn: '100000075',      vendor: 'Procom / North Macedonia', qty: 6, ip: '—',               note: 'Mái tầng 20 TWR' },
+          { name: 'Bộ lọc VHF',                   model: '68-SYS00101/1',    pn: '68-SYS00101/1',  vendor: 'Park Air / Italia',       qty: 6, ip: '—',               note: '' },
+          { name: 'Thiết bị chống sét',            model: 'GT-NFM-AL',        pn: 'GT-NFM-AL',      vendor: 'PolyPhaser / China',      qty: 6, ip: '—',               note: '' },
+        ],
       },
       standby: {
-        label:     'SW_20FL_2 (BLUE ring side)',
-        model:     'ALE OmniSwitch (SW_20FL_2)',
-        sn:        '—',
-        pn:        '—',
-        ip:        '10.60.8.202',
-        conn:      'Cáp quang ← BLUE SW CORE (10.60.8.203)',
+        label:     'CWP VCCS + RCMS — SW_20FL_2 kết nối BLUE ring',
         statusKey: 'fl20_stby_status',
+        items: [
+          { name: 'Vị trí CWP VCCS (Frequentis)', model: 'PCU + TED',             pn: 'CWP-PCU',  vendor: 'Frequentis / Canada', qty: 14, ip: '10.60.8.x',   note: 'PCU + TED + Mic + HS + Headset' },
+          { name: 'Vị trí RCMS VCCS',              model: 'PCU + TED',             pn: 'CWP-PCU',  vendor: 'Frequentis / Canada', qty: 1,  ip: '10.60.8.x',   note: 'Remote monitoring position' },
+          { name: 'Máy tính RCMS UBVHF',           model: 'HP Z1 G9',              pn: 'Z1 G9',    vendor: 'HP / China',          qty: 1,  ip: '10.60.11.30', note: 'Giám sát từ xa UBVHF' },
+          { name: 'Máy thu phát TETRA (cố định)',  model: 'MXM600',               pn: 'MXM600',   vendor: 'Motorola / Malaysia', qty: 4,  ip: '—',           note: 'TETRA UHF gắn rack đài chỉ huy' },
+          { name: 'Máy thu phát TETRA (cầm tay)',  model: 'MXP600',               pn: 'MXP600',   vendor: 'Motorola / Malaysia', qty: 4,  ip: '—',           note: 'TETRA UHF handheld' },
+          { name: 'Anten UHF TETRA',               model: 'BS450XL6-A',            pn: 'BS450XL6', vendor: 'Mobile Mark / USA',   qty: 4,  ip: '—',           note: 'Gắn tại Đài chỉ huy' },
+        ],
       },
     },
   },
@@ -577,15 +626,15 @@ function _devStatusInfo(statusKey) {
 }
 
 /**
- * _renderDevCard — render thẻ thiết bị vào container
+ * _renderDevCard — render bảng danh sách thiết bị tại tab MAIN/STANDBY
  * @param {string} slot  — 'main' hoặc 'standby'
- * @param {object|null} dev — object device từ TOPO_NODES.devices
+ * @param {object|null} dev — { label, statusKey, items[] } từ TOPO_NODES.devices
  */
 function _renderDevCard(slot, dev) {
   const el = document.getElementById('ptab-' + slot + '-card');
   if (!el) return;
 
-  /* Không có thiết bị dự phòng vật lý */
+  /* Không có thiết bị dự phòng vật lý (red_sw, blue_sw) */
   if (!dev) {
     el.innerHTML = `<div class="dev-na">
       Không có thiết bị STANDBY vật lý riêng.<br>
@@ -599,23 +648,39 @@ function _renderDevCard(slot, dev) {
     ? new Date(window.topo.ts).toLocaleTimeString('vi-VN')
     : '—';
 
+  /* Render rows cho từng thiết bị trong items[] */
+  const rows = (dev.items || []).map((it, idx) => `
+    <tr class="eq-row${idx % 2 === 0 ? '' : ' eq-row-alt'}">
+      <td class="eq-stt">${idx + 1}</td>
+      <td class="eq-name">${it.name}</td>
+      <td class="eq-model mono">${it.model}<br><span class="eq-pn">PN: ${it.pn}</span></td>
+      <td class="eq-vendor">${it.vendor}</td>
+      <td class="eq-qty">${it.qty}</td>
+      <td class="eq-ip mono">${it.ip}</td>
+      <td class="eq-note">${it.note || '—'}</td>
+    </tr>`).join('');
+
   el.innerHTML = `
     <div class="dev-status-bar ${si.cls}">
-      <span>${si.icon} ${si.lbl}</span>
+      <span>${si.icon} ${si.lbl} — ${dev.label}</span>
       <span class="dev-ts">${ts}</span>
     </div>
-    <table class="dev-table">
-      <tr><td class="dk">Thiết bị</td>
-          <td class="dv">${dev.model}<br><small style="opacity:.7;font-size:.85em">${dev.label}</small></td></tr>
-      <tr><td class="dk">Serial Number</td>
-          <td class="dv mono">${dev.sn}</td></tr>
-      <tr><td class="dk">Part Number</td>
-          <td class="dv mono">${dev.pn}</td></tr>
-      <tr><td class="dk">IP Address</td>
-          <td class="dv mono">${dev.ip}</td></tr>
-      <tr><td class="dk">Kết nối</td>
-          <td class="dv">${dev.conn}</td></tr>
-    </table>`;
+    <div class="eq-wrap">
+      <table class="eq-table">
+        <thead>
+          <tr>
+            <th class="eq-stt">#</th>
+            <th class="eq-name">Tên thiết bị</th>
+            <th class="eq-model">Model / PN</th>
+            <th class="eq-vendor">Hãng / XS</th>
+            <th class="eq-qty">SL</th>
+            <th class="eq-ip">IP (LAN3)</th>
+            <th class="eq-note">Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 /**
