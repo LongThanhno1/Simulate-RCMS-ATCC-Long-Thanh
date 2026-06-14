@@ -82,24 +82,37 @@ Hệ thống giám sát bao gồm các nhóm thiết bị chuyên dụng hàng k
 
 ```
 Simulate-RCMS-ATCC-Long-Thanh/
-├── 📁 monitoring/              # Docker stack chính
-│   ├── docker-compose.yml      # Định nghĩa các dịch vụ
-│   ├── prometheus/             # Cấu hình thu thập metrics + alert rules
-│   ├── grafana/                # Dashboard provisioning
-│   ├── alertmanager/           # Cấu hình cảnh báo
-│   ├── snmp/                   # Module SNMP thiết bị
-│   ├── blackbox/               # Module probe TCP/ICMP
-│   └── simulate_metrics.py     # Script giả lập metrics cho lab
 │
-├── 📁 web-portal/              # FastAPI + Giao diện Web
+├── 📁 monitoring/                  # 🐳 Docker stack chính
+│   ├── docker-compose.yml          # Định nghĩa các dịch vụ
+│   ├── prometheus/                 # Cấu hình thu thập metrics + alert rules
+│   ├── grafana/                    # Dashboard provisioning
+│   ├── alertmanager/               # Cấu hình cảnh báo & template
+│   ├── snmp/                       # Module SNMP thiết bị
+│   ├── blackbox/                   # Module probe TCP/ICMP
+│   └── simulate_metrics.py         # Script giả lập metrics cho lab
+│
+├── 📁 web-portal/                  # 🌐 FastAPI + Giao diện Web
 │   └── app/
-│       ├── main.py             # Backend API routes + WebSocket
-│       └── static/             # Frontend: HTML, CSS, JavaScript
+│       ├── main.py                 # Backend API routes + WebSocket
+│       └── static/                 # Frontend: HTML, CSS, JavaScript
 │
-├── 📁 ansible/                 # Tự động hóa đo kiểm
-│   ├── hosts.ini               # Inventory thiết bị
-│   ├── group_vars/             # Biến cấu hình
-│   └── playbooks/              # Kịch bản đo kiểm & báo cáo
+├── 📁 ansible/                     # 🤖 Tự động hóa đo kiểm
+│   ├── hosts.ini                   # Inventory thiết bị
+│   ├── group_vars/                 # Biến cấu hình
+│   └── playbooks/                  # Kịch bản đo kiểm & báo cáo
+│
+├── 📁 docs/                        # 📚 Tài liệu kỹ thuật
+│   ├── design/                     # Thiết kế hệ thống & sơ đồ
+│   │   ├── HLD_Hệ Thống Đường Truyền.pdf
+│   │   ├── BƯỚC2_SoDo_TruyenDan.mermaid
+│   │   └── BƯỚC2_SoDo_TruyenDan.html
+│   ├── planning/                   # Tài liệu lập kế hoạch
+│   │   ├── BƯỚC1_ThietBi.md        # Bảng thiết bị 3 vị trí
+│   │   └── BƯỚC3_QuyHoachIP.md     # Quy hoạch địa chỉ mạng
+│   └── operations/                 # Vận hành & kiểm tra
+│       ├── BƯỚC5_AlertManager.md   # Hướng dẫn cấu hình cảnh báo
+│       └── CHECKLIST_AUDIT_ED137.md # Checklist kiểm tra ED-137
 │
 └── 📄 README.md
 ```
