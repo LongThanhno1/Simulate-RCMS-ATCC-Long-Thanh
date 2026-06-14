@@ -50,6 +50,109 @@ Hệ thống giám sát bao gồm các nhóm thiết bị chuyên dụng hàng k
 
 ---
 
+## ⚙️ Cơ chế đo kiểm tự động
+
+![VATM Auto Measurement Demo](docs/assets/vatm_auto_measure.gif)
+
+Hệ thống hỗ trợ **2 phương thức** kích hoạt đo kiểm, hoạt động độc lập hoặc kết hợp:
+
+---
+
+### 🕐 Đo kiểm theo lịch (Scheduled — Cron)
+
+Ansible Runner được lên lịch tự động thông qua **cron job** trên máy chủ, không cần thao tác thủ công.
+
+```
+┌─────────────┐     Cron trigger      ┌──────────────────┐
+│   Cron Job  │ ──────────────────►   │  Ansible Runner  │
+│ 0 */4 * * * │   (mỗi 4 tiếng/lần)  │  (web-portal)    │
+└─────────────┘                       └────────┬─────────┘
+                                               │  SSH
+                                    ┌──────────▼──────────┐
+                                    │  RCMS Workstation    │
+                                    │  (TX / RX Station)   │
+                                    └──────────┬──────────┘
+                                               │  Đo kiểm
+                                    ┌──────────▼──────────┐
+                                    │  Pushgateway :9091   │
+                                    │  Prometheus scrape   │
+                                    │  Grafana update      │
+                                    └─────────────────────┘
+```
+
+| Lịch gợi ý | Cron expression | Mô tả |
+|------------|----------------|-------|
+| Đầu ca sáng | `0 7 * * *` | 07:00 hàng ngày |
+| Mỗi 4 tiếng | `0 */4 * * *` | 00:00, 04:00, 08:00... |
+| Mỗi giờ | `0 * * * *` | Giám sát liên tục |
+| Theo ca trực | `0 7,15,23 * * *` | 3 ca/ngày |
+
+---
+
+### 🖱️ Đo kiểm thủ công (Manual — Web Portal)
+
+Kỹ thuật viên trực ca kích hoạt đo kiểm **trực tiếp từ giao diện Web** chỉ với một cú click, không cần mở terminal hay gõ lệnh.
+
+```
+ Kỹ thuật viên
+       │
+       │  Click nút trên Web Portal
+       ▼
+┌──────────────────────────┐
+│   🗺 Sơ đồ NOC Topology  │
+│                          │
+│   [TX] → Click node      │
+│   ┌──────────────────┐   │
+│   │ Tab MAIN/STANDBY │   │
+│   │ [▶ Đo kiểm trạm] │◄──┼── Click
+│   │ [⚡ Ping thiết bị]│   │
+│   └──────────────────┘   │
+└──────────┬───────────────┘
+           │  FastAPI /api/ansible/run
+           ▼
+    Ansible Playbook
+           │
+           ▼
+    Kết quả hiển thị
+    ngay trên giao diện
+```
+
+**Các thao tác thủ công có sẵn:**
+
+| Nút bấm | Vị trí | Chức năng |
+|---------|--------|-----------|
+| `▶ Đo kiểm trạm này` | Modal popup — node bất kỳ | Chạy playbook đo kiểm trạm đang chọn |
+| `⚡ Ping` | Cột Ping trong bảng thiết bị | Ping ICMP kiểm tra kết nối từng thiết bị |
+| `⚡ Ping tất cả thiết bị` | Tab 📊 TRẠNG THÁI | Ping song song toàn bộ thiết bị của node |
+
+---
+
+### 🔄 Luồng xử lý đầy đủ (End-to-End)
+
+```
+  [Cron / Web Portal]
+         │
+         ▼
+  Ansible Playbook
+         │
+         ├──► SSH → RCMS Workstation
+         │           │
+         │           ├── Đo One-way Delay   ──► So sánh ngưỡng ED-137
+         │           ├── Đo Jitter          ──► So sánh ngưỡng ED-137
+         │           └── Đo Packet Loss     ──► So sánh ngưỡng ED-137
+         │
+         ├──► Push metrics → Pushgateway → Prometheus
+         │
+         ├──► Xuất báo cáo .md / .xlsx → Web Portal
+         │
+         └──► (Nếu vi phạm ngưỡng) Alertmanager
+                        │
+                        ├──► 📱 Telegram Bot → Kỹ thuật viên trực ca
+                        └──► 📧 Email → Tổ trưởng kỹ thuật
+```
+
+---
+
 ## 📐 Ngưỡng KPI — EUROCAE ED-137
 
 | Chỉ số chất lượng | 🟢 Bình thường | 🟡 Cảnh báo | 🔴 Vi phạm |
